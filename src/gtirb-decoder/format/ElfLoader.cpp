@@ -25,8 +25,9 @@
 
 #include "../../AuxDataSchema.h"
 #include "../../Endian.h"
+#include "../Relations.h"
 
-void ElfDynamicEntryLoader(const gtirb::Module &Module, DatalogProgram &Program)
+void ElfDynamicEntryLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
     std::vector<relations::DynamicEntry> DynamicEntries;
 
@@ -39,10 +40,10 @@ void ElfDynamicEntryLoader(const gtirb::Module &Module, DatalogProgram &Program)
         }
     }
 
-    Program.insert("dynamic_entry", std::move(DynamicEntries));
+    relations::insert(Program, "dynamic_entry", std::move(DynamicEntries));
 }
 
-void ElfSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
+void ElfSymbolLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
     std::vector<relations::Symbol> Symbols;
 
@@ -103,18 +104,18 @@ void ElfSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program)
         }
     }
 
-    Program.insert("symbol", std::move(Symbols));
+    relations::insert(Program, "symbol", std::move(Symbols));
 
     if(auto *Relocations = Module.getAuxData<gtirb::schema::Relocations>())
     {
-        Program.insert("relocation", *Relocations);
+        relations::insert(Program, "relocation", *Relocations);
     }
 }
 
-void ElfExceptionLoader(const gtirb::Module &Module, DatalogProgram &Program)
+void ElfExceptionLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
     ElfExceptionDecoder Decoder(Module);
-    Decoder.addExceptionInformation(Program.get());
+    Decoder.addExceptionInformation(Program);
 }
 
 ElfExceptionDecoder::ElfExceptionDecoder(const gtirb::Module &module)
@@ -196,11 +197,11 @@ ElfExceptionDecoder::ElfExceptionDecoder(const gtirb::Module &module)
                                              gccExcept, addressGccExcept);
 }
 
-void ElfExceptionDecoder::addExceptionInformation(souffle::SouffleProgram *prog)
+void ElfExceptionDecoder::addExceptionInformation(souffle::SouffleProgram &Program)
 {
-    auto *cieRelation = prog->getRelation("cie_entry");
-    auto *cieEncodingRelation = prog->getRelation("cie_encoding");
-    auto *ciePersonalityRelation = prog->getRelation("cie_personality");
+    auto *cieRelation = Program.getRelation("cie_entry");
+    auto *cieEncodingRelation = Program.getRelation("cie_encoding");
+    auto *ciePersonalityRelation = Program.getRelation("cie_personality");
     for(const EHP::CIEContents_t *cie : *(ehParser->getCIEs()))
     {
         cieRelation->insert(getCIEEntry(cieRelation, cie));
@@ -208,13 +209,13 @@ void ElfExceptionDecoder::addExceptionInformation(souffle::SouffleProgram *prog)
         ciePersonalityRelation->insert(getCIEPersonality(ciePersonalityRelation, cie));
     }
 
-    auto *fdeRelation = prog->getRelation("fde_entry");
-    auto *fdePtrLocationsRelation = prog->getRelation("fde_pointer_locations");
-    auto *fdeInsnRelation = prog->getRelation("fde_instruction");
-    auto *lsdaRelation = prog->getRelation("lsda");
-    auto *lsdaPtrLocationsRelation = prog->getRelation("lsda_pointer_locations");
-    auto *callSiteRelation = prog->getRelation("lsda_callsite");
-    auto *typeEntryRelation = prog->getRelation("lsda_type_entry");
+    auto *fdeRelation = Program.getRelation("fde_entry");
+    auto *fdePtrLocationsRelation = Program.getRelation("fde_pointer_locations");
+    auto *fdeInsnRelation = Program.getRelation("fde_instruction");
+    auto *lsdaRelation = Program.getRelation("lsda");
+    auto *lsdaPtrLocationsRelation = Program.getRelation("lsda_pointer_locations");
+    auto *callSiteRelation = Program.getRelation("lsda_callsite");
+    auto *typeEntryRelation = Program.getRelation("lsda_type_entry");
 
     for(const EHP::FDEContents_t *fde : *(ehParser->getFDEs()))
     {
@@ -423,7 +424,7 @@ static const uint8_t *getSectionBytes(const gtirb::Section &Section)
     }
 }
 
-void ElfArchInfoLoader(const gtirb::Module &Module, DatalogProgram &Program)
+void ElfArchInfoLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
     std::vector<relations::ArchInfo> ArchInfo;
 
@@ -436,7 +437,7 @@ void ElfArchInfoLoader(const gtirb::Module &Module, DatalogProgram &Program)
         }
     }
 
-    Program.insert("arch_info", std::move(ArchInfo));
+    relations::insert(Program, "arch_info", std::move(ArchInfo));
 }
 
 /**
@@ -448,9 +449,9 @@ https://github.com/ARM-software/abi-aa/blob/main/ehabi32/ehabi32.rst
 If we fail to parse in any way, we clear the arm_exidx_entry and allow ddisasm
 to proceed without it.
 */
-void ArmUnwindLoader(const gtirb::Module &Module, DatalogProgram &Program)
+void ArmUnwindLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
-    auto *FunctionStartRelation = Program.get()->getRelation("arm_exidx_entry");
+    auto *FunctionStartRelation = Program.getRelation("arm_exidx_entry");
 
     auto ExidxSection = getSection(Module, ".ARM.exidx");
     if(ExidxSection == nullptr)

@@ -23,11 +23,11 @@
 #ifndef SRC_GTIRB_DECODER_CORE_INSTRUCTIONLOADER_H_
 #define SRC_GTIRB_DECODER_CORE_INSTRUCTIONLOADER_H_
 #include <capstone/capstone.h>
+#include <souffle/SouffleInterface.h>
 
 #include <gtirb/gtirb.hpp>
 #include <vector>
 
-#include "../DatalogProgram.h"
 #include "../Relations.h"
 
 class OperandFacts
@@ -224,7 +224,7 @@ class InstructionLoader
 public:
     virtual ~InstructionLoader(){};
 
-    void operator()(const gtirb::Module& Module, DatalogProgram& Program)
+    void operator()(const gtirb::Module& Module, souffle::SouffleProgram& Program)
     {
         BinaryFacts Facts;
         load(Module, Facts);
@@ -241,7 +241,7 @@ protected:
         });
     };
 
-    virtual void insert(const BinaryFacts& Facts, DatalogProgram& Program);
+    virtual void insert(const BinaryFacts& Facts, souffle::SouffleProgram& Program);
 
     virtual void load(const gtirb::Module& Module, BinaryFacts& Facts)
     {

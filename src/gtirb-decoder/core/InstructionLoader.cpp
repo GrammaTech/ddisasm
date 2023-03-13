@@ -49,23 +49,23 @@ const std::vector<relations::RegBitFieldOp> OperandFacts::reg_bitfields() const
 /**
 Insert BinaryFacts into the Datalog program.
 */
-void InstructionLoader::insert(const BinaryFacts& Facts, DatalogProgram& Program)
+void InstructionLoader::insert(const BinaryFacts& Facts, souffle::SouffleProgram& Program)
 {
     auto& [Instructions, Operands] = Facts;
-    Program.insert("instruction", Instructions.instructions());
-    Program.insert("instruction_writeback", Instructions.writeback());
-    Program.insert("instruction_cond_code", Instructions.conditionCode());
-    Program.insert("instruction_op_access", Instructions.opAccess());
-    Program.insert("invalid_op_code", Instructions.invalid());
-    Program.insert("op_shifted", Instructions.shiftedOps());
-    Program.insert("op_shifted_w_reg", Instructions.shiftedWithRegOps());
-    Program.insert("register_access", Instructions.registerAccesses());
-    Program.insert("op_immediate", Operands.imm());
-    Program.insert("op_regdirect", Operands.reg());
-    Program.insert("op_fp_immediate", Operands.fp_imm());
-    Program.insert("op_indirect", Operands.indirect());
-    Program.insert("op_special", Operands.special());
-    Program.insert("op_register_bitfield", Operands.reg_bitfields());
+    relations::insert(Program, "instruction", Instructions.instructions());
+    relations::insert(Program, "instruction_writeback", Instructions.writeback());
+    relations::insert(Program, "instruction_cond_code", Instructions.conditionCode());
+    relations::insert(Program, "instruction_op_access", Instructions.opAccess());
+    relations::insert(Program, "invalid_op_code", Instructions.invalid());
+    relations::insert(Program, "op_shifted", Instructions.shiftedOps());
+    relations::insert(Program, "op_shifted_w_reg", Instructions.shiftedWithRegOps());
+    relations::insert(Program, "register_access", Instructions.registerAccesses());
+    relations::insert(Program, "op_immediate", Operands.imm());
+    relations::insert(Program, "op_regdirect", Operands.reg());
+    relations::insert(Program, "op_fp_immediate", Operands.fp_imm());
+    relations::insert(Program, "op_indirect", Operands.indirect());
+    relations::insert(Program, "op_special", Operands.special());
+    relations::insert(Program, "op_register_bitfield", Operands.reg_bitfields());
 }
 
 /**

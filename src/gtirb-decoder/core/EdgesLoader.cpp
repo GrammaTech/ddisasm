@@ -23,8 +23,9 @@
 #include "EdgesLoader.h"
 
 #include "../../AuxDataSchema.h"
+#include "../Relations.h"
 
-void BlocksLoader(const gtirb::Module& Module, DatalogProgram& Program)
+void BlocksLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program)
 {
     std::vector<relations::Block> Blocks;
     std::vector<relations::NextBlock> NextBlocks;
@@ -50,8 +51,8 @@ void BlocksLoader(const gtirb::Module& Module, DatalogProgram& Program)
         PrevBlockAddr = BlockAddr;
     }
 
-    Program.insert("block", std::move(Blocks));
-    Program.insert("next_block", std::move(NextBlocks));
+    relations::insert(Program, "block", std::move(Blocks));
+    relations::insert(Program, "next_block", std::move(NextBlocks));
 }
 
 std::tuple<std::string, std::string, std::string> edgeProperties(const gtirb::EdgeLabel& Label)
@@ -96,7 +97,7 @@ std::tuple<std::string, std::string, std::string> edgeProperties(const gtirb::Ed
     return {Conditional, Indirect, Type};
 }
 
-void CfgLoader(const gtirb::Module& Module, DatalogProgram& Program)
+void CfgLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program)
 {
     std::vector<relations::Edge> Edges;
     std::vector<relations::TopEdge> TopEdges;
@@ -148,7 +149,7 @@ void CfgLoader(const gtirb::Module& Module, DatalogProgram& Program)
         }
     }
 
-    Program.insert("cfg_edge", std::move(Edges));
-    Program.insert("cfg_edge_to_top", std::move(TopEdges));
-    Program.insert("cfg_edge_to_symbol", std::move(SymbolEdges));
+    relations::insert(Program, "cfg_edge", std::move(Edges));
+    relations::insert(Program, "cfg_edge_to_top", std::move(TopEdges));
+    relations::insert(Program, "cfg_edge_to_symbol", std::move(SymbolEdges));
 }

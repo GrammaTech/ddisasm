@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 
+#include <boost/graph/adjacency_list.hpp>
 #include <gtirb/gtirb.hpp>
 
+#include "../AnalysisPipeline.h"
 #include "../passes/NoReturnPass.h"
 #include "../passes/SccPass.h"
 
@@ -27,6 +29,24 @@ gtirb::EdgeLabel simpleJump()
 {
     return std::make_tuple(gtirb::ConditionalEdge::OnTrue, gtirb::DirectEdge::IsDirect,
                            gtirb::EdgeType::Branch);
+}
+
+static bool edgeIn(const gtirb::CFG& Cfg, const gtirb::CfgNode* FromVertex,
+                   const gtirb::CfgNode* ToVertex)
+{
+    const auto& IdTable = Cfg[boost::graph_bundle];
+    if(auto it = IdTable.find(FromVertex); it != IdTable.end())
+    {
+        auto From = it->second;
+        if(it = IdTable.find(ToVertex); it != IdTable.end())
+        {
+            auto To = it->second;
+            return edge(From, To, Cfg).second;
+        }
+    }
+
+    // One of the nodes isn't in the CFG
+    return false;
 }
 
 TEST(Unit_NoReturnPass, remove_simple_fallthrough)
@@ -55,11 +75,17 @@ TEST(Unit_NoReturnPass, remove_simple_fallthrough)
     Cfg[*addEdge(B1, ExternalBlock, Cfg)] = simpleCall();
     Cfg[*addEdge(B2, TopBlock, Cfg)] = simpleReturn();
 
-    computeSCCs(*M);
-    std::set<gtirb::CodeBlock*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
+    AnalysisPipeline Pipeline;
+    Pipeline.push<SccPass>();
+    Pipeline.push<NoReturnPass>();
+    Pipeline.run(Ctx, *M);
 
-    EXPECT_TRUE(CallNoReturn.count(B1));
-    EXPECT_FALSE(CallNoReturn.count(B2));
+    // B1, which does not return, should not fall through.
+    EXPECT_FALSE(edgeIn(Cfg, B1, B2));
+
+    // The return should be unaffected.
+    EXPECT_TRUE(edgeIn(Cfg, B2, TopBlock));
+
     EXPECT_EQ(2, Cfg.m_edges.size());
 }
 
@@ -109,11 +135,18 @@ TEST(Unit_NoReturnPass, one_path_returns)
     Cfg[*addEdge(B6, TopBlock, Cfg)] = simpleReturn();
 
     EXPECT_EQ(9, Cfg.m_edges.size());
-    computeSCCs(*M);
-    std::set<gtirb::CodeBlock*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
 
-    EXPECT_TRUE(CallNoReturn.count(B3));
-    EXPECT_FALSE(CallNoReturn.count(B1));
+    AnalysisPipeline Pipeline;
+    Pipeline.push<SccPass>();
+    Pipeline.push<NoReturnPass>();
+    Pipeline.run(Ctx, *M);
+
+    // B3, which does not return, should not fall through.
+    EXPECT_FALSE(edgeIn(Cfg, B3, B4));
+
+    // B1 is not noreturn, and should still fall through.
+    EXPECT_TRUE(edgeIn(Cfg, B1, B6));
+
     EXPECT_EQ(8, Cfg.m_edges.size());
 }
 
@@ -168,12 +201,17 @@ TEST(Unit_NoReturnPass, two_paths_no_return)
     Cfg[*addEdge(B7, TopBlock, Cfg)] = simpleReturn();
 
     EXPECT_EQ(11, Cfg.m_edges.size());
-    computeSCCs(*M);
-    std::set<gtirb::CodeBlock*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
 
-    EXPECT_TRUE(CallNoReturn.count(B3));
-    EXPECT_TRUE(CallNoReturn.count(B5));
-    EXPECT_TRUE(CallNoReturn.count(B1));
+    AnalysisPipeline Pipeline;
+    Pipeline.push<SccPass>();
+    Pipeline.push<NoReturnPass>();
+    Pipeline.run(Ctx, *M);
+
+    // No-return blocks should not fallthrough
+    EXPECT_FALSE(edgeIn(Cfg, B3, B4));
+    EXPECT_FALSE(edgeIn(Cfg, B5, B6));
+    EXPECT_FALSE(edgeIn(Cfg, B1, B7));
+
     EXPECT_EQ(8, Cfg.m_edges.size());
 }
 
@@ -227,10 +265,15 @@ TEST(Unit_NoReturnPass, loop_no_return)
     Cfg[*addEdge(B6, TopBlock, Cfg)] = simpleReturn();
 
     EXPECT_EQ(9, Cfg.m_edges.size());
-    computeSCCs(*M);
-    std::set<gtirb::CodeBlock*> CallNoReturn = NoReturnPass().computeNoReturn(*M);
 
-    EXPECT_TRUE(CallNoReturn.count(B4));
-    EXPECT_TRUE(CallNoReturn.count(B1));
+    AnalysisPipeline Pipeline;
+    Pipeline.push<SccPass>();
+    Pipeline.push<NoReturnPass>();
+    Pipeline.run(Ctx, *M);
+
+    // No-return blocks should not fallthough.
+    EXPECT_FALSE(edgeIn(Cfg, B4, B5));
+    EXPECT_FALSE(edgeIn(Cfg, B1, B6));
+
     EXPECT_EQ(7, Cfg.m_edges.size());
 }

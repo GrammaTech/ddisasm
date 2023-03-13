@@ -3,8 +3,7 @@
 static __thread int index;
 static __thread char buffer[16];
 __thread char buffer_lib[16];
-
-void fun(int a, int b)
+void fun()
 {
     buffer[index % 16] = '.';
     buffer_lib[index % 16] = '.';

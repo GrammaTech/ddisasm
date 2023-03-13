@@ -23,8 +23,9 @@
 #include "SectionLoader.h"
 
 #include "../../AuxDataSchema.h"
+#include "../Relations.h"
 
-void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
+void SectionLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program)
 {
     std::vector<relations::Section> Sections;
     std::vector<relations::SectionProperty> SectionProperty;
@@ -123,7 +124,7 @@ void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program)
             {Section.getName(), *Section.getSize(), *Section.getAddress(), Align, Index});
     }
 
-    Program.insert("section", std::move(Sections));
-    Program.insert("section_property", std::move(SectionProperty));
-    Program.insert("section_type", std::move(SectionType));
+    relations::insert(Program, "section", std::move(Sections));
+    relations::insert(Program, "section_property", std::move(SectionProperty));
+    relations::insert(Program, "section_type", std::move(SectionType));
 }

@@ -1,3 +1,41 @@
+# ============ Generic pass library =================
+
+add_library(generic_pass STATIC AnalysisPass.cpp DatalogAnalysisPass.cpp
+                                Interpreter.cpp)
+
+target_link_libraries(generic_pass gtirb gtirb_pprinter gtirb_decoder)
+
+if(SOUFFLE_INCLUDE_DIR)
+  target_include_directories(generic_pass SYSTEM PRIVATE ${SOUFFLE_INCLUDE_DIR})
+endif()
+
+target_compile_definitions(generic_pass PRIVATE __EMBEDDED_SOUFFLE__)
+target_compile_definitions(generic_pass PRIVATE RAM_DOMAIN_SIZE=64)
+target_compile_options(generic_pass PRIVATE ${OPENMP_FLAGS})
+
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+  set_common_msvc_options(generic_pass)
+endif()
+
+# ============ Disassembly pass =================
+
+add_library(disassembly_pass STATIC DisassemblyPass.cpp Disassembler.cpp)
+
+if(SOUFFLE_INCLUDE_DIR)
+  target_include_directories(disassembly_pass SYSTEM
+                             PRIVATE ${SOUFFLE_INCLUDE_DIR})
+endif()
+
+target_link_libraries(disassembly_pass gtirb gtirb_pprinter)
+
+target_compile_definitions(disassembly_pass PRIVATE __EMBEDDED_SOUFFLE__)
+target_compile_definitions(disassembly_pass PRIVATE RAM_DOMAIN_SIZE=64)
+target_compile_options(disassembly_pass PRIVATE ${OPENMP_FLAGS})
+
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+  set_common_msvc_options(disassembly_pass)
+endif()
+
 # ============ Scc pass =================
 
 add_library(scc_pass STATIC SccPass.cpp)
@@ -35,6 +73,11 @@ add_custom_command(
   DEPENDS ${NO_RETURN_DATALOG_SOURCES})
 
 add_library(no_return_pass STATIC NoReturnPass.cpp ${NO_RETURN_CPP})
+
+if(SOUFFLE_INCLUDE_DIR)
+  target_include_directories(no_return_pass SYSTEM
+                             PRIVATE ${SOUFFLE_INCLUDE_DIR})
+endif()
 
 target_link_libraries(no_return_pass gtirb gtirb_pprinter gtirb_decoder)
 
@@ -74,6 +117,11 @@ add_custom_command(
 
 add_library(function_inference_pass STATIC FunctionInferencePass.cpp
                                            ${FUNCTION_INFERENCE_CPP})
+
+if(SOUFFLE_INCLUDE_DIR)
+  target_include_directories(function_inference_pass SYSTEM
+                             PRIVATE ${SOUFFLE_INCLUDE_DIR})
+endif()
 
 target_link_libraries(function_inference_pass gtirb gtirb_pprinter
                       gtirb_decoder)

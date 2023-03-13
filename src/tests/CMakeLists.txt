@@ -9,7 +9,7 @@ else()
 endif()
 
 add_executable(
-  TestDdisasm
+  ${PROJECT_NAME}
   ../Registration.cpp
   ../Functors.cpp
   Main.Test.cpp
@@ -20,56 +20,35 @@ add_executable(
   CompositeLoader.Test.cpp
   ArchiveReader.Test.cpp
   InstructionRelations.Test.cpp
-  DatalogProgram.Test.cpp
+  DatalogIO.Test.cpp
   Functors.Test.cpp)
 
+target_link_libraries(
+  ${PROJECT_NAME}
+  ${SYSLIBS}
+  ${Boost_LIBRARIES}
+  gtest
+  gtest_main
+  ddisasm_pipeline
+  gtirb
+  gtirb_builder
+  gtirb_decoder
+  generic_pass
+  disassembly_pass
+  scc_pass)
+
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-  target_link_libraries(
-    ${PROJECT_NAME}
-    ${SYSLIBS}
-    ${Boost_LIBRARIES}
-    gtest
-    gtest_main
-    gtirb
-    gtirb_builder
-    gtirb_decoder
-    ddisasm_datalog
-    scc_pass
-    no_return_pass)
+  target_link_libraries(${PROJECT_NAME} ddisasm_datalog no_return_pass)
   target_link_options(
     ${PROJECT_NAME} PRIVATE /WHOLEARCHIVE:ddisasm_datalog$<$<CONFIG:Debug>:d>
     /WHOLEARCHIVE:no_return_pass$<$<CONFIG:Debug>:d>)
 else()
   if(APPLE)
-    target_link_libraries(
-      ${PROJECT_NAME}
-      ${SYSLIBS}
-      ${Boost_LIBRARIES}
-      gtest
-      gtest_main
-      gtirb
-      gtirb_builder
-      gtirb_decoder
-      scc_pass
-      -Wl,-all_load
-      ddisasm_datalog
-      no_return_pass
-      -Wl,-noall_load)
+    target_link_libraries(${PROJECT_NAME} -Wl,-all_load ddisasm_datalog
+                          no_return_pass -Wl,-noall_load)
   else()
-    target_link_libraries(
-      ${PROJECT_NAME}
-      ${SYSLIBS}
-      ${Boost_LIBRARIES}
-      gtest
-      gtest_main
-      gtirb
-      gtirb_builder
-      gtirb_decoder
-      scc_pass
-      -Wl,--whole-archive
-      ddisasm_datalog
-      no_return_pass
-      -Wl,--no-whole-archive)
+    target_link_libraries(${PROJECT_NAME} -Wl,--whole-archive ddisasm_datalog
+                          no_return_pass -Wl,--no-whole-archive)
   endif()
 endif()
 

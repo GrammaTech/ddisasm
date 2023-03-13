@@ -25,6 +25,6 @@
 
 #include "../CompositeLoader.h"
 
-void RawEntryLoader(const gtirb::Module &Module, DatalogProgram &Program);
+void RawEntryLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program);
 
 #endif // SRC_GTIRB_DECODER_FORMAT_RAWLOADER_H_

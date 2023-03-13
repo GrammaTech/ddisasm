@@ -5,7 +5,7 @@
 
 #include "../gtirb-builder/GtirbBuilder.h"
 #include "../gtirb-decoder/CompositeLoader.h"
-#include "../gtirb-decoder/DatalogProgram.h"
+#include "../gtirb-decoder/DatalogIO.h"
 #include "../gtirb-decoder/core/AuxDataLoader.h"
 
 class CompositeLoaderTest : public ::testing::TestWithParam<const char*>
@@ -27,17 +27,17 @@ class TestLoader
 {
 public:
     TestLoader(){};
-    void operator()(const gtirb::Module& Module, DatalogProgram& Program)
+    void operator()(const gtirb::Module& Module, souffle::SouffleProgram& Program)
     {
         auto Tuples = {relations::SccIndex{0, 0, gtirb::Addr(0)}};
-        Program.insert("in_scc", Tuples);
+        relations::insert(Program, "in_scc", Tuples);
     }
 };
 
-void TestLoaderFunction(const gtirb::Module& Module, DatalogProgram& Program)
+void TestLoaderFunction(const gtirb::Module& Module, souffle::SouffleProgram& Program)
 {
     auto Tuples = {relations::SccIndex{1, 1, gtirb::Addr(1)}};
-    Program.insert("in_scc", Tuples);
+    relations::insert(Program, "in_scc", Tuples);
 }
 
 TEST_P(CompositeLoaderTest, build_test_loader)
@@ -48,10 +48,10 @@ TEST_P(CompositeLoaderTest, build_test_loader)
     Loader.add(TestLoaderFunction);
 
     // Build Souffle context.
-    std::optional<DatalogProgram> TestProgram = Loader.load(*Module);
+    std::unique_ptr<souffle::SouffleProgram> TestProgram = Loader.load(*Module);
     EXPECT_TRUE(TestProgram);
     {
-        auto* Relation = TestProgram->get()->getRelation("in_scc");
+        auto* Relation = TestProgram->getRelation("in_scc");
         EXPECT_EQ(Relation->size(), 2);
     }
 }

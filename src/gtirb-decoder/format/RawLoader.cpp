@@ -25,8 +25,9 @@
 #include "RawLoader.h"
 
 #include "../../AuxDataSchema.h"
+#include "../Relations.h"
 
-void RawEntryLoader(const gtirb::Module &Module, DatalogProgram &Program)
+void RawEntryLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
     std::vector<gtirb::Addr> Entries;
     if(auto *RawEntries = Module.getAuxData<gtirb::schema::RawEntries>())
@@ -36,5 +37,5 @@ void RawEntryLoader(const gtirb::Module &Module, DatalogProgram &Program)
             Entries.push_back(gtirb::Addr(EA));
         }
     }
-    Program.insert("entry_point", std::move(Entries));
+    relations::insert(Program, "entry_point", std::move(Entries));
 }

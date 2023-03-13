@@ -1,6 +1,6 @@
 //===- Disassembler.cpp -----------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2019-2023 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -23,12 +23,11 @@
 
 #include "Disassembler.h"
 
-#include <LIEF/LIEF.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <regex>
 
-#include "AuxDataSchema.h"
-#include "gtirb-decoder/CompositeLoader.h"
+#include "../AuxDataSchema.h"
+#include "../gtirb-decoder/Relations.h"
 
 using ImmOp = relations::ImmOp;
 using IndirectOp = relations::IndirectOp;
@@ -58,11 +57,11 @@ struct DecodedInstruction
     uint64_t displacementOffset;
 };
 
-std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SouffleProgram *prog,
+std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SouffleProgram &Program,
                                                               std::set<gtirb::Addr> &code)
 {
     std::map<uint64_t, ImmOp> Immediates;
-    for(auto &output : *prog->getRelation("op_immediate"))
+    for(auto &output : *Program.getRelation("op_immediate"))
     {
         uint64_t operandCode;
         ImmOp immediate;
@@ -70,7 +69,7 @@ std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SoufflePr
         Immediates[operandCode] = immediate;
     };
     std::map<uint64_t, IndirectOp> Indirects;
-    for(auto &output : *prog->getRelation("op_indirect"))
+    for(auto &output : *Program.getRelation("op_indirect"))
     {
         uint64_t operandCode, size;
         IndirectOp indirect;
@@ -80,7 +79,7 @@ std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SoufflePr
     };
 
     std::map<gtirb::Addr, DecodedInstruction> insns;
-    for(auto &output : *prog->getRelation("instruction"))
+    for(auto &output : *Program.getRelation("instruction"))
     {
         gtirb::Addr EA;
         output >> EA;
@@ -258,10 +257,10 @@ struct SymbolicInfo
 };
 
 template <typename Container, typename Elem = typename Container::value_type>
-Container convertSortedRelation(const std::string &relation, souffle::SouffleProgram *prog)
+Container convertSortedRelation(const std::string &relation, souffle::SouffleProgram &Program)
 {
     Container result;
-    for(auto &output : *prog->getRelation(relation))
+    for(auto &output : *Program.getRelation(relation))
     {
         Elem elem(output);
         result.insert(elem);
@@ -271,10 +270,10 @@ Container convertSortedRelation(const std::string &relation, souffle::SoufflePro
 
 template <>
 std::set<gtirb::Addr> convertSortedRelation<std::set<gtirb::Addr>>(const std::string &relation,
-                                                                   souffle::SouffleProgram *prog)
+                                                                   souffle::SouffleProgram &Program)
 {
     std::set<gtirb::Addr> result;
-    for(auto &output : *prog->getRelation(relation))
+    for(auto &output : *Program.getRelation(relation))
     {
         result.insert(gtirb::Addr(output[0]));
     };
@@ -350,11 +349,11 @@ void removeSymbolVersionsFromNames(gtirb::Module &Module)
 }
 
 void buildInferredSymbols(gtirb::Context &Context, gtirb::Module &Module,
-                          souffle::SouffleProgram *Prog)
+                          souffle::SouffleProgram &Program)
 {
     auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
     auto *SymbolTabIdxInfo = Module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfo>();
-    for(auto &T : *Prog->getRelation("inferred_symbol"))
+    for(auto &T : *Program.getRelation("inferred_symbol"))
     {
         gtirb::Addr Addr;
         std::string Name;
@@ -422,10 +421,10 @@ gtirb::Symbol *findFirstSymbol(gtirb::Module &Module, std::string Name)
 // other ABI-specific artifacts that may be duplicated or reintroduced during
 // reassembly.
 void buildSymbolForwarding(gtirb::Context &Context, gtirb::Module &Module,
-                           souffle::SouffleProgram *Prog)
+                           souffle::SouffleProgram &Program)
 {
     std::map<gtirb::UUID, gtirb::UUID> SymbolForwarding;
-    for(auto &T : *Prog->getRelation("copy_relocated_symbol"))
+    for(auto &T : *Program.getRelation("copy_relocated_symbol"))
     {
         gtirb::Addr EA;
         std::string Name;
@@ -441,7 +440,7 @@ void buildSymbolForwarding(gtirb::Context &Context, gtirb::Module &Module,
             SymbolForwarding[CopySymbol->getUUID()] = RealSymbol->getUUID();
         }
     }
-    for(auto &T : *Prog->getRelation("abi_intrinsic"))
+    for(auto &T : *Program.getRelation("abi_intrinsic"))
     {
         gtirb::Addr EA;
         std::string Name;
@@ -503,10 +502,10 @@ bool isNullReg(const std::string &reg)
 }
 
 // Expand the SymbolForwarding table with plt references
-void expandSymbolForwarding(gtirb::Module &Module, souffle::SouffleProgram *Prog)
+void expandSymbolForwarding(gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
     auto *SymbolForwarding = Module.getAuxData<gtirb::schema::SymbolForwarding>();
-    for(auto &Output : *Prog->getRelation("plt_block"))
+    for(auto &Output : *Program.getRelation("plt_block"))
     {
         gtirb::Addr Ea;
         std::string Name;
@@ -523,7 +522,7 @@ void expandSymbolForwarding(gtirb::Module &Module, souffle::SouffleProgram *Prog
             }
         }
     }
-    for(auto &Output : *Prog->getRelation("got_reference"))
+    for(auto &Output : *Program.getRelation("got_reference"))
     {
         gtirb::Addr Ea;
         std::string Name;
@@ -588,10 +587,10 @@ void buildSymbolicExpr(gtirb::Module &Module, const gtirb::Addr &Ea,
     }
 }
 
-void buildCodeSymbolicInformation(gtirb::Module &Module, souffle::SouffleProgram *Prog)
+void buildCodeSymbolicInformation(gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
     std::set<gtirb::Addr> Code;
-    for(auto &output : *Prog->getRelation("code_in_refined_block"))
+    for(auto &output : *Program.getRelation("code_in_refined_block"))
     {
         gtirb::Addr EA;
         output >> EA;
@@ -599,11 +598,13 @@ void buildCodeSymbolicInformation(gtirb::Module &Module, souffle::SouffleProgram
     }
 
     SymbolicInfo symbolicInfo{
-        convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr", Prog),
+        convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr", Program),
         convertSortedRelation<VectorByEA<SymExprSymbolMinusSymbol>>(
-            "symbolic_expr_symbol_minus_symbol", Prog),
-        convertSortedRelation<VectorByEA<SymbolicExprAttribute>>("symbolic_expr_attribute", Prog)};
-    std::map<gtirb::Addr, DecodedInstruction> decodedInstructions = recoverInstructions(Prog, Code);
+            "symbolic_expr_symbol_minus_symbol", Program),
+        convertSortedRelation<VectorByEA<SymbolicExprAttribute>>("symbolic_expr_attribute",
+                                                                 Program)};
+    std::map<gtirb::Addr, DecodedInstruction> decodedInstructions =
+        recoverInstructions(Program, Code);
 
     for(auto &EA : Code)
     {
@@ -623,11 +624,11 @@ void buildCodeSymbolicInformation(gtirb::Module &Module, souffle::SouffleProgram
 }
 
 void buildCodeBlocks(gtirb::Context &Context, gtirb::Module &Module,
-                     souffle::SouffleProgram *Program)
+                     souffle::SouffleProgram &Program)
 {
     auto BlockInfo =
         convertSortedRelation<VectorByEA<BlockInformation>>("block_information", Program);
-    for(auto &Tuple : *Program->getRelation("refined_block"))
+    for(auto &Tuple : *Program.getRelation("refined_block"))
     {
         gtirb::Addr BlockAddress;
         Tuple >> BlockAddress;
@@ -658,10 +659,10 @@ void buildCodeBlocks(gtirb::Context &Context, gtirb::Module &Module,
 // Create DataObjects for labeled objects in the BSS sections, without adding
 // data to the ImageByteMap.
 
-void buildBSS(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram *prog)
+void buildBSS(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram &Program)
 {
-    auto bssData = convertSortedRelation<std::set<gtirb::Addr>>("bss_data", prog);
-    for(auto &output : *prog->getRelation("bss_section"))
+    auto bssData = convertSortedRelation<std::set<gtirb::Addr>>("bss_data", Program);
+    for(auto &output : *Program.getRelation("bss_section"))
     {
         std::string sectionName;
         output >> sectionName;
@@ -689,19 +690,21 @@ void buildBSS(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
     }
 }
 
-void buildDataBlocks(gtirb::Context &Context, gtirb::Module &Module, souffle::SouffleProgram *Prog)
+void buildDataBlocks(gtirb::Context &Context, gtirb::Module &Module,
+                     souffle::SouffleProgram &Program)
 {
-    auto SymbolicExprs = convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr", Prog);
+    auto SymbolicExprs = convertSortedRelation<VectorByEA<SymbolicExpr>>("symbolic_expr", Program);
     auto SymbolMinusSymbol = convertSortedRelation<VectorByEA<SymExprSymbolMinusSymbol>>(
-        "symbolic_expr_symbol_minus_symbol", Prog);
+        "symbolic_expr_symbol_minus_symbol", Program);
 
-    auto DataStrings = convertSortedRelation<VectorByEA<StringDataObject>>("string", Prog);
+    auto DataStrings = convertSortedRelation<VectorByEA<StringDataObject>>("string", Program);
     auto SymbolSpecialTypes =
-        convertSortedRelation<VectorByEA<SymbolSpecialType>>("symbol_special_encoding", Prog);
-    auto DataBoundary = convertSortedRelation<std::set<gtirb::Addr>>("data_object_boundary", Prog);
-    auto SymbolicExprAttributes =
-        convertSortedRelation<VectorByEA<SymbolicExprAttribute>>("symbolic_expr_attribute", Prog);
-    auto Alignments = convertSortedRelation<VectorByEA<Alignment>>("alignment", Prog);
+        convertSortedRelation<VectorByEA<SymbolSpecialType>>("symbol_special_encoding", Program);
+    auto DataBoundary =
+        convertSortedRelation<std::set<gtirb::Addr>>("data_object_boundary", Program);
+    auto SymbolicExprAttributes = convertSortedRelation<VectorByEA<SymbolicExprAttribute>>(
+        "symbolic_expr_attribute", Program);
+    auto Alignments = convertSortedRelation<VectorByEA<Alignment>>("alignment", Program);
 
     auto *Alignment = Module.getAuxData<gtirb::schema::Alignment>();
     if(!Alignment)
@@ -716,7 +719,7 @@ void buildDataBlocks(gtirb::Context &Context, gtirb::Module &Module, souffle::So
 
     std::map<gtirb::Offset, uint64_t> SymbolicSizes;
 
-    for(auto &Output : *Prog->getRelation("initialized_data_segment"))
+    for(auto &Output : *Program.getRelation("initialized_data_segment"))
     {
         gtirb::Addr Begin, End;
         Output >> Begin >> End;
@@ -800,13 +803,13 @@ void buildDataBlocks(gtirb::Context &Context, gtirb::Module &Module, souffle::So
             }
         }
     }
-    buildBSS(Context, Module, Prog);
+    buildBSS(Context, Module, Program);
     Module.addAuxData<gtirb::schema::Encodings>(std::move(TypesTable));
     Module.addAuxData<gtirb::schema::SymbolicExpressionSizes>(std::move(SymbolicSizes));
 }
 
 void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
-                            souffle::SouffleProgram *Prog)
+                            souffle::SouffleProgram &Program)
 {
     auto *Alignment = Module.getAuxData<gtirb::schema::Alignment>();
     auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
@@ -818,7 +821,8 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
         for(auto [Uuid, Info] : *SymbolInfo)
         {
             uint64_t SectionIndex = std::get<4>(Info);
-            if(SectionIndex == static_cast<uint64_t>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_COMMON))
+            constexpr uint64_t SHN_COMMON = 0xfff2;
+            if(SectionIndex == SHN_COMMON)
             {
                 gtirb::Node *Node = gtirb::Node::getByUUID(Context, Uuid);
                 if(auto *Symbol = dyn_cast_or_null<gtirb::Symbol>(Node);
@@ -834,7 +838,7 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
             }
         }
     }
-    for(auto &T : *Prog->getRelation("symbol_at_end"))
+    for(auto &T : *Program.getRelation("symbol_at_end"))
     {
         gtirb::Addr EA;
         std::string SymbolName;
@@ -844,7 +848,7 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
             Sym->setAtEnd(true);
         }
     }
-    for(auto &T : *Prog->getRelation("symbol_before_section_beg"))
+    for(auto &T : *Program.getRelation("symbol_before_section_beg"))
     {
         gtirb::Addr EA, NewEA;
         std::string SymbolName;
@@ -971,14 +975,14 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
     }
 }
 
-void buildFunctions(gtirb::Module &Module, souffle::SouffleProgram *Prog)
+void buildFunctions(gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionEntries;
     std::map<gtirb::Addr, gtirb::UUID> FunctionEntry2Function;
     std::map<gtirb::UUID, gtirb::UUID> FunctionNames;
     boost::uuids::random_generator Generator;
 
-    for(auto &T : *Prog->getRelation("function_inference.function_entry_name"))
+    for(auto &T : *Program.getRelation("function_inference.function_entry_name"))
     {
         gtirb::Addr FunctionEntry;
         std::string FunctionName;
@@ -1000,7 +1004,7 @@ void buildFunctions(gtirb::Module &Module, souffle::SouffleProgram *Prog)
     }
 
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionBlocks;
-    for(auto &T : *Prog->getRelation("function_inference.in_function"))
+    for(auto &T : *Program.getRelation("function_inference.in_function"))
     {
         gtirb::Addr BlockAddr, FunctionEntryAddr;
         T >> BlockAddr >> FunctionEntryAddr;
@@ -1030,10 +1034,10 @@ gtirb::EdgeType getEdgeType(const std::string &type)
     return gtirb::EdgeType::Fallthrough;
 }
 
-void buildCFG(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram *prog)
+void buildCFG(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram &Program)
 {
     auto &cfg = module.getIR()->getCFG();
-    for(auto &output : *prog->getRelation("cfg_edge"))
+    for(auto &output : *Program.getRelation("cfg_edge"))
     {
         gtirb::Addr srcAddr, destAddr;
         std::string conditional, indirect, type;
@@ -1053,7 +1057,7 @@ void buildCFG(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
         cfg[*E] = std::make_tuple(isConditional, isIndirect, edgeType);
     }
     auto *topBlock = module.addProxyBlock(context);
-    for(auto &output : *prog->getRelation("cfg_edge_to_top"))
+    for(auto &output : *Program.getRelation("cfg_edge_to_top"))
     {
         gtirb::Addr srcAddr;
         std::string conditional, type;
@@ -1065,7 +1069,7 @@ void buildCFG(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
         auto E = addEdge(src, topBlock, cfg);
         cfg[*E] = std::make_tuple(isConditional, gtirb::DirectEdge::IsIndirect, edgeType);
     }
-    for(auto &T : *prog->getRelation("cfg_edge_to_symbol"))
+    for(auto &T : *Program.getRelation("cfg_edge_to_symbol"))
     {
         gtirb::Addr EA;
         std::string Name;
@@ -1130,11 +1134,11 @@ void updateComment(gtirb::Module &module, std::map<gtirb::Offset, std::string> &
     }
 }
 
-void buildCfiDirectives(gtirb::Module &Module, souffle::SouffleProgram *Prog)
+void buildCfiDirectives(gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
     std::map<gtirb::Offset, std::vector<std::tuple<std::string, std::vector<int64_t>, gtirb::UUID>>>
         CfiDirectives;
-    for(auto &output : *Prog->getRelation("cfi_directive"))
+    for(auto &output : *Program.getRelation("cfi_directive"))
     {
         gtirb::Addr BlockAddr;
         std::string Directive, Reference;
@@ -1194,7 +1198,7 @@ void buildCfiDirectives(gtirb::Module &Module, souffle::SouffleProgram *Prog)
     Module.addAuxData<gtirb::schema::CfiDirectives>(std::move(CfiDirectives));
 }
 
-void buildSehTable(gtirb::Module &Module, souffle::SouffleProgram *Prog)
+void buildSehTable(gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
     if(Module.getFileFormat() != gtirb::FileFormat::PE)
     {
@@ -1203,7 +1207,7 @@ void buildSehTable(gtirb::Module &Module, souffle::SouffleProgram *Prog)
 
     std::set<gtirb::UUID> Handlers;
 
-    for(auto &T : *Prog->getRelation("pe_exception_handler"))
+    for(auto &T : *Program.getRelation("pe_exception_handler"))
     {
         gtirb::Addr EA;
         T >> EA;
@@ -1218,10 +1222,10 @@ void buildSehTable(gtirb::Module &Module, souffle::SouffleProgram *Prog)
     Module.addAuxData<gtirb::schema::PeSafeExceptionHandlers>(std::move(Handlers));
 }
 
-void buildPadding(gtirb::Module &Module, souffle::SouffleProgram *Prog)
+void buildPadding(gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
     std::map<gtirb::Offset, uint64_t> Padding;
-    for(auto &Output : *Prog->getRelation("padding"))
+    for(auto &Output : *Program.getRelation("padding"))
     {
         gtirb::Addr EA;
         uint64_t Size;
@@ -1239,10 +1243,10 @@ void buildPadding(gtirb::Module &Module, souffle::SouffleProgram *Prog)
     Module.addAuxData<gtirb::schema::Padding>(std::move(Padding));
 }
 
-void buildComments(gtirb::Module &Module, souffle::SouffleProgram *Prog, bool SelfDiagnose)
+void buildComments(gtirb::Module &Module, souffle::SouffleProgram &Program, bool SelfDiagnose)
 {
     std::map<gtirb::Offset, std::string> Comments;
-    auto *data_access_pattern = Prog->getRelation("data_access_pattern");
+    auto *data_access_pattern = Program.getRelation("data_access_pattern");
     if(data_access_pattern)
     {
         for(auto &Output : *data_access_pattern)
@@ -1258,7 +1262,7 @@ void buildComments(gtirb::Module &Module, souffle::SouffleProgram *Prog, bool Se
         }
     }
 
-    auto *preferred_data_access = Prog->getRelation("preferred_data_access");
+    auto *preferred_data_access = Program.getRelation("preferred_data_access");
     if(preferred_data_access)
     {
         for(auto &Output : *preferred_data_access)
@@ -1273,7 +1277,7 @@ void buildComments(gtirb::Module &Module, souffle::SouffleProgram *Prog, bool Se
         }
     }
 
-    auto *best_value_reg = Prog->getRelation("best_value_reg");
+    auto *best_value_reg = Program.getRelation("best_value_reg");
     if(best_value_reg)
     {
         for(auto &Output : *best_value_reg)
@@ -1289,7 +1293,7 @@ void buildComments(gtirb::Module &Module, souffle::SouffleProgram *Prog, bool Se
         }
     }
 
-    auto *value_reg = Prog->getRelation("value_reg");
+    auto *value_reg = Program.getRelation("value_reg");
     if(value_reg)
     {
         for(auto &Output : *value_reg)
@@ -1305,7 +1309,7 @@ void buildComments(gtirb::Module &Module, souffle::SouffleProgram *Prog, bool Se
         }
     }
 
-    auto *moved_label_class = Prog->getRelation("moved_label_class");
+    auto *moved_label_class = Program.getRelation("moved_label_class");
     if(moved_label_class)
     {
         for(auto &Output : *moved_label_class)
@@ -1321,7 +1325,7 @@ void buildComments(gtirb::Module &Module, souffle::SouffleProgram *Prog, bool Se
         }
     }
 
-    auto *reg_def_use_def_used = Prog->getRelation("reg_def_use.def_used");
+    auto *reg_def_use_def_used = Program.getRelation("reg_def_use.def_used");
     if(reg_def_use_def_used)
     {
         for(auto &Output : *reg_def_use_def_used)
@@ -1336,7 +1340,7 @@ void buildComments(gtirb::Module &Module, souffle::SouffleProgram *Prog, bool Se
         }
     }
 
-    auto *missed_jump_table = Prog->getRelation("missed_jump_table");
+    auto *missed_jump_table = Program.getRelation("missed_jump_table");
     if(missed_jump_table)
     {
         for(auto &Output : *missed_jump_table)
@@ -1349,7 +1353,7 @@ void buildComments(gtirb::Module &Module, souffle::SouffleProgram *Prog, bool Se
         }
     }
 
-    auto *reg_has_base_image = Prog->getRelation("reg_has_base_image");
+    auto *reg_has_base_image = Program.getRelation("reg_has_base_image");
     if(reg_has_base_image)
     {
         for(auto &Output : *reg_has_base_image)
@@ -1363,7 +1367,7 @@ void buildComments(gtirb::Module &Module, souffle::SouffleProgram *Prog, bool Se
         }
     }
 
-    auto *reg_has_got = Prog->getRelation("reg_has_got");
+    auto *reg_has_got = Program.getRelation("reg_has_got");
     if(reg_has_got)
     {
         for(auto &T : *reg_has_got)
@@ -1378,19 +1382,19 @@ void buildComments(gtirb::Module &Module, souffle::SouffleProgram *Prog, bool Se
     }
     if(SelfDiagnose)
     {
-        for(auto &Output : *Prog->getRelation("false_positive"))
+        for(auto &Output : *Program.getRelation("false_positive"))
         {
             gtirb::Addr Ea;
             Output >> Ea;
             updateComment(Module, Comments, Ea, "false positive");
         }
-        for(auto &Output : *Prog->getRelation("false_negative"))
+        for(auto &Output : *Program.getRelation("false_negative"))
         {
             gtirb::Addr Ea;
             Output >> Ea;
             updateComment(Module, Comments, Ea, "false negative");
         }
-        for(auto &Output : *Prog->getRelation("bad_symbol_constant"))
+        for(auto &Output : *Program.getRelation("bad_symbol_constant"))
         {
             gtirb::Addr Ea;
             uint64_t Index;
@@ -1403,9 +1407,9 @@ void buildComments(gtirb::Module &Module, souffle::SouffleProgram *Prog, bool Se
     Module.addAuxData<gtirb::schema::Comments>(std::move(Comments));
 }
 
-void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram *prog)
+void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram &Program)
 {
-    for(auto &output : *prog->getRelation("entry_point"))
+    for(auto &output : *Program.getRelation("entry_point"))
     {
         gtirb::Addr ea;
         output >> ea;
@@ -1452,7 +1456,7 @@ void shiftThumbBlocks(gtirb::Module &Module)
     }
 }
 
-void buildArchInfo(gtirb::Module &Module, souffle::SouffleProgram *Prog)
+void buildArchInfo(gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
     if(Module.getISA() == gtirb::ISA::ARM)
     {
@@ -1463,7 +1467,7 @@ void buildArchInfo(gtirb::Module &Module, souffle::SouffleProgram *Prog)
             // If the information is not found, see if the datalog inferred any
             // arch information.
             std::map<std::string, std::string> ArchInfo;
-            for(auto &output : *Prog->getRelation("inferred_arch_info"))
+            for(auto &output : *Program.getRelation("inferred_arch_info"))
             {
                 std::string Key;
                 std::string Value;
@@ -1487,81 +1491,79 @@ void buildArchInfo(gtirb::Module &Module, souffle::SouffleProgram *Prog)
 }
 
 void disassembleModule(gtirb::Context &Context, gtirb::Module &Module,
-                       souffle::SouffleProgram *Prog, bool SelfDiagnose)
+                       souffle::SouffleProgram &Program, bool SelfDiagnose)
 {
     removeSectionSymbols(Context, Module);
     removeEntryPoint(Module);
-    buildInferredSymbols(Context, Module, Prog);
-    buildSymbolForwarding(Context, Module, Prog);
-    buildCodeBlocks(Context, Module, Prog);
-    buildDataBlocks(Context, Module, Prog);
-    buildCodeSymbolicInformation(Module, Prog);
-    buildCfiDirectives(Module, Prog);
-    buildSehTable(Module, Prog);
-    expandSymbolForwarding(Module, Prog);
-    buildFunctions(Module, Prog);
+    buildInferredSymbols(Context, Module, Program);
+    buildSymbolForwarding(Context, Module, Program);
+    buildCodeBlocks(Context, Module, Program);
+    buildDataBlocks(Context, Module, Program);
+    buildCodeSymbolicInformation(Module, Program);
+    buildCfiDirectives(Module, Program);
+    buildSehTable(Module, Program);
+    expandSymbolForwarding(Module, Program);
+    buildFunctions(Module, Program);
     // This should be done after creating all the symbols.
-    connectSymbolsToBlocks(Context, Module, Prog);
+    connectSymbolsToBlocks(Context, Module, Program);
     // These functions should not create additional symbols.
-    buildCFG(Context, Module, Prog);
-    buildPadding(Module, Prog);
-    buildComments(Module, Prog, SelfDiagnose);
-    updateEntryPoint(Module, Prog);
+    buildCFG(Context, Module, Program);
+    buildPadding(Module, Program);
+    buildComments(Module, Program, SelfDiagnose);
+    updateEntryPoint(Module, Program);
     removeSymbolVersionsFromNames(Module);
-    buildArchInfo(Module, Prog);
+    buildArchInfo(Module, Program);
     if(Module.getISA() == gtirb::ISA::ARM)
     {
         shiftThumbBlocks(Module);
     }
 }
 
-bool performSanityChecks(souffle::SouffleProgram *prog, bool selfDiagnose)
+void performSanityChecks(AnalysisPassResult &Result, souffle::SouffleProgram &Program,
+                         bool selfDiagnose, bool ignoreErrors)
 {
-    bool error = false;
+    std::list<std::string> &Messages = ignoreErrors ? Result.Warnings : Result.Errors;
     if(selfDiagnose)
     {
-        std::cout << "Perfoming self diagnose (this will only give the right results if "
-                     "the target "
-                     "program contains all the relocation information)"
-                  << std::endl;
-        auto falsePositives = prog->getRelation("false_positive");
+        Result.Warnings.push_back(
+            "Perfoming self diagnose (this will only give the right results if "
+            "the target program contains all the relocation information)");
+        auto falsePositives = Program.getRelation("false_positive");
         if(falsePositives->size() > 0)
         {
-            error = true;
-            std::cerr << "False positives: " << falsePositives->size() << std::endl;
+            std::stringstream ErrMsg;
+            ErrMsg << "False positives: " << falsePositives->size();
+            Messages.push_back(ErrMsg.str());
         }
-        auto falseNegatives = prog->getRelation("false_negative");
+        auto falseNegatives = Program.getRelation("false_negative");
         if(falseNegatives->size() > 0)
         {
-            error = true;
-            std::cerr << "False negatives: " << falseNegatives->size() << std::endl;
+            std::stringstream ErrMsg;
+            ErrMsg << "False negatives: " << falseNegatives->size();
+            Messages.push_back(ErrMsg.str());
         }
-        auto badSymbolCnt = prog->getRelation("bad_symbol_constant");
+        auto badSymbolCnt = Program.getRelation("bad_symbol_constant");
         if(badSymbolCnt->size() > 0)
         {
-            error = true;
-            std::cerr << "Bad symbol constants: " << badSymbolCnt->size() << std::endl;
+            std::stringstream ErrMsg;
+            ErrMsg << "Bad symbol constants: " << badSymbolCnt->size();
+            Messages.push_back(ErrMsg.str());
         }
     }
-    auto blockOverlap = prog->getRelation("block_still_overlap");
+    auto blockOverlap = Program.getRelation("block_still_overlap");
     if(blockOverlap->size() > 0)
     {
-        error = true;
-        std::cerr << "The conflicts between the following code blocks could not be resolved:"
-                  << std::endl;
+        std::stringstream ErrMsg;
+        ErrMsg << "The conflicts between the following code blocks could not be resolved:\n";
         for(auto &output : *blockOverlap)
         {
             uint64_t Block1, Block2, Size1, Size2;
             std::string BlockKind1, BlockKind2;
             output >> Block1 >> BlockKind1 >> Size1 >> Block2 >> BlockKind2 >> Size2;
-            std::cerr << std::hex << Block1 << " (" << BlockKind1 << ", " << Size1 << " bytes) - "
-                      << Block2 << " (" << BlockKind2 << ", " << Size2 << " bytes)" << std::dec
-                      << std::endl;
+            ErrMsg << std::hex << Block1 << " (" << BlockKind1 << ", " << Size1 << " bytes) - "
+                   << Block2 << " (" << BlockKind2 << ", " << Size2 << " bytes)" << std::dec
+                   << "\n";
         }
+        Messages.push_back(ErrMsg.str());
     }
-    if(selfDiagnose && !error)
-    {
-        std::cout << "Self diagnose completed: No errors found" << std::endl;
-    }
-    return error;
 }

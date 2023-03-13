@@ -16,7 +16,7 @@ set(DATALOG_DECODER_TARGETS
     format/PeLoader.cpp
     format/RawLoader.cpp)
 
-add_library(gtirb_decoder STATIC Relations.cpp DatalogProgram.cpp
+add_library(gtirb_decoder STATIC Relations.cpp DatalogIO.cpp
                                  ${DATALOG_DECODER_TARGETS})
 
 target_link_libraries(gtirb_decoder gtirb gtirb_pprinter ${CAPSTONE}
@@ -25,6 +25,10 @@ target_link_libraries(gtirb_decoder gtirb gtirb_pprinter ${CAPSTONE}
 target_compile_definitions(gtirb_decoder PRIVATE __EMBEDDED_SOUFFLE__)
 target_compile_definitions(gtirb_decoder PRIVATE RAM_DOMAIN_SIZE=64)
 target_compile_options(gtirb_decoder PRIVATE ${OPENMP_FLAGS})
+
+if(DDISASM_SOUFFLE_PROFILING)
+  target_compile_definitions(gtirb_decoder PRIVATE DDISASM_SOUFFLE_PROFILING)
+endif()
 
 if(CAPSTONE_INCLUDE_DIR)
   target_include_directories(gtirb_decoder PRIVATE ${CAPSTONE_INCLUDE_DIR})

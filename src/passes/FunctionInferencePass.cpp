@@ -1,6 +1,6 @@
 //===- FunctionInferencePass.cpp --------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2019-2023 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -32,9 +32,11 @@
 #include "../gtirb-decoder/core/InstructionLoader.h"
 #include "../gtirb-decoder/core/SymbolicExpressionLoader.h"
 
-void FunctionInferencePass::updateFunctions(gtirb::Context& Context, gtirb::Module& Module,
-                                            souffle::SouffleProgram* Program)
+void FunctionInferencePass::transformImpl(AnalysisPassResult& Result, gtirb::Context& Context,
+                                          gtirb::Module& Module)
 {
+    DatalogAnalysisPass::transformImpl(Result, Context, Module);
+
     auto* SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
 
     std::map<gtirb::UUID, std::set<gtirb::UUID>> FunctionEntries;
@@ -139,8 +141,8 @@ void FunctionInferencePass::updateFunctions(gtirb::Context& Context, gtirb::Modu
     Module.addAuxData<gtirb::schema::FunctionNames>(std::move(FunctionNames));
 }
 
-void FunctionInferencePass::computeFunctions(gtirb::Context& Context, gtirb::Module& Module,
-                                             unsigned int NThreads)
+void FunctionInferencePass::loadImpl(AnalysisPassResult& Result, const gtirb::Context& Context,
+                                     const gtirb::Module& Module, AnalysisPass* PreviousPass)
 {
     // Build GTIRB loader.
     CompositeLoader Loader("souffle_function_inference");
@@ -160,22 +162,9 @@ void FunctionInferencePass::computeFunctions(gtirb::Context& Context, gtirb::Mod
         Loader.add(FunctionEntriesLoader{&Context});
 
     // Load GTIRB and build program.
-    std::optional<DatalogProgram> FunctionInference = Loader.load(Module);
-    if(!FunctionInference)
+    Program = Loader.load(Module);
+    if(!Program)
     {
-        std::cerr << "Could not create souffle_function_inference program" << std::endl;
-        exit(1);
+        Result.Errors.push_back("Could not create souffle_function_inference program");
     }
-
-    // Run function inference analysis.
-    FunctionInference->threads(NThreads);
-    FunctionInference->run();
-
-    if(DebugDir)
-    {
-        FunctionInference->writeFacts(*DebugDir);
-        FunctionInference->writeRelations(*DebugDir);
-    }
-
-    updateFunctions(Context, Module, FunctionInference->get());
 }

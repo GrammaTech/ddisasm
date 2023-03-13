@@ -23,15 +23,14 @@
 #ifndef SRC_GTIRB_DECODER_SECTIONLOADER_H_
 #define SRC_GTIRB_DECODER_SECTIONLOADER_H_
 
+#include <souffle/SouffleInterface.h>
+
 #include <gtirb/gtirb.hpp>
 #include <optional>
 #include <string>
 #include <vector>
 
-#include "../DatalogProgram.h"
-#include "../Relations.h"
-
 // Load section properties.
-void SectionLoader(const gtirb::Module& Module, DatalogProgram& Program);
+void SectionLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program);
 
 #endif // SRC_GTIRB_DECODER_SECTIONLOADER_H_

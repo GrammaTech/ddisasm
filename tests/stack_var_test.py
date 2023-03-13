@@ -153,7 +153,9 @@ def parse_souffle_output(module: gtirb.Module, relation_name: str):
     """
     Parse a relation from the souffleOutputs auxdata
     """
-    type_spec, data = module.aux_data["souffleOutputs"].data[relation_name]
+    type_spec, data = module.aux_data["souffleOutputs"].data[
+        "disassembly." + relation_name
+    ]
     type_spec = type_spec.strip("<>")
 
     lines = data.strip().split("\n")

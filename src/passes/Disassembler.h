@@ -1,7 +1,6 @@
-
-//===- Interpreter.cpp ------------------------------------------*- C++ -*-===//
+//===- Disassembler.h -------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2021 GrammaTech, Inc.
+//  Copyright (C) 2019-2023 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -21,17 +20,17 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#ifndef GTIRB_MODULE_DISASSEMBLER_H_
+#define GTIRB_MODULE_DISASSEMBLER_H_
+#include <souffle/SouffleInterface.h>
 
 #include <gtirb/gtirb.hpp>
 
-#include "gtirb-decoder/DatalogProgram.h"
+#include "AnalysisPass.h"
 
-#ifndef GTIRB_SRC_INTERPRETER_H_
-#define GTIRB_SRC_INTERPRETER_H_
+void disassembleModule(gtirb::Context &context, gtirb::Module &module,
+                       souffle::SouffleProgram &Program, bool selfDiagnose);
+void performSanityChecks(AnalysisPassResult &Result, souffle::SouffleProgram &Program,
+                         bool selfDiagnose, bool ignoreErrors);
 
-void runInterpreter(gtirb::IR& IR, gtirb::Module& Module, DatalogProgram& Program,
-                    const std::string& DatalogFile, const std::string& Directory,
-                    const std::string& LibDirectory, const std::string& ProfilePath,
-                    uint8_t Threads);
-
-#endif // GTIRB_SRC_INTERPRETER_H_
+#endif // GTIRB_MODULE_DISASSEMBLER_H_

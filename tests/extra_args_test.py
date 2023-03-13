@@ -1,3 +1,4 @@
+import os
 import platform
 import tempfile
 import unittest
@@ -5,6 +6,7 @@ from disassemble_reassemble_check import (
     compile,
     cd,
     disassemble,
+    disassemble_reassemble_test as drt,
 )
 from pathlib import Path
 import gtirb
@@ -43,20 +45,27 @@ class ExtraArgsTest(unittest.TestCase):
             with tempfile.TemporaryDirectory() as debug_dir:
                 with tempfile.NamedTemporaryFile(mode="w") as hints_file:
                     # we add a couple of incorrect hints to test error checking
-                    print("not-a-real-predicate\t10", file=hints_file)
-                    print("invalid\tnot-address\tbad-hint", file=hints_file)
-                    print("invalid\t0x100000", file=hints_file)
+                    print(
+                        "disassembly.not-a-real-predicate\t10", file=hints_file
+                    )
+                    print(
+                        "disassembly.invalid\tnot-address\tbad-hint",
+                        file=hints_file,
+                    )
+                    print("disassembly.invalid\t0x100000", file=hints_file)
 
                     # good hint with extra fields
                     print(
-                        "invalid\t0x0\tuser-provided-extra-field"
+                        "disassembly.invalid\t0x0\tuser-provided-extra-field"
                         "\tthe-extra-field",
                         file=hints_file,
                         flush=True,
                     )
                     # we add the good hint at the end
                     print(
-                        f"invalid\t{main_block.address}\tuser-provided-hint",
+                        "disassembly.invalid\t{}\tuser-provided-hint".format(
+                            main_block.address
+                        ),
                         file=hints_file,
                         flush=True,
                     )
@@ -82,7 +91,9 @@ class ExtraArgsTest(unittest.TestCase):
                 # it contains an invalid instruction through hints
                 main_block = main_sym.referent
                 self.assertIsInstance(main_block, gtirb.DataBlock)
-                invalid_text = (Path(debug_dir) / "invalid.csv").read_text()
+                invalid_text = (
+                    Path(debug_dir) / "disassembly" / "invalid.csv"
+                ).read_text()
                 self.assertIn("user-provided-hint", invalid_text)
                 # the entry with extra fields is taken but the
                 # extra field is ignored
@@ -91,6 +102,36 @@ class ExtraArgsTest(unittest.TestCase):
                 # the incorrect hints are not included
                 self.assertNotIn("bad-hint", invalid_text)
                 self.assertNotIn("0x100000", invalid_text)
+
+    @unittest.skipUnless(
+        os.path.exists("./build/lib/libfunctors.so")
+        and platform.system() == "Linux",
+        "This test is linux only.",
+    )
+    def test_interpreter(self):
+        """
+        Test running the interpreter
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # ddisasm executes with examples/ex1 as the working directory, so
+            # the relative path to the repository root is "../../"
+            ddisasm_opts = [
+                "--interpreter",
+                "../../",
+                "--debug-dir",
+                tmpdir,
+            ]
+            self.assertTrue(
+                drt(
+                    "examples/ex1",
+                    "ex",
+                    optimizations=["-O0"],
+                    extra_compile_flags=["-pie"],
+                    extra_ddisasm_flags=ddisasm_opts,
+                    extra_reassemble_flags=["-nostartfiles", "-pie"],
+                    upload=False,
+                )
+            )
 
 
 if __name__ == "__main__":

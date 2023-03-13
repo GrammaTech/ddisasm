@@ -31,9 +31,9 @@
 #include "../CompositeLoader.h"
 #include "../Relations.h"
 
-void PeSymbolLoader(const gtirb::Module &Module, DatalogProgram &Program);
+void PeSymbolLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program);
 
-void PeDataDirectoryLoader(const gtirb::Module &Module, DatalogProgram &Program);
+void PeDataDirectoryLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program);
 
 namespace relations
 {

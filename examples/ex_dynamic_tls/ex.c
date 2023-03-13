@@ -6,7 +6,10 @@
 int main()
 {
     fun();
+    fun_initial_exec();
     fun();
+    fun_initial_exec();
     fun();
+    fun_initial_exec();
     return 0;
 }

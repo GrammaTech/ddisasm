@@ -329,6 +329,8 @@ Ddisasm adds an entry to the symbol forwarding table of the form `.L_200000` -> 
 |  Type | `std::map<std::string, std::tuple<std::string, std::string>>`                      |
 | Value | Map of Souffle facts by relation name to their associated type signatures and CSV. |
 
+Note: Relation names are namespaced with the name of the pass in which they belong; for example, `block_points` is identified by `disassembly.block_points`.
+
 ## souffleOutputs
 
 `unsanctioned`
@@ -339,6 +341,8 @@ Ddisasm adds an entry to the symbol forwarding table of the form `.L_200000` -> 
 |  Type | `std::map<std::string, std::tuple<std::string, std::string>>`                        |
 | Value | Map of Souffle outputs by relation name to their associated type signatures and CSV. |
 |       |                                                                                      |
+
+Note: Relation names are namespaced with the name of the pass in which they belong; for example, `block_points` is identified by `disassembly.block_points`.
 
 ## ELF
 

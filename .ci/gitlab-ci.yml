@@ -8,6 +8,7 @@ variables:
   IMAGE_TAG: "$CI_COMMIT_REF_SLUG"
   EXTRA_INDEX_URL: https://__token__:$GL_PKG_API_TOKEN@${CI_SERVER_HOST}/api/v4/projects/1587/packages/pypi/simple
   CONAN_PASSWORD: $CI_JOB_TOKEN
+  CONAN_VERSION: "1.59"
   # The following two variables are used by the package-uploader
   PROJECT_ID: $CI_PROJECT_ID
   PIPELINE_ID: $CI_PIPELINE_ID
@@ -159,7 +160,7 @@ check-format:
     *publish-rules
   script:
     - export CONAN_USER_HOME=$(pwd)
-    - pip3 install --upgrade conan
+    - pip3 install --upgrade conan~=$CONAN_VERSION
     - PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/run_conan.py upload
 
 .conan-linux-build-template: &conan-linux-build-template
@@ -177,7 +178,7 @@ check-format:
   script:
     - !reference [.setup-ccache]
     - export CONAN_USER_HOME=$(pwd)
-    - pip3 install --upgrade conan
+    - pip3 install --upgrade conan~=$CONAN_VERSION
     - conan profile new default --detect
     - conan profile update settings.compiler.libcxx=libstdc++11 default
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
@@ -207,7 +208,7 @@ conan-gcc9-release-publish:
     expire_in: 8 hours
   script:
     - systeminfo
-    - pip3 install --upgrade conan
+    - pip3 install --upgrade conan~=$CONAN_VERSION
     # Build conan packages in a directory that we can publish as an artifact.
     - export CONAN_USER_HOME=$(cygpath -w $(pwd))
     # Set up user and remote
@@ -226,7 +227,7 @@ conan-gcc9-release-publish:
     *publish-rules
   script:
     - export CONAN_USER_HOME=$(cygpath -w $(pwd))
-    - pip3 install --upgrade conan
+    - pip3 install --upgrade conan~=$CONAN_VERSION
     - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
     - python .ci/run_conan.py upload
 
@@ -244,7 +245,7 @@ conan-gcc9-release-publish:
     - export CONAN_USER_HOME="${CI_PROJECT_DIR}"
     - export PYTHONPATH="${PYTHONPATH};${CI_PROJECT_DIR}"
     # Prep
-    - python -m pip install --upgrade conan
+    - python -m pip install --upgrade conan~=$CONAN_VERSION
     # Install
     - python .ci/run_conan.py install --install-folder=./packages
     # Package

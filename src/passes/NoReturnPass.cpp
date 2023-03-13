@@ -1,6 +1,6 @@
 //===- NoReturnPass.cpp -----------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019 GrammaTech, Inc.
+//  Copyright (C) 2019-2023 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -27,19 +27,22 @@
 #include "../gtirb-decoder/core/AuxDataLoader.h"
 #include "../gtirb-decoder/core/EdgesLoader.h"
 
-std::set<gtirb::CodeBlock*> NoReturnPass::updateCFG(souffle::SouffleProgram* P, gtirb::Module& M)
+void NoReturnPass::transformImpl(AnalysisPassResult& Result, gtirb::Context& Context,
+                                 gtirb::Module& Module)
 {
+    DatalogAnalysisPass::transformImpl(Result, Context, Module);
+
     std::set<gtirb::CodeBlock*> NoReturn;
-    for(auto& Output : *P->getRelation("block_call_no_return"))
+    for(auto& Output : *Program->getRelation("block_call_no_return"))
     {
         gtirb::Addr BlockAddr(Output[0]);
         // this should correspond to only one block
-        for(auto& Block : M.findCodeBlocksOn(BlockAddr))
+        for(auto& Block : Module.findCodeBlocksOn(BlockAddr))
         {
             NoReturn.insert(&Block);
         }
     }
-    gtirb::CFG& Cfg = M.getIR()->getCFG();
+    gtirb::CFG& Cfg = Module.getIR()->getCFG();
     boost::remove_edge_if(
         [&](auto Edge) {
             gtirb::EdgeLabel Label = *static_cast<const gtirb::EdgeLabel*>(Edge.get_property());
@@ -49,39 +52,19 @@ std::set<gtirb::CodeBlock*> NoReturnPass::updateCFG(souffle::SouffleProgram* P, 
             return false;
         },
         Cfg);
-    return NoReturn;
 }
 
-void NoReturnPass::setDebugDir(std::string Path)
-{
-    DebugDir = Path;
-}
-
-std::set<gtirb::CodeBlock*> NoReturnPass::computeNoReturn(gtirb::Module& Module,
-                                                          unsigned int NThreads)
+void NoReturnPass::loadImpl(AnalysisPassResult& Result, const gtirb::Context& Context,
+                            const gtirb::Module& Module, AnalysisPass* PreviousPass)
 {
     // Build GTIRB loader.
     CompositeLoader Loader("souffle_no_return");
     Loader.add(SccLoader);
     Loader.add(CfgLoader);
 
-    // Load GTIRB and build program.
-    std::optional<DatalogProgram> NoReturn = Loader.load(Module);
-    if(!NoReturn)
+    Program = Loader.load(Module);
+    if(!Program)
     {
-        std::cerr << "Could not create souffle_no_return program" << std::endl;
-        exit(1);
+        Result.Errors.push_back("Could not create souffle_no_return program");
     }
-
-    // Run no-return analysis.
-    NoReturn->threads(NThreads);
-    NoReturn->run();
-
-    if(DebugDir)
-    {
-        NoReturn->writeFacts(*DebugDir);
-        NoReturn->writeRelations(*DebugDir);
-    }
-
-    return updateCFG(NoReturn->get(), Module);
 }

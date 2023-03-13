@@ -30,7 +30,9 @@
 #include <thread>
 #include <vector>
 
+#include "AnalysisPipeline.h"
 #include "AuxDataSchema.h"
+#include "CliDriver.h"
 #include "Version.h"
 #include "passes/FunctionInferencePass.h"
 #include "passes/NoReturnPass.h"
@@ -80,18 +82,6 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<LibraryPaths>();
     gtirb::AuxDataContainer::registerAuxDataType<SymbolicExpressionSizes>();
     gtirb::AuxDataContainer::registerAuxDataType<DdisasmVersion>();
-}
-
-void printElapsedTimeSince(std::chrono::time_point<std::chrono::high_resolution_clock> Start)
-{
-    auto End = std::chrono::high_resolution_clock::now();
-    std::cout << " (";
-    int secs = std::chrono::duration_cast<std::chrono::seconds>(End - Start).count();
-    if(secs != 0)
-        std::cout << secs << "s)" << std::endl;
-    else
-        std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(End - Start).count()
-                  << "ms)" << std::endl;
 }
 
 int main(int argc, char **argv)
@@ -162,6 +152,7 @@ int main(int argc, char **argv)
     // Add `ddisasmVersion' aux data table.
     IR->addAuxData<gtirb::schema::DdisasmVersion>(DDISASM_FULL_VERSION_STRING);
     printElapsedTimeSince(StartReadBaseIR);
+    std::cerr << "\n";
 
     if(!IR)
     {
@@ -169,35 +160,28 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    for(auto Module = IR->modules_begin(); Module != IR->modules_end(); ++Module)
+    AnalysisPipeline Pipeline;
+    Pipeline.addListener(std::make_shared<DDisasmPipelineListener>());
+    Pipeline.push<SccPass>();
+    Pipeline.push<NoReturnPass>();
+    Pipeline.push<FunctionInferencePass>();
+
+    Pipeline.setDatalogThreadCount(vm["threads"].as<unsigned int>());
+
+    auto Modules = IR->modules();
+
+    fs::path DebugDirRoot;
+    if(vm.count("debug-dir"))
     {
-        // Core of new code - functional analysis only
-        gtirb::Module &CurrModule = *Module;
+        unsigned int ModuleCount = std::distance(std::begin(Modules), std::end(Modules));
+        Pipeline.configureDebugDir(vm["debug-dir"].as<std::string>(), ModuleCount > 1);
+        DebugDirRoot = vm["debug-dir"].as<std::string>();
+    }
 
-        std::cout << "Processing module " << CurrModule.getName() << std::endl;
-
-        std::cout << "Computing intra-procedural SCCs " << std::flush;
-        auto StartSCCsComputation = std::chrono::high_resolution_clock::now();
-        computeSCCs(CurrModule);
-        printElapsedTimeSince(StartSCCsComputation);
-
-        unsigned int NThreads = vm["threads"].as<unsigned int>();
-        std::cout << "Computing no return analysis " << std::flush;
-        NoReturnPass NoReturn;
-        FunctionInferencePass FunctionInference;
-        if(vm.count("debug-dir") != 0)
-        {
-            NoReturn.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
-            FunctionInference.setDebugDir(vm["debug-dir"].as<std::string>() + "/");
-        }
-        auto StartNoReturnAnalysis = std::chrono::high_resolution_clock::now();
-        NoReturn.computeNoReturn(CurrModule, NThreads);
-        printElapsedTimeSince(StartNoReturnAnalysis);
-
-        std::cout << "Detecting additional functions " << std::flush;
-        auto StartFunctionAnalysis = std::chrono::high_resolution_clock::now();
-        FunctionInference.computeFunctions(Context, CurrModule, NThreads);
-        printElapsedTimeSince(StartFunctionAnalysis);
+    for(auto &Module : Modules)
+    {
+        std::cerr << "Processing module: " << Module.getName() << "\n";
+        Pipeline.run(Context, Module);
     }
 
     // Output GTIRB

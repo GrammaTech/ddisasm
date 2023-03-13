@@ -33,13 +33,31 @@ Attributes:
 
 * EA: The address of the instruction from which the jump occurs.
 * DataEA: The address at which the actual data entry of the jump table resides.
+* DataSize: The size of the jump table entry
 * TargetEA: The target of the jump.
 */
-.decl jump_table_candidate(EA:address,DataEA:address,TargetEA:address)
+.decl jump_table_candidate(EA:address,DataEA:address,DataSize:unsigned,TargetEA:address)
 
 // Fallback rule for architectures where this is unused.
-jump_table_candidate(0,0,0):-
+jump_table_candidate(0,0,0,0):-
     false.
+
+/**
+A jump table data entry is overlapped by code
+*/
+.decl invalid_jump_table_candidate(DataEA:address,DataSize:unsigned)
+
+invalid_jump_table_candidate(DataEA,DataSize):-
+    max_instruction_size(MaxInstSize),
+    // query instructions that may overlap
+    jump_table_candidate(_,DataEA,DataSize,_),
+    arch.instruction_at(EA,Inst),
+    DataEA - MaxInstSize < EA, EA < DataEA + DataSize,
+    // confirm code
+    code(Inst),
+    // confirm overlap
+    instruction(Inst,InstSize,_,_,_,_,_,_,_,_),
+    DataEA < EA + InstSize.
 
 /**
 Subset of jump_table_candidate that appears to be valid after code inference.
@@ -53,10 +71,22 @@ Attributes:
 .decl jump_table_candidate_refined(EA:address,DataEA:address,TargetEA:address)
 
 jump_table_candidate_refined(EA,EntryAddr,TargetAddr):-
-    jump_table_candidate(EA,EntryAddr,TargetAddr),
+    jump_table_candidate(EA,_,_,_),
     code(EA),
+    EntryAddr = min EntryAddr : {
+        jump_table_candidate(EA,EntryAddr,_,_)
+    },
+    jump_table_candidate(EA,EntryAddr,EntrySize,TargetAddr),
     code(TargetAddr),
-    !code(EntryAddr).
+    !invalid_jump_table_candidate(EntryAddr,EntrySize).
+
+jump_table_candidate_refined(EA,NextEntryAddr,TargetAddr):-
+    jump_table_candidate_refined(EA,EntryAddr,_),
+    jump_table_candidate(EA,EntryAddr,EntrySize,_),
+    NextEntryAddr = EntryAddr + EntrySize,
+    jump_table_candidate(EA,NextEntryAddr,EntrySize,TargetAddr),
+    code(TargetAddr),
+    !invalid_jump_table_candidate(NextEntryAddr,EntrySize).
 
 /**
 CFG edges formed by jump tables using the best available information during

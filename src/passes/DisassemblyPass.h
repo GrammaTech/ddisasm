@@ -1,6 +1,6 @@
-//===- FunctionInferencePass.h ----------------------------------*- C++ -*-===//
+//===- DisassemblyPass.h =---------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019-2023 GrammaTech, Inc.
+//  Copyright (C) 2023 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,42 +20,56 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef FUNCTION_INFERENCE_PASS_H_
-#define FUNCTION_INFERENCE_PASS_H_
-
-#include <gtirb/gtirb.hpp>
-
+#ifndef DISASSEMBLY_PASS_H_
+#define DISASSEMBLY_PASS_H_
+#include "../gtirb-decoder/CompositeLoader.h"
 #include "DatalogAnalysisPass.h"
 
-/**
-Refine function boundaries.
-*/
-class FunctionInferencePass : public DatalogAnalysisPass
+class DisassemblyPass : public DatalogAnalysisPass
 {
 public:
+    DisassemblyPass(bool SelfDiagnose = false, bool IgnoreErrors = false,
+                    bool NoCfiDirectives = false)
+        : SelfDiagnose(SelfDiagnose), IgnoreErrors(IgnoreErrors), NoCfiDirectives(NoCfiDirectives)
+    {
+    }
+
     virtual std::string getName() const override
     {
-        return "function inference";
+        return "disassembly";
     }
 
-    virtual std::string getSourceFilename() const override
-    {
-        return "src/passes/datalog/function_inference.dl";
-    }
-
-    virtual bool hasLoad(void) override
-    {
-        return true;
-    }
     virtual bool hasTransform(void) override
     {
         return true;
     }
 
+    // Loader factory registration.
+    using Target = std::tuple<gtirb::FileFormat, gtirb::ISA, gtirb::ByteOrder>;
+    using Factory = std::function<CompositeLoader()>;
+
+    static void registerLoader(Target T, Factory F)
+    {
+        loaders()[T] = F;
+    }
+
 protected:
+    virtual std::string getSourceFilename() const override
+    {
+        return "src/datalog/main.dl";
+    }
+
     void loadImpl(AnalysisPassResult& Result, const gtirb::Context& Context,
                   const gtirb::Module& Module, AnalysisPass* PreviousPass = nullptr) override;
     void transformImpl(AnalysisPassResult& Result, gtirb::Context& Context,
                        gtirb::Module& Module) override;
+
+private:
+    bool SelfDiagnose = false;
+    bool IgnoreErrors = false;
+    bool NoCfiDirectives = false;
+
+    static std::map<Target, Factory>& loaders();
 };
-#endif // FUNCTION_INFERENCE_PASS_H_
+
+#endif // SYMBOLIZATION_PASS_H_

@@ -1,6 +1,6 @@
-//===- ModuleLoader.h -------------------------------------------*- C++ -*-===//
+//===- Hints.h --------------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2020 GrammaTech, Inc.
+//  Copyright (C) 2023 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,18 +20,35 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-#ifndef SRC_GTIRB_DECODER_CORE_MODULELOADER_H_
-#define SRC_GTIRB_DECODER_CORE_MODULELOADER_H_
+#ifndef _HINTS_H_
+#define _HINTS_H_
+#include <list>
+#include <map>
+#include <set>
+#include <string>
 
-#include <souffle/SouffleInterface.h>
+#include "gtirb-decoder/DatalogIO.h"
 
-#include <gtirb/gtirb.hpp>
+class HintsLoader
+{
+public:
+    /**
+    Load hints file from disk.
+    */
+    void read(const std::string& FileName, const std::set<std::string>& Namespaces);
 
-// Load binary format information: architecture, file format, entry point, etc.
-void ModuleLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program);
+    /**
+    Inserts loaded hints into a souffle program
 
-const char* binaryISA(gtirb::ISA Arch);
-const char* binaryFormat(const gtirb::FileFormat Format);
-const char* binaryEndianness(const gtirb::ByteOrder ByteOrder);
+    Has no effect if read() was never called.
+    */
+    void insert(souffle::SouffleProgram& Program, const std::string& Namespace);
 
-#endif // SRC_GTIRB_DECODER_CORE_MODULELOADER_H_
+private:
+    // map of (namespace -> map(relation name -> list(pair(lineno, tuple text))))
+    std::unordered_map<std::string,
+                       std::unordered_map<std::string, std::list<std::pair<uint32_t, std::string>>>>
+        HintsTable;
+};
+
+#endif /* _HINTS_H_ */
