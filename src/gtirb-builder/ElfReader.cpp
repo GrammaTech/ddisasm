@@ -857,7 +857,7 @@ std::pair<std::string, std::string> ElfReader::getNameAndVersionStr(const LIEF::
     if(std::size_t I = Name.find('@'); I != std::string::npos)
     {
         VersionStr = Name.substr(I, 2) == "@@" ? Name.substr(I + 2) : Name.substr(I + 1);
-        if(!VersionToIds[VersionStr].empty())
+        if(VersionToIds.count(VersionStr) != 0)
         {
             Name = Name.substr(0, I);
         }
@@ -900,29 +900,29 @@ void ElfReader::updateVersionMap(const LIEF::ELF::Symbol &Symbol, const std::str
     // select the best version already available (from dynsym).
     if(VersionStr.size() > 0)
     {
-        std::set<gtirb::provisional_schema::SymbolVersionId> &PossibleVersions =
-            VersionToIds[VersionStr];
-        for(auto &[VersionId, Val] : VersionMap)
+        auto It = VersionToIds.find(VersionStr);
+        if(It != VersionToIds.end())
         {
-            // Ignore the 15th bit that marks whether the symbol is hidden.
-            if(PossibleVersions.find(VersionId & 0x7FFF) != PossibleVersions.end())
+            std::set<gtirb::provisional_schema::SymbolVersionId> &PossibleVersions = It->second;
+            for(auto &[VersionId, Val] : VersionMap)
             {
-                Version = VersionId;
-                break;
+                // Ignore the 15th bit that marks whether the symbol is hidden.
+                if(PossibleVersions.find(VersionId & 0x7FFF) != PossibleVersions.end())
+                {
+                    Version = VersionId;
+                    break;
+                }
             }
-        }
-        if(!Version)
-        {
-            if(!PossibleVersions.empty())
+            if(!Version)
             {
                 // It's a real version, but it wasn't in .dynsym.
                 Version = *PossibleVersions.begin();
             }
-            else
-            {
-                throw ElfReaderException("Could not find compatible symbol version for " + Name
-                                         + "@" + VersionStr);
-            }
+        }
+        else
+        {
+            throw ElfReaderException("Could not find compatible symbol version for " + Name + "@"
+                                     + VersionStr);
         }
     }
     else
