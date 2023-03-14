@@ -171,14 +171,9 @@ tests:
 
   - name: ex_call_once
     <<: *default-cpp
-    build:
-        c: ["gcc"]
-        cpp: ["g++"]
-        optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
-        flags: ["-m32"]
     reassemble:
       compiler: "g++"
-      flags: ["-m32", "-lpthread", "-nostartfiles"]
+      flags: ["-m32", "-lpthread", "-no-pie", "-fno-pie", "-nostartfiles"]
 
   # ----------------------------------------------------------------------------
   # Small C and C++ examples.  (position independent code)
