@@ -111,6 +111,11 @@ Convert between input_reg and register with arch.reg_map
 #include "jump_tables.dl"
 #include "relative_jump_tables.dl"
 
+// def-used
+#include "bitmasks.dl"
+#include "basic_def_used.dl"
+#include "straight_line_def_used.dl"
+
 // Inference of instruction boundaries.
 #include "code_inference.dl"
 

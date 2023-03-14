@@ -1,0 +1,53 @@
+//===- straight_line_def_used.dl ----------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2023 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+Basic def-used implementation for the code inference pass
+*/
+.init basic_reg_def_use = BasicRegDefUse
+
+/**
+The last address where a register was defined within the block
+*/
+.decl straight_line_last_def(EA:address,EA_def:address,Reg:register)
+
+straight_line_last_def(EA_next,EA,Reg):-
+    basic_reg_def_use.def(EA,Reg),
+    possible_ea(EA),
+    must_fallthrough(EA,EA_next),
+    possible_ea(EA_next).
+
+straight_line_last_def(EA_next,EA_def,Reg):-
+    straight_line_last_def(EA,EA_def,Reg),
+    !basic_reg_def_use.must_def(EA,Reg),
+    must_fallthrough(EA,EA_next),
+    possible_ea(EA_next).
+
+/**
+straight_line_def_used is a weaker version than reg_def_use.def_used
+that can be used in the code inference pass.
+*/
+.decl straight_line_def_used(EA_def:address,Reg:register,EA_used:address,Index:unsigned)
+
+straight_line_def_used(EA_def,Reg,EA_used,Index):-
+    basic_reg_def_use.used(EA_used,Reg,Index),
+    straight_line_last_def(EA_used,EA_def,Reg).

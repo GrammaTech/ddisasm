@@ -31,9 +31,6 @@ and only if those chains are related eventually to an access to memory.
 
 -'def_used' intersects the two previous facts to obtain def-use chains.
 
--'straight_line_def_used` is a weaker version of 'def_used' that can be used before
-code inference.
-
 The traversal of def_used_for_address is kept intra-procedural (not following call edges).
 */
 
@@ -105,34 +102,12 @@ block_next(Block,EA,Block2):-
 //////////////////////////////////////////////////////////////////////////////
 // Main definitions
 
-/**
-Which registers are tracked for use-def and value analysis.
-*/
-.decl track_register(Reg:register)
-
-track_register(Reg):-
-    arch.general_purpose_reg(Reg);
-    arch.frame_pointer(Reg);
-    arch.stack_pointer(Reg);
-    arch.return_reg(Reg);
-    arch.condition_flags_reg(Reg).
-
 
 /**
-The AbstractDefUse component defines relations and rules shared by def-use
+The AdvancedDefUsed component defines relations and rules shared by def-use
 analysis for both registers and stack variables.
 */
-.comp AbstractDefUse<T> {
-
-    /**
-    Var is defined in this location
-    */
-    .decl def(EA:address,Var:T)
-
-    /**
-    Instruction at address 'EA' uses Var at operand index 'Index'.
-    */
-    .decl used(EA:address,Var:T,Index:operand_index)
+.comp AdvancedDefUsed<T> {
 
     /**
     A <T> is implicitly defined by being compared to a constant and then jumping
@@ -141,18 +116,9 @@ analysis for both registers and stack variables.
     .decl flow_def(EA:address,Var:T,EA_next:address,Value:number)
 
     /**
-    A <T> is unconditionally defined at EA.
-    */
-    .decl must_def(EA:address,Var:T) inline
-
-    must_def(EA,Var):-
-        def(EA,Var),
-        !arch.conditional(EA,_).
-
-    /**
     A Var <T> can propagate through the instruction at EA.
 
-    Intended to be extended by child components to modify behavior of AbstractDefUse.
+    Intended to be extended by child components to modify behavior of AdvancedDefUsed.
     */
     .decl ea_propagates_def(EA:address,Var:T) inline
 
@@ -317,35 +283,7 @@ analysis for both registers and stack variables.
         !defined_in_block(Block,Var).
 }
 
-.comp RegisterDefUse : AbstractDefUse<register> {
-
-    // Define any registers defined by the instruction
-    def(EA,Reg):-
-        (
-            register_access(EA,RegIn,"W"),
-            reg_map(RegIn,Reg),
-            !arch.register_access_override(EA,Reg,"W",0)
-            ;
-            arch.register_access_override(EA,Reg,"W",1)
-        ),
-        track_register(Reg).
-
-    // A call "defines" the return value register
-    def(EA,Reg):-
-        arch.call(EA,_),
-        !arch.delay_slot(EA,_),
-        arch.return_reg(Reg).
-
-    // A call "defines" the return value register (variant for delay slots)
-    def(EA,Reg):-
-        arch.call(Call,_),
-        arch.delay_slot(Call,EA),
-        arch.return_reg(Reg).
-
-    def(EA,Reg):-
-        direct_call(EA,EA_pc_thunk),
-        get_pc_thunk(EA_pc_thunk,Reg),
-        track_register(Reg).
+.comp RegisterDefUse : AdvancedDefUsed<register>, BasicRegDefUse {
 
     flow_def(EA_jump,Reg,EA_target,Immediate):-
         code(EA),
@@ -374,47 +312,6 @@ analysis for both registers and stack variables.
     block_propagates_def(Block,Reg):-
         UNUSED(Block),
         UNUSED(Reg).
-
-    /**
-    The register is explicitly used in an operand.
-    */
-    .decl used_explicit(EA:address,Reg:register,Index:operand_index)
-
-    used_explicit(EA,Reg,Index):-
-        instruction_get_src_op(EA,Index,Op),
-        op_regdirect_contains_reg(Op,Reg),
-        track_register(Reg),
-        !is_xor_reset(EA).
-
-    used_explicit(EA,Reg,Index):-
-        instruction_get_op(EA,Index,Op),
-        op_indirect_contains_reg(Op,Reg),
-        track_register(Reg).
-
-    /**
-    Instruction at address 'EA' uses register 'Reg' at operand index 'Index'.
-    This is supposed to be used before code inference.
-    */
-    .decl used_before_code_inference(EA:address,Reg:register,Index:operand_index)
-
-    used_before_code_inference(EA,Reg,Index):-
-        used_explicit(EA,Reg,Index).
-
-    // Implicitly-used registers use an operand index of zero.
-    used_before_code_inference(EA,Reg,0):-
-        (
-            register_access(EA,RegIn,"R"),
-            reg_map(RegIn,Reg),
-            !arch.register_access_override(EA,Reg,"R",0)
-            ;
-            arch.register_access_override(EA,Reg,"R",1)
-        ),
-        track_register(Reg),
-        !used_explicit(EA,Reg,_),
-        !is_xor_reset(EA).
-
-    used(EA,Reg,Index):-
-        used_before_code_inference(EA,Reg,Index).
 
     /**
     A value returned from a function is used.
@@ -513,7 +410,7 @@ stack_base_reg_move(Block,EA,Src,Dst):-
     arch.move_reg_reg(EA,Dst,Src),
     code_in_block(EA,Block).
 
-.comp StackVarDefUse : AbstractDefUse<stack_var> {
+.comp StackVarDefUse : AdvancedDefUsed<stack_var>, BasicDefUse<stack_var> {
 
     // When a value is stored to the stack, it defines a stack value.
     def(EA,[BaseReg,StackPos]):-
@@ -670,29 +567,3 @@ def_used_for_address(EA_def,Reg,Type):-
 
 def_used_for_address(EA,Reg,"PCRelative"):-
     arch.pc_relative_addr(EA,Reg,_).
-
-
-// the last address where a register was defined within the block
-.decl straight_line_last_def(EA:address,EA_def:address,Reg:register)
-
-straight_line_last_def(EA_next,EA,Reg):-
-    reg_def_use.def(EA,Reg),
-    possible_ea(EA),
-    must_fallthrough(EA,EA_next),
-    possible_ea(EA_next).
-
-straight_line_last_def(EA_next,EA_def,Reg):-
-    straight_line_last_def(EA,EA_def,Reg),
-    !reg_def_use.must_def(EA,Reg),
-    must_fallthrough(EA,EA_next),
-    possible_ea(EA_next).
-
-/**
-straight_line_def_used is a weaker version than reg_def_use.def_used
-that can be used BEFORE code inference.
-*/
-.decl straight_line_def_used(EA_def:address,Reg:register,EA_used:address,Index:unsigned)
-
-straight_line_def_used(EA_def,Reg,EA_used,Index):-
-    reg_def_use.used_before_code_inference(EA_used,Reg,Index),
-    straight_line_last_def(EA_used,EA_def,Reg).
