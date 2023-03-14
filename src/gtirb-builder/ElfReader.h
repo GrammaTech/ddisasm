@@ -78,6 +78,7 @@ private:
     // would be possible for there to be more.
     std::map<std::string, std::set<gtirb::provisional_schema::SymbolVersionId>> VersionToIds;
 
+    // <Value, Size, Type, Binding, Scope, SectionIndex, Name>
     using SymbolKey = std::tuple<uint64_t, uint64_t, std::string, std::string, std::string,
                                  uint64_t, std::string>;
     using TableDecl = std::tuple<std::string, uint64_t>;
