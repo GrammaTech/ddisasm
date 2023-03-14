@@ -27,6 +27,29 @@ foo:
 .cfi_endproc
 
 
+# Misalign FDE frame
+.align 16
+.zero 15
+# Ddisasm should move the cfi directives to the beginning
+# of the function
+.cfi_startproc
+.cfi_lsda 255
+.cfi_personality 255
+.align 16
+.globl bar
+.type bar, @function
+bar:
+
+        push RBP
+.cfi_def_cfa_offset 16
+.cfi_offset 6, -16
+	mov RBP,RSP
+        pop RBP
+.cfi_def_cfa 7, 8
+	ret
+.cfi_endproc
+
+
 .globl main
 .align 16
 .type main, @function
@@ -41,6 +64,7 @@ main:
 .cfi_offset 6, -16
 	mov RBP,RSP
 	call foo
+	call bar
         pop RBP
 .cfi_def_cfa 7, 8
 	ret

@@ -155,7 +155,16 @@ class AuxDataTests(unittest.TestCase):
                         ".cfi_endproc",
                     ]
                     break
-            assert found
+            self.assertTrue(found)
+
+            # check that we move misaligned directives to function start
+            bar_symbol = list(m.symbols_named("bar"))[0]
+            bar_block = bar_symbol.referent
+            self.assertIsNotNone(bar_block)
+            cfi_at_bar_start = [
+                directive[0] for directive in cfi[gtirb.Offset(bar_block, 0)]
+            ]
+            self.assertIn(".cfi_startproc", cfi_at_bar_start)
 
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
