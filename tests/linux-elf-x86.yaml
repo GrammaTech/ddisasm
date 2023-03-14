@@ -255,6 +255,12 @@ tests:
       compiler: "g++"
       flags: ["-m32", "-lpthread", "-fpie", "-nostartfiles"]
 
+  - name: ex_call_once
+    <<: *position-independent-cpp
+    reassemble:
+      compiler: "g++"
+      flags: ["-m32", "-lpthread", "-fpie", "-nostartfiles"]
+
   - name: ex_dynamic_tls
     <<: *position-independent
     binary: fun.so
