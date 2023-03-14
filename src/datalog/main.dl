@@ -137,6 +137,7 @@ Convert between input_reg and register with arch.reg_map
 // metadata
 .decl entry_point(ea:address)
 .input entry_point
+.output entry_point
 
 .decl endianness(End:symbol) // Either LE or BE
 .input endianness
