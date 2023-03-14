@@ -40,6 +40,7 @@
 
 .decl pe_load_config(Name:symbol,Value:unsigned)
 .input pe_load_config
+.output pe_load_config
 
 /**
 Table maps PE section attribute names to a bitflag.

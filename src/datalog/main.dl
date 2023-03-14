@@ -256,6 +256,7 @@ Index: The index of the register in bitfield (starts with 0)
 
 .decl op_immediate(code:operand_code,offset:number)
 .input op_immediate
+.output op_immediate
 
 .decl op_special(code:operand_code,type:symbol,value:symbol)
 .input op_special
@@ -263,6 +264,7 @@ Index: The index of the register in bitfield (starts with 0)
 .decl op_indirect(code:operand_code,reg1:input_reg,reg2:input_reg,reg3:input_reg,
         multiplier:number,offset:number,size_value:unsigned)
 .input op_indirect
+.output op_indirect
 
 /**
 The operand identified by Index should be shifted with an immediate.

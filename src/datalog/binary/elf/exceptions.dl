@@ -31,6 +31,7 @@ of them. 'CieAddr' uniquely identifies the CIE.
 */
 .decl cie_entry(CieAddr: address,Length:unsigned,CodeAlignmentFactor:unsigned,DataAlignmentFactor:number)
 .input cie_entry
+.output cie_entry
 
 /**
 `cie_encoding` complements `cie_entry` and defines the encodings of the pointers in the FDEs and in the
@@ -38,6 +39,7 @@ LSDAs associated to this CIE.
 */
 .decl cie_encoding(CieAddr: address,FdeEncoding:unsigned,LsdaEncoding:unsigned)
 .input cie_encoding
+.output cie_encoding
 
 /**
 The personality routine associated to a CIE entry. This is the procedure that takes care of unwinding
@@ -45,6 +47,7 @@ the stack and exceptions. For C++ it is typically: '__gxx_personality_v0'.
 */
 .decl cie_personality(CieAddr:address,Personality:address,PersonalityPos:address,PersonalitySize:unsigned,Encoding:unsigned)
 .input cie_personality
+.output cie_personality
 
 /**
 A FDE entry defines how stack unwinding is done in a region of code from 'start' to 'end'.
@@ -54,6 +57,7 @@ A FDE entry can have 'Lsda' associated that contains exception handling informat
 */
 .decl fde_entry(FdeAddr: address,Length:unsigned,Cie:address,Start:address,End:address,Lsda:address)
 .input fde_entry
+.output fde_entry
 
 /**
 Ancillary predicate that specifies the actual locations of the symbolic expressions
@@ -62,6 +66,7 @@ in the FDE entry.
 .decl fde_pointer_locations(addr:address,startLocation:address,endLocation:address,
                             endSize:unsigned,lsdaLocation:address,lsdaSize:unsigned)
 .input fde_pointer_locations
+.output fde_pointer_locations
 
 /**
 The instructions for stack unwinding are encoded into a dwarf program
@@ -79,6 +84,7 @@ one instruction in that program.
 */
 .decl fde_instruction(FdeAddr:address,Index:unsigned,Size:unsigned,InsnAddr:address,Insn:symbol,Op1:number,Op2:number)
 .input fde_instruction
+.output fde_instruction
 
 /**
 A LSDA defines the exception information of a region of code (typically a procedure).
@@ -88,12 +94,14 @@ a callsite table (see `lsda_callsite`) and a type table (see `lsda_type_entry`).
 .decl lsda(lsdaAddress:address,callsiteTable:address,callsiteTableEncoding:unsigned,callSiteTableLength:unsigned,
            typeTable:address,typeTableEncoding:unsigned,landingPadBaseAddress: address)
 .input lsda
+.output lsda
 
 /**
 Complementary predicate with the locations of the various pointers in a LSDA used for symbolization.
 */
 .decl lsda_pointer_locations(lsdaAddress:address,typeTablePointerLocation:address,callsiteTablePointerLoc:address)
 .input lsda_pointer_locations
+.output lsda_pointer_locations
 
 /**
 The range [Start,End) corresponds to the try block
@@ -105,6 +113,7 @@ in the .gcc_except_table that point to 'Start', 'End' and 'LandingPad' respectiv
     EA_end:address,End:address,
     EA_landingPad:address,LandingPad:address,EA_endLandindPad:address)
 .input lsda_callsite
+.output lsda_callsite
 
 /**
 The exception handling mechanism chooses which catch block catches an given exception
@@ -123,6 +132,7 @@ This address does not set the low bit for Thumb functions.
 */
 .decl arm_exidx_entry(FunctionStart:address,CantUnwind:unsigned)
 .input arm_exidx_entry
+.output arm_exidx_entry
 
 /////////////////////////////////////////////////////////////////////////////////
 // output predicates

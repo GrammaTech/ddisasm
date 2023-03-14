@@ -292,6 +292,7 @@ DirectReg, BaseReg, and IndexReg may be untracked registers or unstandardized na
 */
 .decl memory_access(AccessType:symbol,EA:address,SrcOp:operand_index,DstOp:operand_index,
     DirectReg:register,BaseReg:reg_nullable,IndexReg:reg_nullable,Mult:number,Offset:number)
+.output memory_access
 
 /**
 Represents a load from memory to a register.
