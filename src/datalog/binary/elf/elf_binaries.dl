@@ -571,7 +571,7 @@ ifunc_symbol(DestAddr,Name):-
         defined_symbol(DestAddr,_,"GNU_IFUNC","LOCAL",_,_,_,_,Name)
         ;
         !defined_symbol(DestAddr,_,"GNU_IFUNC","LOCAL",_,_,_,_,_),
-        defined_symbol(DestAddr,_,"GNU_IFUNC",_,_,_,_,_,Name)
+        defined_symbol(DestAddr,_,"GNU_IFUNC","GLOBAL",_,_,_,_,Name)
     ).
 
 // these symbols point to the begining and end of the iplt section
