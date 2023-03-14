@@ -1,0 +1,53 @@
+//===- x86_64_symbolization.dl ------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019-2023 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+x86-64 architecture-specific rules for symbolization
+*/
+
+symbolic_operand_attribute(EA,Index,"PLT"):-
+    symbolic_operand(EA,Index,Dest,_),
+    plt_block(Dest,_).
+
+symbolic_operand_attribute(EA,Index,"PLT"):-
+    instruction_immediate_offset(EA,Index,Offset,_),
+    instruction_has_relocation(EA,EA+Offset),
+    relocation(EA+Offset,"PLT32",_,_,_,_,_).
+
+symbolic_operand_attribute(EA,Index,"GOT"),
+symbolic_operand_attribute(EA,Index,"PCREL"):-
+    symbolic_operand(EA,Index,Dest,_),
+    !moved_label(EA,Index,_,_),
+    got_reference(Dest,_),
+    !tls_index(Dest,_),
+    !tls_descriptor(Dest,_),
+    !relocation(Dest,"TPOFF64",_,_,_,_,_),
+    !relocation(Dest,"TLS_TPOFF",_,_,_,_,_).
+
+symbolic_operand_attribute(EA,Index,"GOT"),
+symbolic_operand_attribute(EA,Index,"PCREL"):-
+    instruction_displacement_offset(EA,Index,Offset,_),
+    symbolic_expr_from_relocation(EA+Offset,_,_,_,_),
+    (
+        relocation(EA+Offset,"GOTPCRELX",_,_,_,_,_);
+        relocation(EA+Offset,"REX_GOTPCRELX",_,_,_,_,_)
+    ).

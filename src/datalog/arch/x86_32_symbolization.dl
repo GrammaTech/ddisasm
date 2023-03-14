@@ -1,0 +1,127 @@
+//===- x86_32_symbolization.dl ------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019-2023 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+x86-32 architecture-specific rules for symbolization
+*/
+
+abi_intrinsic(EA,Name):-
+    get_pc_thunk(EA,_),
+    symbol(EA,_,_,_,_,_,_,_,Name).
+
+abi_intrinsic(EA,"_GLOBAL_OFFSET_TABLE_"):-
+    (
+        symbol(EA,_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_");
+        inferred_special_symbol(EA,"_GLOBAL_OFFSET_TABLE_",_,_,_)
+    ).
+
+// GCC GOT-relative offset variant:
+//     add     eax, OFFSET FLAT:_GLOBAL_OFFSET_TABLE_
+symbolic_expr(EA+ImmediateOffset,4,"_GLOBAL_OFFSET_TABLE_",0):-
+    reg_has_got(EA,Reg),
+    got_reference_pointer(Got),
+    op_immediate_and_reg(EA,"ADD",Reg,Index,Value),
+    instruction_immediate_offset(EA,Index,ImmediateOffset,_),
+    Got = EA+as(Value,address).
+
+symbolic_expr(EA+ImmediateOffset,4,"_GLOBAL_OFFSET_TABLE_",0):-
+    relocation(EA+ImmediateOffset,"GOTPC",_,_,_,_,_),
+    op_immediate_and_reg(EA,"ADD",_,Index,_),
+    instruction_immediate_offset(EA,Index,ImmediateOffset,_).
+
+// CLANG GOT-relative offset variant:
+//     add     ebx, offset _GLOBAL_OFFSET_TABLE_+(.Ltmp0-.L1$pb)
+symbolic_operand_attribute(EA,Index,"GOTPC"),
+symbol_minus_symbol(EA+ImmediateOffset,4,Ref,EA,1,0):-
+    reg_has_got(EA,Reg),
+    got_reference_pointer(Got),
+    op_immediate_and_reg(EA,"ADD",Reg,Index,Value),
+    instruction_immediate_offset(EA,Index,ImmediateOffset,_),
+    reg_def_use.def_used(Ref,_,EA,_),
+    Got = Ref+as(Value,address).
+
+symbolic_operand_attribute(EA,Index,"PLT"):-
+    (
+      direct_jump(EA,_);
+      direct_call(EA,_)
+    ),
+    symbolic_operand_candidate(EA,Index,Dest,_),
+    plt_block(Dest,_).
+
+symbolic_operand_attribute(EA,Index,"GOTOFF"):-
+    got_relative_operand(EA,Index,Dest),
+    !tls_index(Dest,_),
+    !tls_descriptor(Dest,_).
+
+symbolic_operand_attribute(EA,Index,"GOT"):-
+    got_relative_operand(EA,Index,Dest),
+    got_reference(Dest,_),
+    !tls_index(Dest,_),
+    !tls_descriptor(Dest,_).
+
+plt_entry(EA,Function):-
+    plt_section(SecName),
+    loaded_section(Beg,End,SecName),
+    EA >= Beg,
+    EA < End,
+    indirect_jump(EA),
+    instruction_get_op(EA,_,Op),
+    (
+      //  jmp [EBX+Offset]
+      op_indirect(Op,"NONE",_,"NONE",1,Offset,_),
+      got_reference_pointer(Got),
+      Got_entry=Got+as(Offset,address)
+      ;
+      // jmp [Offset]
+      op_indirect(Op,"NONE","NONE","NONE",1,Offset,_),
+      Got_entry=as(Offset,address)
+    ),
+    relocation(Got_entry,_,Function,_,_,_,_).
+
+// GOT-relative data objects are sometimes used as references in loops.
+// First a moved-label to the middle of a symbol:
+//   e.g.   lea     esi, state@GOTOFF[ebx+1320]
+// Followed by a boundary reference, relative to the data-object:
+//   e.g.   lea     eax, state@GOTOFF[ebx-88]
+// That is stored to the stack and compared in the loop:
+//          mov     DWORD PTR -28[ebp], eax
+//          sub     edi, 88
+//          cmp     edi, DWORD PTR -28[ebp]
+moved_label_class(EA_load,1,"got-data-object relative"),
+moved_label(EA_load,1,Address,Base):-
+    // GOT-relative stored in stack.
+    got_relative_operand(EA_load,_,Dest),
+    reg_def_use.def_used(EA_load,_,EA_store,_),
+    arch.frame_pointer(BaseReg),
+    stack_def_use.def_used(EA_store,[BaseReg,StackPos],EA_cmp,[BaseReg,StackPos],_),
+    // GOT-relative compared for jump.
+    arch.cmp_operation(Operation),
+    instruction(EA_cmp,_,_,Operation,Op1,_,0,0,_,_),
+    op_indirect_mapped(Op1,"NONE",BaseReg,"NONE",_,StackPos,_),
+    next(EA_cmp,EA_jump),
+    arch.jump(EA_jump),
+    // Moved-value offset is the offset from the reference data object.
+    reg_def_use.def_used(EA_arith,_,EA_cmp,_),
+    best_value_reg(EA_arith,_,EA_obj,_,_,"loop"),
+    moved_label(EA_obj,1,_,Base),
+    Offset=as(Dest-Base,number),
+    Address=Base+as(Offset,address).

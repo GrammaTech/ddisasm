@@ -1,6 +1,6 @@
-//===- mips_binaries.dl --------------------------------------*- datalog -*-===//
+//===- mips_symbolization.dl --------------------------------*- datalog -*-===//
 //
-//  Copyright (C) 2020 GrammaTech, Inc.
+//  Copyright (C) 2020-2023 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -21,8 +21,7 @@
 //
 //===----------------------------------------------------------------------===//
 /**
-Define a set predicates to abstract from MIPS specific instruction set
-and characteristics
+MIPS architecture-specific rules for symbolization
 */
 
 // load word from got table: e.g., lw v0, -32696(gp)
@@ -573,13 +572,6 @@ plt_entry(EA,Function):-
     arch.reg_arithmetic_operation(EA_ADDIU,_,Reg,_,Offset),
 
     relocation(Dest_addr,_,Function,_,_,_,_).
-
-// It is unlikely that EA is a valid instruction if the dest op is zero.
-invalid(EA,Type):-
-    instruction_get_dest_op(EA,_,Op),
-    !instruction_get_operation(EA, "MOVE"),
-    op_regdirect_contains_reg(Op,"ZERO"),
-    Type = "mips-zero_dest_op".
 
 // If "jalr t9", where t9 is a concrete address value, it can be considered as
 // a direct-call.
