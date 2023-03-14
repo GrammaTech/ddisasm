@@ -499,5 +499,32 @@ class ElfSymbolVersionsTests(unittest.TestCase):
             self.assertFalse(symver_entries[bar2][1])
 
 
+class PeOverlayTests(unittest.TestCase):
+    @unittest.skipUnless(
+        platform.system() == "Windows", "This test is Windows only."
+    )
+    def test_generate_resources(self):
+        with cd(ex_dir / "ex1"):
+            # Create binary with overlay data.
+            proc = subprocess.run(make("clean"), stdout=subprocess.DEVNULL)
+            self.assertEqual(proc.returncode, 0)
+
+            proc = subprocess.run(make("all"), stdout=subprocess.DEVNULL)
+            self.assertEqual(proc.returncode, 0)
+
+            # Append bytes to the binary.
+            with open("ex.exe", "a") as pe:
+                pe.write("OVERLAY")
+
+            # Disassemble to GTIRB file.
+            self.assertTrue(disassemble("ex.exe", format="--ir")[0])
+
+            # Check overlay aux data.
+            ir = gtirb.IR.load_protobuf("ex.exe.gtirb")
+            module = ir.modules[0]
+            overlay = module.aux_data["peOverlay"].data
+            self.assertEqual(bytes(overlay), b"OVERLAY")
+
+
 if __name__ == "__main__":
     unittest.main()
