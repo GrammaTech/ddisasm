@@ -697,7 +697,7 @@ symbolic_operand_attribute(EA,Index,Type):-
         Type = "NTPOFF"
     ).
 
-// Initial Executable (IE) TLS reference to GOT:
+// Initial Executable (IE) TLS reference to GOT (x86-32 no-PIE):
 //   i.e.  X@INDNTPOFF + GS:[REG]
 symbolic_operand_attribute(EA,Index,"INDNTPOFF"):-
     binary_isa("X86"),
