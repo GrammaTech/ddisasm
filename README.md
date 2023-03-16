@@ -48,6 +48,11 @@ install a consistent set of tools, using tools that are all `stable` or all
 reflect the latest state of the development branch, and may include bugs and
 unannounced breaking changes.
 
+Note that installing the `gtirb` Python package from pip yields a `stable`
+package, which will only work with corresponding `stable` versions of ddisasm;
+see the [GTIRB README](https://github.com/GrammaTech/gtirb/#python-api) for
+more details.
+
 ### Docker
 
 The Docker image is the easiest way to download and try ddisasm quickly.
