@@ -557,21 +557,28 @@ best_ifunc_symbol(DestAddr,NameFunc):-
 /**
 Provide a score to GNU_IFUNC symbols based on scope, visibility, and
 their table index.
-Prefer LOCAL IFUNC symbols over GLOBAL ones, and those over WEAK ones.
 */
 .decl ifunc_symbol_score(EA:address,SymbolName:symbol,Score:unsigned)
 
+/**
+Auxiliary predicate to define `ifunc_symbol_score`
+Prefer symbols with LOCAL over GLOBAL, and with GLOBAl over
+anything else (WEAK).
+*/
+.decl ifunc_scope_score(Scope:symbol,Score:unsigned)
+
+ifunc_scope_score("LOCAL",2).
+ifunc_scope_score("GLOBAL",1).
+
+ifunc_scope_score(Scope,0):-
+    symbol(_,_,_,Scope,_,_,_,_,_),
+    Scope != "GLOBAL",
+    Scope != "LOCAL".
+
 ifunc_symbol_score(EA,SymbolName,Score):-
     defined_symbol(EA,Size,"GNU_IFUNC",Scope,Visibility,SectIndex,_,TableIndex,SymbolName),
-    (
-        Scope = "LOCAL", ScopeScore = 2;
-        Scope = "GLOBAL", ScopeScore = 1;
-        Scope != "GLOBAL", Scope != "LOCAL", ScopeScore = 0
-    ),
-    (
-        Visibility != "HIDDEN", VisibilityScore = 1;
-        Visibility = "HIDDEN", VisibilityScore = 0
-    ),
+    ifunc_scope_score(Scope,ScopeScore),
+    symbol_visibility_score(Visibility,VisibilityScore),
     // Prefer symbols that have an entry in .dynsym (after all the other factors)
     // For those use the table index in dynsym.
     (
