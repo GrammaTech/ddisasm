@@ -562,7 +562,7 @@ Prefer LOCAL IFUNC symbols over GLOBAL ones, and those over WEAK ones.
 .decl ifunc_symbol_score(EA:address,SymbolName:symbol,Score:unsigned)
 
 ifunc_symbol_score(EA,SymbolName,Score):-
-    defined_symbol(EA,_,"GNU_IFUNC",Scope,Visibility,_,_,TableIndex,SymbolName),
+    defined_symbol(EA,Size,"GNU_IFUNC",Scope,Visibility,SectIndex,_,TableIndex,SymbolName),
     (
         Scope = "LOCAL", ScopeScore = 2;
         Scope = "GLOBAL", ScopeScore = 1;
@@ -572,10 +572,23 @@ ifunc_symbol_score(EA,SymbolName,Score):-
         Visibility != "HIDDEN", VisibilityScore = 1;
         Visibility = "HIDDEN", VisibilityScore = 0
     ),
+    // Prefer symbols that have an entry in .dynsym (after all the other factors)
+    // For those use the table index in dynsym.
+    (
+        defined_symbol(EA,Size,"GNU_IFUNC",Scope,Visibility,SectIndex,".dynsym",DynSymTableIndex,SymbolName),
+        UsedTableIndex = DynSymTableIndex,
+        UNUSED(TableIndex),
+        DynSymScore = 1
+        ;
+        !defined_symbol(EA,Size,"GNU_IFUNC",Scope,Visibility,SectIndex,".dynsym",_,SymbolName),
+        UsedTableIndex = TableIndex,
+        DynSymScore = 0
+    ),
     // Encode lexicographic ordering into a single score.
-    Score = (ScopeScore bshl 33)
-            bor (VisibilityScore bshl 32)
-            bor as(TableIndex,unsigned).
+    Score = (ScopeScore bshl 34)
+            bor (VisibilityScore bshl 33)
+            bor (DynSymScore bshl 32)
+            bor as(UsedTableIndex,unsigned).
 
 best_ifunc_symbol(EA,SymbolName):-
    ifunc_symbol_score(EA,SymbolName,Score),
