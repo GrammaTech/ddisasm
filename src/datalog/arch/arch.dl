@@ -28,13 +28,9 @@ of them.
 
 // Include architecture-specific code.
 #ifdef ARCH_ARM64
-    #include "../arm_binaries.dl"
-    #include "../arm64_binaries.dl"
     #include "arm64/arch_arm64.dl"
     .init arch = ARM64
 #elif defined(ARCH_ARM32)
-    #include "../arm_binaries.dl"
-    #include "../arm32_binaries.dl"
     #include "arm32/arch_arm.dl"
     .init arch = ARM
 #elif defined(ARCH_IA32)
@@ -44,7 +40,6 @@ of them.
     #include "intel/arch_x86_64.dl"
     .init arch = X86_64
 #elif defined(ARCH_MIPS32)
-    #include "../mips_binaries.dl"
     #include "mips32/arch_mips32.dl"
     .init arch = MIPS32
 #else

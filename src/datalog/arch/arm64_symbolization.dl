@@ -1,6 +1,6 @@
-//===- arm64_binaries.dl ------------------------------------*- datalog -*-===//
+//===- arm64_symbolization.dl -------------------------------*- datalog -*-===//
 //
-//  Copyright (C) 2019-2022 GrammaTech, Inc.
+//  Copyright (C) 2019-2023 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -21,14 +21,10 @@
 //
 //===----------------------------------------------------------------------===//
 /**
-Define a set predicates to abstract from ARM64 specific instruction set
-and characteristics
+ARM64 architecture-specific rules for symbolization
 */
 
 avoid_symbols("$x").
-
-basic_target(Val):-
-    defined_symbol(Val,_,_,_,_,_,_,_,"$x").
 
 /**
 Compute an immediate load performed across two consecutive instructions

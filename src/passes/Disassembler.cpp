@@ -484,6 +484,8 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(
         // MIPS
         {"HI", gtirb::SymAttribute::HI},
         {"LO", gtirb::SymAttribute::LO},
+        // X86
+        {"INDNTPOFF", gtirb::SymAttribute::INDNTPOFF},
     };
     gtirb::SymAttributeSet Attributes;
 

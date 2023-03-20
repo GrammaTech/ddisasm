@@ -85,11 +85,48 @@ Each symbol receives a score based on its properties.
 .decl symbol_score(EA:address,SymbolName:symbol,Type:symbol,Pos:symbol_position,Score:unsigned)
 
 
+/**
+Auxiliary predicate to define `symbol_score`.
+Prefer symbols with type different than NOTYPE.
+*/
+.decl symbol_type_score(Type:symbol,Scope:unsigned)
+
+symbol_type_score("NOTYPE",0).
+
+symbol_type_score(Type,1):-
+    symbol(_,_,Type,_,_,_,_,_,_),
+    Type != "NOTYPE".
+
+/**
+Auxiliary predicate to define `symbol_score`
+Prefer symbols with GLOBAL scope.
+*/
+.decl symbol_scope_score(Scope:symbol,Score:unsigned)
+
+symbol_scope_score("GLOBAL",1).
+
+symbol_scope_score(Scope,0):-
+    symbol(_,_,_,Scope,_,_,_,_,_),
+    Scope != "GLOBAL".
+
+/**
+Auxiliary predicate to define `symbol_score`.
+Prefer symbols that are not HIDDEN.
+*/
+.decl symbol_visibility_score(Visibility:symbol,Score:unsigned)
+
+symbol_visibility_score("HIDDEN",0).
+
+symbol_visibility_score(Visibility,1):-
+    symbol(_,_,_,_,Visibility,_,_,_,_),
+    Visibility != "HIDDEN".
+
+
 symbol_score(EA,SymbolName,Type,Pos,Score):-
-    defined_symbol(EA,_,Type,Scope,Visibility,_,_,TableIndex,SymbolName),
+    defined_symbol(EA,Size,Type,Scope,Visibility,SectIndex,_,TableIndex,SymbolName),
     !ambiguous_symbol(SymbolName),
     !avoid_symbols(SymbolName),
-    Type !="SECTION",
+    Type != "SECTION",
     (
         symbol_at_section_end(EA,SymbolName), Pos = "End";
         !symbol_at_section_end(EA,SymbolName), Pos = "Beg"
@@ -98,24 +135,28 @@ symbol_score(EA,SymbolName,Type,Pos,Score):-
         relocation(EA,"COPY",SymbolName,_,_,_,_), RelocScore = 1;
         !relocation(EA,"COPY",SymbolName,_,_,_,_), RelocScore = 0
     ),
+    symbol_type_score(Type,TypeScore),
+    symbol_scope_score(Scope,ScopeScore),
+    symbol_visibility_score(Visibility,VisibilityScore),
+    // Prefer symbols that have an entry in .dynsym (after all the other factors)
+    // For those use the table index in dynsym.
     (
-        Type != "NOTYPE", TypeScore = 1;
-        Type = "NOTYPE", TypeScore = 0
-    ),
-    (
-        Scope = "GLOBAL", ScopeScore = 1;
-        Scope != "GLOBAL", ScopeScore = 0
-    ),
-    (
-        Visibility != "HIDDEN", VisibilityScore = 1;
-        Visibility = "HIDDEN", VisibilityScore = 0
+        defined_symbol(EA,Size,Type,Scope,Visibility,SectIndex,".dynsym",DynSymTableIndex,SymbolName),
+        UsedTableIndex = DynSymTableIndex,
+        UNUSED(TableIndex),
+        DynSymScore = 1
+        ;
+        !defined_symbol(EA,Size,Type,Scope,Visibility,SectIndex,".dynsym",_,SymbolName),
+        UsedTableIndex = TableIndex,
+        DynSymScore = 0
     ),
     // Encode lexicographic ordering into a single score.
-    Score = (RelocScore bshl 35)
-            bor (TypeScore bshl 34)
-            bor (ScopeScore bshl 33)
-            bor (VisibilityScore bshl 32)
-            bor as(TableIndex,unsigned).
+    Score = (RelocScore bshl 36)
+            bor (TypeScore bshl 35)
+            bor (ScopeScore bshl 34)
+            bor (VisibilityScore bshl 33)
+            bor (DynSymScore bshl 32)
+            bor as(UsedTableIndex,unsigned).
 
 
 /**

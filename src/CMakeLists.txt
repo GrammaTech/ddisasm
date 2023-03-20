@@ -73,12 +73,12 @@ if(DDISASM_ARM_32)
       datalog/arch/arm32/float_operations.dl
       datalog/arch/arm32/jump_operations.dl
       datalog/arch/arm32/registers.dl
-      datalog/arm_binaries.dl
-      datalog/arm32_binaries.dl
-      datalog/arm32_ci_heuristics.dl
-      datalog/arm32_jump_tables.dl
-      datalog/arm32_symbolization.dl
-      datalog/arch/arm32/memory_access.dl)
+      datalog/arch/arm32/memory_access.dl
+      datalog/arch/arm_binaries.dl
+      datalog/arch/arm32_binaries.dl
+      datalog/arch/arm32_ci_heuristics.dl
+      datalog/arch/arm32_jump_tables.dl
+      datalog/arch/arm32_symbolization.dl)
 
   set(GENERATED_ARM32_CPP souffle_disasm_arm32.cpp)
   set(GENERATED_ARM32_CPP_PATH ${CMAKE_BINARY_DIR}/src/souffle_disasm_arm32.cpp)
@@ -103,9 +103,9 @@ if(DDISASM_ARM_64)
       datalog/arch/arm64/float_operations.dl
       datalog/arch/arm64/jump_operations.dl
       datalog/arch/arm64/registers.dl
-      datalog/arm_binaries.dl
-      datalog/arm64_binaries.dl
-      datalog/arch/arm64/memory_access.dl)
+      datalog/arch/arm64/memory_access.dl
+      datalog/arch/arm_binaries.dl
+      datalog/arch/arm64_symbolization.dl)
 
   set(GENERATED_ARM64_CPP souffle_disasm_arm64.cpp)
   set(GENERATED_ARM64_CPP_PATH
@@ -132,7 +132,7 @@ if(DDISASM_MIPS_32)
       datalog/arch/mips32/jump_operations.dl
       datalog/arch/mips32/memory_access.dl
       datalog/arch/mips32/registers.dl
-      datalog/mips_binaries.dl)
+      datalog/arch/mips_symbolization.dl)
 
   set(GENERATED_MIPS32_CPP souffle_disasm_mips32.cpp)
 
@@ -161,7 +161,8 @@ if(DDISASM_X86_32)
       datalog/arch/intel/registers_common.dl
       datalog/arch/intel/registers_x86_32.dl
       datalog/arch/intel/arch_x86.dl
-      datalog/arch/intel/memory_access.dl)
+      datalog/arch/intel/memory_access.dl
+      datalog/arch/x86_32_symbolization.dl)
 
   set(GENERATED_X86_32_CPP souffle_disasm_x86_32.cpp)
   set(GENERATED_X86_32_CPP_PATH
@@ -189,7 +190,8 @@ if(DDISASM_X86_64)
       datalog/arch/intel/registers_common.dl
       datalog/arch/intel/registers_x86_64.dl
       datalog/arch/intel/arch_x86.dl
-      datalog/arch/intel/memory_access.dl)
+      datalog/arch/intel/memory_access.dl
+      datalog/arch/x86_64_symbolization.dl)
 
   set(GENERATED_X86_64_CPP souffle_disasm_x86_64.cpp)
   set(GENERATED_X86_64_CPP_PATH
