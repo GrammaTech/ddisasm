@@ -1,0 +1,122 @@
+//===- basic_def_used.dl ------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2023 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+def_used relations shared by straight_line_def_used and more advanced def_used
+components.
+*/
+
+/**
+Which registers are tracked for use-def and value analysis.
+*/
+.decl track_register(Reg:register)
+
+track_register(Reg):-
+    arch.general_purpose_reg(Reg);
+    arch.frame_pointer(Reg);
+    arch.stack_pointer(Reg);
+    arch.return_reg(Reg);
+    arch.condition_flags_reg(Reg).
+
+
+.comp BasicDefUse<T> {
+    /**
+    Var is defined in this location
+    */
+    .decl def(EA:address,Var:T)
+
+    /**
+    Instruction at address 'EA' uses Var at operand index 'Index'.
+    */
+    .decl used(EA:address,Var:T,Index:operand_index)
+
+    /**
+    A <T> is unconditionally defined at EA.
+    */
+    .decl must_def(EA:address,Var:T) inline
+
+    must_def(EA,Var):-
+        def(EA,Var),
+        !arch.conditional(EA,_).
+}
+
+.comp BasicRegDefUse : BasicDefUse<register> {
+    // Define any registers defined by the instruction
+    def(EA,Reg):-
+        (
+            register_access(EA,RegIn,"W"),
+            reg_map(RegIn,Reg),
+            !arch.register_access_override(EA,Reg,"W",0)
+            ;
+            arch.register_access_override(EA,Reg,"W",1)
+        ),
+        track_register(Reg).
+
+    // A call "defines" the return value register
+    def(EA,Reg):-
+        arch.call(EA,_),
+        !arch.delay_slot(EA,_),
+        arch.return_reg(Reg).
+
+    // A call "defines" the return value register (variant for delay slots)
+    def(EA,Reg):-
+        arch.call(Call,_),
+        arch.delay_slot(Call,EA),
+        arch.return_reg(Reg).
+
+    def(EA,Reg):-
+        direct_call(EA,EA_pc_thunk),
+        get_pc_thunk(EA_pc_thunk,Reg),
+        track_register(Reg).
+
+    /**
+    Register name explicitly appears in an instruction operand
+    */
+    .decl used_explicit(EA:address,Reg:register,Index:operand_index)
+
+    used_explicit(EA,Reg,Index):-
+        instruction_get_src_op(EA,Index,Op),
+        op_regdirect_contains_reg(Op,Reg),
+        track_register(Reg),
+        !is_xor_reset(EA).
+
+    used_explicit(EA,Reg,Index):-
+        instruction_get_op(EA,Index,Op),
+        op_indirect_contains_reg(Op,Reg),
+        track_register(Reg).
+
+    used(EA,Reg,Index):-
+        used_explicit(EA,Reg,Index).
+
+    // Implicitly-used registers use an operand index of zero.
+    used(EA,Reg,0):-
+        (
+            register_access(EA,RegIn,"R"),
+            reg_map(RegIn,Reg),
+            !arch.register_access_override(EA,Reg,"R",0)
+            ;
+            arch.register_access_override(EA,Reg,"R",1)
+        ),
+        track_register(Reg),
+        !used_explicit(EA,Reg,_),
+        !is_xor_reset(EA).
+}

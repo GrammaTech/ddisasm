@@ -41,6 +41,7 @@ set(DATALOG_BASE_SOURCES
     datalog/binary/pe/pe_binaries.dl
     datalog/binary/pe/exceptions.dl
     datalog/binary/pe/relocations.dl
+    datalog/basic_def_used.dl
     datalog/bitmasks.dl
     datalog/boundary_value_analysis.dl
     datalog/code_inference.dl
@@ -61,7 +62,8 @@ set(DATALOG_BASE_SOURCES
     datalog/use_def_analysis.dl
     datalog/value_analysis.dl
     datalog/debug_stats.dl
-    datalog/self_diagnose.dl)
+    datalog/self_diagnose.dl
+    datalog/straight_line_def_used.dl)
 
 set(SOUFFLE_DATALOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/datalog/)
 

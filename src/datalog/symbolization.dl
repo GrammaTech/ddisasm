@@ -55,7 +55,6 @@ This module also computes and symbol_minus_symbol.
 */
 
 #include "empty_range.dl"
-#include "bitmasks.dl"
 #include "noreturn.dl"
 #include "use_def_analysis.dl"
 #include "value_analysis.dl"
