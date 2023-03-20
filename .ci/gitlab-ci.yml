@@ -648,6 +648,18 @@ docker-image-vars:
     - echo "GTIRB_PPRINTER_BRANCH=$GTIRB_PPRINTER_BRANCH" >> .env
     - echo "GTIRB_COMMIT=$(git ls-remote https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/rewriting/gtirb | grep "refs/heads/$GTIRB_BRANCH\$" | awk '{print $1}')" >> .env
     - echo "GTIRB_PPRINTER_COMMIT=$(git ls-remote https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/rewriting/gtirb-pprinter | grep "refs/heads/$GTIRB_PPRINTER_BRANCH\$" | awk '{print $1}')" >> .env
+    - >-
+      if [[ $CI_COMMIT_REF_NAME =~ release-.* ]]; then
+        echo "DOCKER_IMAGE_DESTS=\"
+          --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:latest \
+          --destination=grammatech/ddisasm:latest \
+          --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:$VERSION \
+          --destination=grammatech/ddisasm:$VERSION\"" >> .env
+      else
+        echo "DOCKER_IMAGE_DESTS=\"\
+          --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:unstable \
+          --destination=grammatech/ddisasm:unstable\"" >> .env
+      fi
     - cat .env
   artifacts:
     reports:
@@ -686,10 +698,7 @@ docker-image:
       --build-arg GTIRB_PPRINTER_BRANCH=$GTIRB_PPRINTER_BRANCH
       --build-arg GTIRB_PPRINTER_CACHE_KEY=$GTIRB_PPRINTER_COMMIT
       --dockerfile=$CI_PROJECT_DIR/Dockerfile
-      --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:$VERSION
-      --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:latest
-      --destination=grammatech/ddisasm:$VERSION
-      --destination=grammatech/ddisasm:latest
+      $DOCKER_IMAGE_DESTS
 
 .apt-upload: &apt-upload
   stage: deploy-to-apt
