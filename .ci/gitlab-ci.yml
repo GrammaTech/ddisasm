@@ -650,15 +650,13 @@ docker-image-vars:
     - echo "GTIRB_PPRINTER_COMMIT=$(git ls-remote https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/rewriting/gtirb-pprinter | grep "refs/heads/$GTIRB_PPRINTER_BRANCH\$" | awk '{print $1}')" >> .env
     - >-
       if [[ $CI_COMMIT_REF_NAME =~ release-.* ]]; then
-        echo "DOCKER_IMAGE_DESTS=\"
-          --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:latest \
-          --destination=grammatech/ddisasm:latest \
-          --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:$VERSION \
-          --destination=grammatech/ddisasm:$VERSION\"" >> .env
+        echo "DOCKER_IMAGE_BASE_TAG=latest" >> .env
+        echo "DOCKER_LOCAL_VERSION_DEST=--destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:$VERSION" >> .env
+        echo "DOCKER_HUB_VERSION_DEST=--destination=grammatech/ddisasm:$VERSION" >> .env
       else
-        echo "DOCKER_IMAGE_DESTS=\"\
-          --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:unstable \
-          --destination=grammatech/ddisasm:unstable\"" >> .env
+        echo "DOCKER_IMAGE_BASE_TAG=unstable" >> .env
+        echo "DOCKER_LOCAL_VERSION_DEST=" >> .env
+        echo "DOCKER_HUB_VERSION_DEST=" >> .env
       fi
     - cat .env
   artifacts:
@@ -698,7 +696,10 @@ docker-image:
       --build-arg GTIRB_PPRINTER_BRANCH=$GTIRB_PPRINTER_BRANCH
       --build-arg GTIRB_PPRINTER_CACHE_KEY=$GTIRB_PPRINTER_COMMIT
       --dockerfile=$CI_PROJECT_DIR/Dockerfile
-      $DOCKER_IMAGE_DESTS
+      --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:${DOCKER_IMAGE_BASE_TAG}
+      --destination=grammatech/ddisasm:${DOCKER_IMAGE_BASE_TAG}
+      $DOCKER_LOCAL_VERSION_DEST
+      $DOCKER_HUB_VERSION_DEST
 
 .apt-upload: &apt-upload
   stage: deploy-to-apt
