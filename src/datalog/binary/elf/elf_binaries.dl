@@ -140,7 +140,7 @@ plt_entry(EA,Name):-
     EA < End,
     pc_relative_jump(EA,Got_entry),
     relocation(Got_entry,"IRELATIVE","",Dest,_,_,_),
-    ifunc_symbol(as(Dest,address),Name).
+    best_ifunc_symbol(as(Dest,address),Name).
 
 plt_block(Block,Function):-
     plt_entry(EA,Function),
@@ -535,29 +535,71 @@ copy_relocated_symbol(EA,Name):-
 ////////////////////////////////////////////////////////////////////
 // Static binaries
 
-.decl ifunc_symbol(EA:address,Name:symbol)
+/**
+Best GNU_IFUNC symbol for plt entries.
+Uses `ifunc_symbol_score` to deterministically select
+a single ifunc symbol for each EA.
+*/
+.decl best_ifunc_symbol(EA:address,SymbolName:symbol)
+
 
 // We need two symbols, a function symbol and a GNU_IFUNC symbol
 // so we can create a IRELATIVE relocation
-ifunc_symbol(DestAddr,NameFunc),
 inferred_special_symbol(DestAddr,NameFunc,"GLOBAL","GNU_IFUNC","Beg"),
-inferred_special_symbol(DestAddr,Name,"LOCAL","FUNC","Beg"):-
+inferred_special_symbol(DestAddr,Name,"LOCAL","FUNC","Beg"),
+best_ifunc_symbol(DestAddr,NameFunc):-
     relocation(_,"IRELATIVE","",Dest,_,_,_),
     DestAddr = as(Dest,address),
     !symbol(DestAddr,_,"GNU_IFUNC",_,_,_,_,_,_),
     NameFunc = cat("FUN_",@to_string_hex(as(Dest,unsigned))),
     Name = cat(NameFunc,"_IFUNC").
 
-// Prefer local IFUNC symbols over global ones.
-// NOTE: This is needed for choosing local symbol for PLT if any
-// to avoid extra PLT reference related to gnu_indirect_function.
-ifunc_symbol(DestAddr,Name):-
+/**
+Provide a score to GNU_IFUNC symbols based on scope, visibility, and
+their table index.
+*/
+.decl ifunc_symbol_score(EA:address,SymbolName:symbol,Score:unsigned)
+
+/**
+Auxiliary predicate to define `ifunc_symbol_score`
+Prefer symbols with LOCAL over GLOBAL, and with GLOBAl over
+anything else (WEAK).
+*/
+.decl ifunc_scope_score(Scope:symbol,Score:unsigned)
+
+ifunc_scope_score("LOCAL",2).
+ifunc_scope_score("GLOBAL",1).
+
+ifunc_scope_score(Scope,0):-
+    symbol(_,_,_,Scope,_,_,_,_,_),
+    Scope != "GLOBAL",
+    Scope != "LOCAL".
+
+ifunc_symbol_score(EA,SymbolName,Score):-
+    defined_symbol(EA,Size,"GNU_IFUNC",Scope,Visibility,SectIndex,_,TableIndex,SymbolName),
+    ifunc_scope_score(Scope,ScopeScore),
+    symbol_visibility_score(Visibility,VisibilityScore),
+    // Prefer symbols that have an entry in .dynsym (after all the other factors)
+    // For those use the table index in dynsym.
     (
-        defined_symbol(DestAddr,_,"GNU_IFUNC","LOCAL",_,_,_,_,Name)
+        defined_symbol(EA,Size,"GNU_IFUNC",Scope,Visibility,SectIndex,".dynsym",DynSymTableIndex,SymbolName),
+        UsedTableIndex = DynSymTableIndex,
+        UNUSED(TableIndex),
+        DynSymScore = 1
         ;
-        !defined_symbol(DestAddr,_,"GNU_IFUNC","LOCAL",_,_,_,_,_),
-        defined_symbol(DestAddr,_,"GNU_IFUNC",_,_,_,_,_,Name)
-    ).
+        !defined_symbol(EA,Size,"GNU_IFUNC",Scope,Visibility,SectIndex,".dynsym",_,SymbolName),
+        UsedTableIndex = TableIndex,
+        DynSymScore = 0
+    ),
+    // Encode lexicographic ordering into a single score.
+    Score = (ScopeScore bshl 34)
+            bor (VisibilityScore bshl 33)
+            bor (DynSymScore bshl 32)
+            bor as(UsedTableIndex,unsigned).
+
+best_ifunc_symbol(EA,SymbolName):-
+   ifunc_symbol_score(EA,SymbolName,Score),
+   Score = max S: {ifunc_symbol_score(EA,_,S)}.
 
 // these symbols point to the begining and end of the iplt section
 // that contaisn the IRELATIVE relocations
