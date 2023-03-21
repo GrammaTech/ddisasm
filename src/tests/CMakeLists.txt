@@ -38,17 +38,23 @@ target_link_libraries(
   scc_pass)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-  target_link_libraries(${PROJECT_NAME} ddisasm_datalog no_return_pass)
-  target_link_options(
-    ${PROJECT_NAME} PRIVATE /WHOLEARCHIVE:ddisasm_datalog$<$<CONFIG:Debug>:d>
-    /WHOLEARCHIVE:no_return_pass$<$<CONFIG:Debug>:d>)
+  target_link_libraries(${PROJECT_NAME} ${GENERATED_STATIC_LIB} no_return_pass)
+
+  foreach(GENLIB ${GENERATED_STATIC_LIB})
+    target_link_options(${PROJECT_NAME} PRIVATE
+                        /WHOLEARCHIVE:${GENLIB}$<$<CONFIG:Debug>:d>)
+  endforeach()
+
+  target_link_options(${PROJECT_NAME} PRIVATE
+                      /WHOLEARCHIVE:no_return_pass$<$<CONFIG:Debug>:d>)
 else()
   if(APPLE)
-    target_link_libraries(${PROJECT_NAME} -Wl,-all_load ddisasm_datalog
+    target_link_libraries(${PROJECT_NAME} -Wl,-all_load ${GENERATED_STATIC_LIB}
                           no_return_pass -Wl,-noall_load)
   else()
-    target_link_libraries(${PROJECT_NAME} -Wl,--whole-archive ddisasm_datalog
-                          no_return_pass -Wl,--no-whole-archive)
+    target_link_libraries(
+      ${PROJECT_NAME} -Wl,--whole-archive ${GENERATED_STATIC_LIB}
+      no_return_pass -Wl,--no-whole-archive)
   endif()
 endif()
 
