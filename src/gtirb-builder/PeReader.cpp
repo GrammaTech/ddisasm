@@ -219,10 +219,10 @@ void PeReader::addAuxData()
         Module->addAuxData<gtirb::schema::PeLoadConfig>(std::move(PeLoadConfig));
     }
 
-    // Add `peOverlay` aux data table.
+    // Add `overlay` aux data table.
     if(std::vector<uint8_t> Overlay = Pe->overlay(); Overlay.size() > 0)
     {
-        Module->addAuxData<gtirb::schema::PeOverlay>(std::move(Overlay));
+        Module->addAuxData<gtirb::schema::Overlay>(std::move(Overlay));
     }
 }
 

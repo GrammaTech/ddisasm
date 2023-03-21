@@ -513,12 +513,12 @@ of fields and [The Load Configuration Structure][LOADCONFIG] for additional info
 
 [LOADCONFIG]: https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#the-load-configuration-structure-image-only
 
-## peOverlay
+## overlay
 
 `unsanctioned`
 
-|       |                                                                |
-|------:|----------------------------------------------------------------|
-|  Name | **peOverlay**                                                  |
-|  Type | `std::vector<uint8_t>`                                         |
-| Value | List of bytes appended to the PE that are not loaded to memory.|
+|       |                                                                    |
+|------:|--------------------------------------------------------------------|
+|  Name | **overlay**                                                        |
+|  Type | `std::vector<uint8_t>`                                             |
+| Value | List of bytes appended to the binary that are not loaded to memory.|

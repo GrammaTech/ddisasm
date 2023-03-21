@@ -139,14 +139,6 @@ namespace gtirb
             typedef std::vector<auxdata::PeDebugData> Type;
         };
 
-        /// \brief Auxiliary data listing of bytes appended to the PE that are
-        /// not loaded to memory.
-        struct PeOverlay
-        {
-            static constexpr const char* Name = "peOverlay";
-            typedef std::vector<uint8_t> Type;
-        };
-
         /// \brief Auxiliary data for Souffle fact files.
         struct SouffleFacts
         {
@@ -176,6 +168,15 @@ namespace gtirb
             static constexpr const char* Name = "archInfo";
             typedef std::map<std::string, std::string> Type;
         };
+
+        /// \brief Auxiliary data listing of bytes appended to the binary that
+        /// are not loaded to memory.
+        struct Overlay
+        {
+            static constexpr const char* Name = "overlay";
+            typedef std::vector<uint8_t> Type;
+        };
+
     } // namespace schema
 } // namespace gtirb
 
