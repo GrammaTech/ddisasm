@@ -104,12 +104,6 @@ is referenced by name.
 .decl symbolic_expr_from_relocation(EA:address,Size:unsigned,Symbol:symbol,Offset:number,TargetEA:address)
 
 /**
-Relocations that did not turn out to be a symbolic expression
-*/
-.decl missing_relocation_handling(EA:address)
-.output missing_relocation_handling
-
-/**
  There is a symbolic expression at address 'EA' of size 'Size' of the form:
 
 (Symbol2-Symbol1)*Scale+Offset

@@ -523,13 +523,6 @@ symbolic_expr_from_relocation(EA,Size,"",0,as(Dest,address)):-
     arch.pointer_size(Size),
     relocation(EA,"IRELATIVE","",Dest,_,_,_).
 
-// Log any unhandled relocations for debugging
-missing_relocation_handling(EA):-
-    relocation(EA,Type,_,_,_,_,_),
-    !symbolic_expr(EA,_,_,_),
-    !got_reference(EA,_),
-    Type != "COPY".
-
 ////////////////////////////////////////////////////////////////////
 /**
 Collect all the symbols whose address, size and type are the same as the
