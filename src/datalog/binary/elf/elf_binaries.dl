@@ -438,39 +438,63 @@ relocation_adjustment(EA,as(Addend,number),"implicit-addend"):-
         Size != 8, data_word(EA,Size/8,Addend)
     ).
 
+/**
+Type of relocation relevant to pc-relative attribute
+*/
+.decl reloc_type_relpc(Type:symbol)
+
+reloc_type_relpc("PC32").
+reloc_type_relpc("GOTPCRELX").
+reloc_type_relpc("REX_GOTPCRELX").
+reloc_type_relpc("PLT32").
+
 relocation_adjustment(EA+Offset,N,"distance-to-pc"):-
     (
         binary_isa("X86");
         binary_isa("X64")
     ),
-    binary_type("REL"),
     code(EA),
     (
         instruction(EA,Size,_,_,_,_,_,_,_,Offset);
         instruction(EA,Size,_,_,_,_,_,_,Offset,_)
     ),
     relocation(EA+Offset,Type,Symbol,_,SymbolIndex,_,_),
-    (
-        Type = "PC32";
-        Type = "PLT32"
-    ),
+    reloc_type_relpc(Type),
     symbol(_,_,_,_,_,_,_,SymbolIndex,Symbol),
     // Adjust addend for trailing instruction bytes.
     N = as(Size-Offset,number), N > 0.
+
+/**
+Type of relocation possibly with non-empty Symbol name
+*/
+.decl reloc_type_with_name(Type:symbol)
+
+reloc_type_with_name("R32").
+reloc_type_with_name("R64").
+reloc_type_with_name("R32S").
+reloc_type_with_name("PC32").
+reloc_type_with_name("PLT32").
+reloc_type_with_name("GOTPCRELX").
+reloc_type_with_name("REX_GOTPCRELX").
+reloc_type_with_name("ABS64").
 
 symbolic_expr_from_relocation(EA,Size/8,Symbol,Addend+Adjustment,TargetEA):-
     binary_format("ELF"),
     relocation(EA,Type,Symbol,Addend,SymbolIndex,_,_),
     relocation_size(Type,Size),
-    (
-        Type = "R32";
-        Type = "R64";
-        Type = "R32S";
-        Type = "ABS64"
-    ),
+    reloc_type_with_name(Type),
     relocation_adjustment_total(EA,Adjustment),
     symbol(TargetEA,_,_,_,_,_,_,SymbolIndex,Symbol),
     Symbol != "".
+
+/**
+Type of relocation possibly with empty Symbol name
+*/
+.decl reloc_type_nameless(Type:symbol)
+
+reloc_type_nameless("R32").
+reloc_type_nameless("R64").
+reloc_type_nameless("R32S").
 
 // Relocation indirectly references a named symbol with an offset from a SECTION symbol.
 symbolic_expr_from_relocation(EA,Size/8,Symbol,0,TargetEA):-
@@ -478,11 +502,7 @@ symbolic_expr_from_relocation(EA,Size/8,Symbol,0,TargetEA):-
     // Nameless relocation referencing a SECTION symbol.
     relocation(EA,Type,"",Addend,SymbolIndex,_,_),
     relocation_size(Type,Size),
-    (
-        Type = "R32";
-        Type = "R64";
-        Type = "R32S"
-    ),
+    reloc_type_nameless(Type),
     relocation_adjustment_total(EA,Adjustment),
     symbol(_,_,"SECTION",_,_,SectionIndex,_,SymbolIndex,_),
     section(_,_,Begin,_,SectionIndex),
@@ -499,21 +519,9 @@ symbolic_expr_from_relocation(EA,Size,Symbol,Addend,TargetEA):-
     relocation(EA,"GLOB_DAT",Symbol,Addend,SymbolIndex,_,_),
     symbol(TargetEA,_,_,_,_,_,_,SymbolIndex,Symbol).
 
-symbolic_expr_from_relocation(EA,4,Symbol,Addend+Adjustment,TargetEA):-
-    binary_type("REL"),
-    relocation(EA,Type,Symbol,Addend,SymbolIndex,_,_),
-    (
-        Type = "PC32";
-        Type = "PLT32"
-    ),
-    relocation_adjustment_total(EA,Adjustment),
-    symbol(TargetEA,_,_,_,_,_,_,SymbolIndex,Symbol),
-    Symbol != "".
-
 symbolic_expr_from_relocation(EA,Size,"",0,as(Dest,address)):-
     arch.pointer_size(Size),
     relocation(EA,"IRELATIVE","",Dest,_,_,_).
-
 
 ////////////////////////////////////////////////////////////////////
 /**

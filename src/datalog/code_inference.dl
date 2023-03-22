@@ -981,15 +981,20 @@ block_points(Block,"code",Size,0,2,"padding nop block"):-
     arch.is_nop(Block).
 
 /**
-Give penalty on the dangling block where an instruction is enclosed
+Give penalty on the dangling block where one or two instructions are enclosed
 in a bigger instruction.
 */
 block_points(Block2,"code",BlockSize2,0,-1,"dangling block with enclosed instr"):-
     unresolved_block_overlap(Block,"code",_,Block2,"code",BlockSize2),
+    Block < Block2,
     instruction(Block,Size,_,_,_,_,_,_,_,_),   // Instr
     instruction(Block2,Size2,_,_,_,_,_,_,_,_), // Instr2
-    Block < Block2, Size > Size2,
-    Block+Size = Block2+Size2, // Instr2 is enclosed in Instr at the end.
+    (
+        Block+Size = Block2+Size2; // Instr2 is enclosed in Instr at the end.
+        instruction(Block2+Size2,Size3,_,_,_,_,_,_,_,_), // Instr3
+        code_in_block_candidate_refined(Block2+Size2,Block2),
+        Block+Size = Block2+Size2+Size3 // Instr2 and Instr3 are enclosed in Instr at the end.
+    ),
     block_candidate_boundaries(Block2,"code",Beg2,_),
     !block_candidate_boundaries(_,"code",_,Beg2).
 

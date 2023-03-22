@@ -1079,7 +1079,15 @@ void buildCFG(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
         T >> EA >> Name >> Type;
 
         const gtirb::CodeBlock *CodeBlock = &*module.findCodeBlocksOn(EA).begin();
-        gtirb::Symbol &Symbol = *module.findSymbols(Name).begin();
+        auto It = module.findSymbols(Name);
+        if(It.empty())
+        {
+            std::cerr << "WARNING: failed to find symbols for " << Name << " in cfg_edge_to_symbol("
+                      << EA << "," << Name << "," << Type << ")\n";
+            continue;
+        }
+
+        gtirb::Symbol &Symbol = *It.begin();
         gtirb::ProxyBlock *ExternalBlock = Symbol.getReferent<gtirb::ProxyBlock>();
         if(!ExternalBlock)
         {
