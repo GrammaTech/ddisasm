@@ -318,7 +318,7 @@ class AutoFileDirective(Directive):
         # Split into [stuff, name, params, stuff2, name2, params2, ...]
         file_text = self.sourcepath.read_text()
         # find predicate declarations
-        groups = re.split("\\.decl (.*)\\(([^)]*)\\)", file_text)
+        groups = re.split(r"\s*\.decl (.*)\(([^)]*)\)", file_text)
         line_number = 1
         node_list += self._create_module_description(groups[0], line_number)
         for i in range(2, len(groups), 3):
