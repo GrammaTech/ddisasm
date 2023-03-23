@@ -512,3 +512,13 @@ See the `_IMAGE_LOAD_CONFIG_DIRECTORY32` struct in `WINNT.h` for a complete list
 of fields and [The Load Configuration Structure][LOADCONFIG] for additional information.
 
 [LOADCONFIG]: https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#the-load-configuration-structure-image-only
+
+## overlay
+
+`unsanctioned`
+
+|       |                                                                    |
+|------:|--------------------------------------------------------------------|
+|  Name | **overlay**                                                        |
+|  Type | `std::vector<uint8_t>`                                             |
+| Value | List of bytes appended to the binary that are not loaded to memory.|

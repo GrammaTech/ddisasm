@@ -781,6 +781,12 @@ void ElfReader::buildSections()
         }
     }
 
+    // Add `overlay` aux data table.
+    if(std::vector<uint8_t> Overlay = Elf->overlay(); Overlay.size() > 0)
+    {
+        Module->addAuxData<gtirb::schema::Overlay>(std::move(Overlay));
+    }
+
     Module->addAuxData<gtirb::schema::Alignment>(std::move(Alignment));
     Module->addAuxData<gtirb::schema::SectionIndex>(std::move(SectionIndex));
     Module->addAuxData<gtirb::schema::SectionProperties>(std::move(SectionProperties));
