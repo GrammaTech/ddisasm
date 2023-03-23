@@ -83,7 +83,10 @@ Convert between input_reg and register with arch.reg_map
 
 // Binary format specific predicates.
 #include "binary/elf/elf_binaries.dl"
+#include "binary/elf/symbolization.dl"
 #include "binary/pe/pe_binaries.dl"
+#include "binary/pe/jump_tables.dl"
+#include "binary/pe/symbolization.dl"
 
 // Architecture specific predicates.
 #include "arch/arch.dl"

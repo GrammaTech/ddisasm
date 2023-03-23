@@ -663,6 +663,20 @@ discarded_block(Block2,"code",Block2Size,"first instruction overlap",Block):-
     instruction(Block2,Size2,"",OpCode,Op1,Op2,Op3,Op4,_,_),
     Block2 - Block = Size - Size2.
 
+// Make INT3 blocks in PEs data as long as
+// they are not connected to other blocks.
+// Otherwise each
+// individual INT3 instruction is its own block.
+// Using the point system is too expensive.
+discarded_block(EA,"code",End-Start,"PE padding considered data",0):-
+    binary_format("PE"),
+    code_in_block_candidate_refined(EA,EA),
+    block_candidate_boundaries(EA,"code",Start,End),
+    instruction_get_operation(EA,"INT3"),
+    !direct_jump(_,EA),
+    !direct_call(_,EA),
+    !must_fallthrough(_,EA).
+
 // Auxiliary predicates to detect candidate blocks that are padding
 .decl candidate_block_is_not_padding(Block:address)
 
