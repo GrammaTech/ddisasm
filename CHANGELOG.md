@@ -15,6 +15,10 @@
   * `--with-souffle-relations` keeps relations from all passes; entries in the
     `souffleFacts` and `souffleOutputs` auxdata are now namespaced
     with the name of the analysis pass, e.g., `disassembly.block_points`.
+* Update Souffle to version 2.4.
+* Add cmake option `DDISASM_GENERATE_MANY` to utilize Souffle's
+  `--generate-many` code generation option; this should yield much faster
+  incremental build times for ddisasm.
 
 # 1.5.6
 * Discover ARM Thumb blocks at section start in stripped binaries.
