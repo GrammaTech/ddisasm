@@ -125,3 +125,6 @@ tests:
         cpp: ["cl"]
         optimizations: ["/Od", "/Ot", "/O1", "/Ox", "/O2"]
         flags: ["/link", "/merge:.rdata=.text"]
+
+    - name: ex_kuser
+      <<: *default

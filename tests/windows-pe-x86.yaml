@@ -152,3 +152,6 @@ tests:
     # TODO:
     # - name: ex_call_once
     #   <<: *default
+
+    - name: ex_kuser
+      <<: *default
