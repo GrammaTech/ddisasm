@@ -289,6 +289,13 @@ function(GENERATE_ARCH_STATIC_LIB)
       PARENT_SCOPE)
 endfunction()
 
+# determine what flags to use to specify -fopenmp.
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
+  set(OPENMP_FLAGS -fopenmp)
+elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang)
+  set(OPENMP_FLAGS -fopenmp=libgomp)
+endif()
+
 if(DDISASM_ARM_32)
   add_definitions(-DDDISASM_ARM_32)
 
@@ -406,13 +413,6 @@ if(DDISASM_X86_64)
     ${DATALOG_X86_64_SOURCES}
     PATH
     souffle_disasm_x86_64)
-endif()
-
-# determine what flags to use to specify -fopenmp.
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
-  set(OPENMP_FLAGS -fopenmp)
-elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang)
-  set(OPENMP_FLAGS -fopenmp=libgomp)
 endif()
 
 # ====== builder ===========
