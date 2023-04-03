@@ -64,11 +64,9 @@ This is designed to be used with tbdisasm trace GTIRB inputs to funifer.
 
 .decl cfg_edge_to_symbol(Src:address,Symbol:symbol,Conditional:symbol,Indirect:symbol,Type:symbol)
 .input cfg_edge_to_symbol
-.output cfg_edge_to_symbol
 
 .decl symbolic_expression(Address:address,Symbol:address,Offset:number)
 .input symbolic_expression
-.output symbolic_expression
 
 .decl symbol_minus_symbol(Address:address,Symbol1:address,Symbol2:address,Offset:number)
 .input symbol_minus_symbol

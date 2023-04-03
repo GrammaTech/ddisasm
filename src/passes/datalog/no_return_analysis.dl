@@ -45,7 +45,6 @@
 
 .decl cfg_edge_to_symbol(src:address,symbol:symbol,conditional:symbol,indirect:symbol,type:symbol)
 .input cfg_edge_to_symbol
-.output cfg_edge_to_symbol
 
 .decl in_scc(scc:scc,index:number,block:address)
 .input in_scc
