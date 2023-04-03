@@ -76,7 +76,6 @@ void DatalogAnalysisPass::analyzeImpl(AnalysisPassResult& Result, const gtirb::M
         // Disassemble with the compiled, synthesized program.
         Program->setNumThreads(ThreadCount);
         bool pruneImdtRels = !WriteSouffleOutputs && DebugDirRoot.empty();
-        Program->setPruneImdtRels(pruneImdtRels);
         try
         {
             Program->runAll("", "", false, pruneImdtRels);
