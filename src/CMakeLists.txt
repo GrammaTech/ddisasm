@@ -582,7 +582,8 @@ target_link_libraries(
           ${Boost_LIBRARIES}
           ${EXPERIMENTAL_LIB}
           ${LIBCPP_ABI}
-          ${DDISASM_EXTRA_LIBS})
+          ${DDISASM_EXTRA_LIBS}
+          ${LIBSTDCXX_FS})
 
 if(DDISASM_ENABLE_TESTS)
   add_subdirectory(tests)
