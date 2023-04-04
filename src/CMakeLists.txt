@@ -212,7 +212,7 @@ function(GENERATE_ARCH_CPP_MANY)
     "${CMAKE_BINARY_DIR}/src/${PARAM_PATH}/*")
   foreach(FILE ${GENERATED_FILES})
     if(NOT EXISTS "${STAGING_PATH}/${FILE}")
-      file(REMOVE "${PARAM_CPP_PATH}/${FILE}")
+      file(REMOVE "${CMAKE_BINARY_DIR}/src/${PARAM_PATH}/${FILE}")
     endif()
   endforeach()
 
