@@ -110,7 +110,7 @@ To build ddisasm from source, the following requirements should be installed:
 - [Capstone](http://www.capstone-engine.org/), version 5.0.0 or later
   - 5.x is not yet released by the Capstone team.
   - GrammaTech builds and tests using the [GrammaTech/capstone](https://github.com/GrammaTech/capstone) fork.
-- [Souffle](https://souffle-lang.github.io), version 2.3
+- [Souffle](https://souffle-lang.github.io), version 2.4
   - Must be configured with support for 64 bit numbers (via `-DSOUFFLE_DOMAIN_64BIT=1` during configuration)
 - [libehp](https://git.zephyr-software.com/opensrc/libehp), version 1.0.0 or higher
 - [LIEF](https://lief.quarkslab.com/), version 0.12.3 or higher
@@ -140,6 +140,14 @@ Use the following options to configure cmake:
  shared library form, the default) if you use the flag
  `-DDDISASM_BUILD_SHARED_LIBS=OFF`.
 
+- You can tell CMake to use ccache with the flag
+  `-DCMAKE_CXX_COMPILER_LAUNCHER=ccache`. This is especially useful
+  when Souffle is configured to generate multiple files.
+
+- For development, you can ask Souffle to generate multiple files per
+  target with `-DDDISASM_GENERATE_MANY=ON`. This results in a slower
+  initial build time, but recompilation will be faster.
+
 Once the dependencies are installed, you can configure and build as
 follows:
 
@@ -148,6 +156,10 @@ $ cmake ./ -Bbuild
 $ cd build
 $ make
 ```
+
+When using `-DDDISASM_GENERATE_MANY=ON`, it is safe to aggressively
+parallelize the build (e.g. `-j$(nproc)`). This is not recommended
+otherwise, as memory usage by the compiler is high.
 
 ### Debug build options
 

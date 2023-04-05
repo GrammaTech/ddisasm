@@ -33,6 +33,8 @@ option(DDISASM_MIPS_32 "Whether or not MIPS support is built." ON)
 option(DDISASM_X86_32 "Whether or not x86_32 support is built." ON)
 option(DDISASM_X86_64 "Whether or not x86_64 support is built." ON)
 option(DDISASM_SOUFFLE_PROFILING "Whether to generate Souffle profiles." OFF)
+option(DDISASM_GENERATE_MANY "Whether to have Souffle generate multiple files."
+       OFF)
 
 if(NOT DEFINED DDISASM_BUILD_REVISION)
   execute_process(

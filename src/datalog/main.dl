@@ -137,6 +137,7 @@ Convert between input_reg and register with arch.reg_map
 // metadata
 .decl entry_point(ea:address)
 .input entry_point
+.output entry_point
 
 .decl endianness(End:symbol) // Either LE or BE
 .input endianness
@@ -207,6 +208,7 @@ binary_isa(ArchName):-
           op1:operand_code,op2:operand_code,op3:operand_code,op4:operand_code,
           immOffset:unsigned,displacementOffset:unsigned)
 .input instruction
+.output instruction
 
 /**
  The instruction at EA has capstone's cs_arm.writeback set.
@@ -254,6 +256,7 @@ Index: The index of the register in bitfield (starts with 0)
 
 .decl op_immediate(code:operand_code,offset:number)
 .input op_immediate
+.output op_immediate
 
 .decl op_special(code:operand_code,type:symbol,value:symbol)
 .input op_special
@@ -261,6 +264,7 @@ Index: The index of the register in bitfield (starts with 0)
 .decl op_indirect(code:operand_code,reg1:input_reg,reg2:input_reg,reg3:input_reg,
         multiplier:number,offset:number,size_value:unsigned)
 .input op_indirect
+.output op_indirect
 
 /**
 The operand identified by Index should be shifted with an immediate.

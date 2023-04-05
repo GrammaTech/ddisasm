@@ -21,7 +21,7 @@ RUN apt-get -y update \
       sqlite3 \
       zlib1g-dev
 
-RUN git clone -b 2.3 https://github.com/souffle-lang/souffle && \
+RUN git clone -b 2.4 https://github.com/souffle-lang/souffle && \
     cd souffle && \
     cmake . -Bbuild -DCMAKE_BUILD_TYPE=Release -DSOUFFLE_USE_CURSES=0 -DSOUFFLE_USE_SQLITE=0 -DSOUFFLE_DOMAIN_64BIT=1 && \
     cd build && \
@@ -167,8 +167,8 @@ COPY .git/ /usr/local/src/ddisasm/.git
 COPY doc/ /usr/local/src/ddisasm/doc/
 COPY src/ /usr/local/src/ddisasm/src/
 COPY README.md CMakeLists.txt CMakeLists.googletest version.txt /usr/local/src/ddisasm/
-RUN cmake -DCMAKE_BUILD_TYPE=Release /usr/local/src/ddisasm -B/usr/local/src/ddisasm/build
-RUN cmake --build /usr/local/src/ddisasm/build -j4 --target all install
+RUN cmake -DCMAKE_BUILD_TYPE=Release -DDDISASM_GENERATE_MANY /usr/local/src/ddisasm -B/usr/local/src/ddisasm/build
+RUN cmake --build /usr/local/src/ddisasm/build -j$(nproc) --target all install
 
 # ------------------------------------------------------------------------------
 # Final image

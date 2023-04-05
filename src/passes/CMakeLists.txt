@@ -68,8 +68,9 @@ add_custom_command(
          # name. Change directory and use a relative path so the name does not
          # depend on build location.
   WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/passes"
-  COMMAND ${SOUFFLE} ${NO_RETURN_DATALOG_MAIN} -g souffle_no_return.cpp -jauto
-          ${SOUFFLE_PREPROCESSOR_ARG}
+  COMMAND
+    ${SOUFFLE} ${NO_RETURN_DATALOG_MAIN} -g souffle_no_return.cpp -N
+    souffle_no_return -jauto ${SOUFFLE_PREPROCESSOR_ARG}
   DEPENDS ${NO_RETURN_DATALOG_SOURCES})
 
 add_library(no_return_pass STATIC NoReturnPass.cpp ${NO_RETURN_CPP})
@@ -111,8 +112,10 @@ add_custom_command(
          # name. Change directory and use a relative path so the name does not
          # depend on build location.
   WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/passes"
-  COMMAND ${SOUFFLE} ${FUNCTION_INFERENCE_DATALOG_MAIN} -g
-          souffle_function_inference.cpp -jauto ${SOUFFLE_PREPROCESSOR_ARG}
+  COMMAND
+    ${SOUFFLE} ${FUNCTION_INFERENCE_DATALOG_MAIN} -g
+    souffle_function_inference.cpp -N souffle_function_inference -jauto
+    ${SOUFFLE_PREPROCESSOR_ARG}
   DEPENDS ${FUNCTION_INFERENCE_DATALOG_SOURCES})
 
 add_library(function_inference_pass STATIC FunctionInferencePass.cpp
