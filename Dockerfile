@@ -167,7 +167,7 @@ COPY .git/ /usr/local/src/ddisasm/.git
 COPY doc/ /usr/local/src/ddisasm/doc/
 COPY src/ /usr/local/src/ddisasm/src/
 COPY README.md CMakeLists.txt CMakeLists.googletest version.txt /usr/local/src/ddisasm/
-RUN cmake -DCMAKE_BUILD_TYPE=Release -DDDISASM_GENERATE_MANY /usr/local/src/ddisasm -B/usr/local/src/ddisasm/build
+RUN cmake -DCMAKE_BUILD_TYPE=Release -DDDISASM_GENERATE_MANY=ON /usr/local/src/ddisasm -B/usr/local/src/ddisasm/build
 RUN cmake --build /usr/local/src/ddisasm/build -j$(nproc) --target all install
 
 # ------------------------------------------------------------------------------
