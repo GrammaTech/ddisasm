@@ -21,41 +21,8 @@
 //
 //===----------------------------------------------------------------------===//
 /**
-Define a set predicates related to symbols for ARM32.
+ARM32 architecture-specific rules for symbolization
 */
-
-/**
-Mapping symbol names from elf: e.g., $t, $a, $d, etc.
-
-See https://sourceware.org/binutils/docs/as/ARM-Mapping-Symbols.htm
-*/
-.decl thumb_sym(Name:symbol)
-.decl arm_sym(Name:symbol)
-.decl data_sym(Name:symbol)
-
-thumb_sym("$t").
-thumb_sym(Name):-
-    defined_symbol(_,_,_,_,_,_,_,_,Name),
-    // $t.n where n is a number.
-    substr(Name,0,3) = "$t.".
-    // TODO: check the last bits are a number.
-    // e.g., substr(Name,3,len-3)
-
-arm_sym("$a").
-arm_sym(Name):-
-    defined_symbol(_,_,_,_,_,_,_,_,Name),
-    // $a.n where n is a number.
-    substr(Name,0,3) = "$a.".
-    // TODO: check the last bits are a number.
-    // e.g., substr(Name,3,len-3)
-
-data_sym("$d").
-data_sym(Name):-
-    defined_symbol(_,_,_,_,_,_,_,_,Name),
-    // $d.n where n is a number.
-    substr(Name,0,3) = "$d.".
-    // TODO: check the last bits are a number.
-    // e.g., substr(Name,3,len-3)
 
 avoid_symbols(Name):-
     (
@@ -137,89 +104,6 @@ symbolic_operand_point(EA,Imm_index,-1+Bonus,"unlikely to have symbolic operand"
         Dest = 0,
         Bonus = -4
     ).
-
-/**
-In case of movw/movt pair, which is basically a bitwise OR of two immediates,
-the destination address needs to be properly set.
-*/
-may_have_symbolic_immediate(Src,Dest):-
-     binary_type("EXEC"),
-     (
-         instruction_get_operation(Src,Operation),
-         !arch.logic_operation(Operation),
-         Operation != "MOVW",
-         Operation != "MOVT",
-         instruction_immediate_offset(Src,Index,_,_),
-         instruction_get_op(Src,Index,Op),
-         op_immediate(Op,Imm),
-         Dest = as(Imm,address)
-         ;
-         movw_movt_pair(Src,_,Value),
-         Dest = as(Value,address)
-     ).
-
-/**
-ldr Reg1, .L0
-add Reg2, Reg1, pc
-
-Uses `straight_line_def_used`, which is a weaker version of `def_used` that can
-be used before code inference.
-*/
-.decl init_ldr_add_pc(EA_ldr:address,Size:unsigned,Reg1:register,LitPoolAddr:address,EA_add_pc:address,Reg2:register)
-
-init_ldr_add_pc(EA_ldr,Size,Reg1,LitPoolAddr,EA_add_pc,Reg2):-
-    litpool_ref(EA_ldr,EA_ldr,LitPoolAddr,0,Size,_),
-    instruction_get_operation(EA_ldr,Operation),
-    arch.load_operation(Operation),
-    straight_line_def_used(EA_ldr,Reg1,EA_add_pc,_),
-    arch.reg_reg_arithmetic_operation(EA_add_pc,Reg2,Reg1,PC,1,0),
-    arch.pc_reg(PC).
-
-/**
-This rule is shared by `init_symbol_minus_symbol_candidate_arm` and
-`cinf_symbol_minus_symbol_candidate_arm`.
-*/
-.decl symbol_minus_symbol_candidate_arm(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned,Offset:number) inline
-
-symbol_minus_symbol_candidate_arm(Addr,Size,EA_add_pc,Dest,Scale,Offset):-
-    arch.pc_relative_disp(EA_add_pc,Disp),
-    data_word(Addr,Size,Diff),
-    Mode = EA_add_pc band 1,
-    Offset = -1 * Disp,
-    (
-        !relocation(Addr,_,_,_,_,_,_),
-        Dest = EA_add_pc + as(Disp + Diff,address) - Mode
-        ;
-        relocation(Addr,"REL32",Symbol,_,SymbolIndex,_,"REL"),
-        symbol(Base,_,_,_,_,_,_,SymbolIndex,Symbol),
-        // ((S + A) | T) - P
-        S = as(Base,unsigned),
-        A = as(Diff,unsigned),
-        P = as(Addr,unsigned),
-        T = as(Base band 1,unsigned),
-        Value = ((S + A) bor T) - P,
-        Dest = (EA_add_pc + as(Disp,address) - Mode) + as(Value,address)
-    ),
-    Scale = 1.
-
-/**
-A weaker version of `cinf_symbol_minus_symbol_candidate_arm` that can be used
-before code inference.
-see the comment of `cinf_symbol_minus_symbol_candidate_arm`.
-*/
-.decl init_symbol_minus_symbol_candidate_arm(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned,Offset:number)
-
-init_symbol_minus_symbol_candidate_arm(Addr,Size,EA_add_pc,Dest,Scale,Offset):-
-    init_ldr_add_pc(_,Size,Reg,Addr,EA_add_pc,Reg),
-    symbol_minus_symbol_candidate_arm(Addr,Size,EA_add_pc,Dest,Scale,Offset).
-
-/**
-When a block address is referenced only by a symbol-symbol literal pool, make
-sure the target is treated as a separate block by adding it as basic_target.
-E.g., asterisk: 0x353e1
-*/
-basic_target(EA):-
-    init_symbol_minus_symbol_candidate_arm(_,_,_,EA,_,_).
 
 /**
 ldr Reg1, .L0
@@ -306,6 +190,33 @@ symbolic_operand_candidate(EA,OpIndex,RefAddr,"data"):-
     !function_symbol(LitPoolAddr,_),
     data_segment(Begin,End),
     LitPoolAddr >= Begin, LitPoolAddr <= End.
+
+/**
+adr r1, Label
+add r, r1, r2, lsl #4
+mov pc, r   or  bx r
+
+In the above pattern, Label is supposed to be code rather than data
+(literal pools).
+Therefore, it should not be treated as `litpool_ref`, whose target is data.
+This predicate is used for excluding such case from `litpool_ref`.
+Also, the target should not be aligned.
+*/
+.decl pc_relative_for_jump_table(EA:address)
+
+pc_relative_for_jump_table(EA_adr):-
+    op_shifted(EA_add,3,4,"LSL"),
+    substr(AddOperation,0,3) = "ADD",
+    instruction_get_operation(EA_add,AddOperation),
+    reg_def_use.def_used(EA_add,Reg,EA_jump,_),
+    arch.jump(EA_jump),
+    instruction_get_operation(EA_jump,Operation),
+    !arch.load_word_operation(Operation),
+    arch.jump_operation_op_index(Operation,Index),
+    instruction_get_op(EA_jump,Index,DestOp),
+    op_regdirect_contains_reg(DestOp,Reg),
+    reg_def_use.def_used(EA_adr,Reg1,EA_add,_),
+    arch.pc_relative_addr(EA_adr,Reg1,_).
 
 symbolic_operand_candidate(EA,OpIndex,Dest,Type):-
     code(EA),
@@ -440,6 +351,30 @@ value_reg(EA,Reg,EA,"NONE",0,as(Val,number),1):-
     track_register(Reg),
     data_word(Symbol2,Size,Val).
 
+/**
+Compute the value loaded from a literal pool.
+  - ldr Reg, [BaseReg, Off]
+  - ldrd Reg1, Reg2, [BaseReg, Off]
+  - ldm BaseReg, {Reg1,...,RegN}
+*/
+value_reg(EA,Reg,EA,"NONE",0,Val,1):-
+    litpool_ref(_,EA,RefAddr,LitPoolOffset,_,_),
+    arch.load(EA,_,_,Reg,BaseReg,_,_,RegOffset),
+    track_register(Reg),
+    instruction_memory_access_size(EA,_,OpSize),
+    Size = min(OpSize,4),
+    // arch.load includes PC-relative displacement in RegOffset for
+    // PC-relative loads, and litpool_ref includes it in LitPoolOffset,
+    // so we must compensate for the double-count.
+    (
+        arch.pc_reg(BaseReg), arch.pc_relative_disp(EA,Adjustment)
+        ;
+        !arch.pc_reg(BaseReg), Adjustment = 0
+    ),
+    Addr = RefAddr + LitPoolOffset + as(RegOffset-Adjustment,unsigned),
+    !relocation(Addr,_,_,_,_,_,_),
+    data_word(Addr,Size,Val).
+
 //  => equations: [LitPoolAddr1] = foo - (C)
 //                [LitPoolAddr2] = bar - foo
 //
@@ -497,3 +432,103 @@ impossible_jump_target(EA):-
     arch.it_conditional(EA,IT),
     code_in_block(EA,_),
     code_in_block(IT,_).
+
+/**
+ArchInfo auxdata inferred by the presence of specific instructions or patterns.
+*/
+.decl inferred_arch_info(Key:symbol,Value:symbol)
+.output inferred_arch_info
+
+// "System" is not a true hardware profile, but represents
+// Application OR RealTime profiles.
+
+// "blx label" is not possible on the "Microcontroller" profile.
+inferred_arch_info("Profile","System"):-
+    !arch_info("Profile",_),
+    code_in_refined_block(EA,_),
+    instruction_get_operation(EA,Operation),
+    substr(Operation,0,3) = "BLX",
+    arch.jump_operation_op_index(Operation,OpIndex),
+    instruction_get_op(EA,OpIndex,Op),
+    op_immediate(Op,_).
+
+// ARM code is not possible on the "Microcontroller" profile.
+inferred_arch_info("Profile","System"):-
+    !arch_info("Profile",_),
+    code_in_refined_block(EA,_),
+    EA band 1 = 0.
+
+inferred_arch_info("Profile","Microcontroller"):-
+    !arch_info("Profile",_),
+    code_in_refined_block(EA,_),
+    instruction_get_operation(EA,Operation),
+    (
+        // The following instructions are only decoded with CS_MODE_MCLASS.
+        // TODO: *some* MRS/MSR can be decoded without CS_MODE_MCLASS. We
+        // should refine this rule to only match the ones that cannot.
+        substr(Operation,0,3) = "MRS";
+        substr(Operation,0,3) = "MSR"
+    ).
+
+// LDCL is not available on ARMv8+
+// It could be v7 or anything older, but we guess v7 to provide maximum
+// compatibility.
+inferred_arch_info("Arch","v7"):-
+    !arch_info("Arch",_),
+    code_in_refined_block(EA,_),
+    instruction_get_operation(EA,"LDCL").
+
+// VLDR: label must be aligned on a word boundary within -/+1KB of the
+// current instruction.
+alignment(LitPoolAddr,4):-
+    litpool_ref(_,EA_ldr,LitPoolAddr,0,_,_),
+    instruction_get_operation(EA_ldr,"VLDR"),
+    instruction_get_dest_op(EA_ldr,_,DestReg),
+    op_regdirect_contains_reg(DestReg,Reg),
+    // Only align the first literal pool for consecutive pools.
+    // If Dest reg is S, one word; two words otherwise.
+    arch.float_reg(Reg,Disp),
+    (
+        !litpool_ref(_,_,LitPoolAddr-Disp,0,_,_)
+        ;
+        litpool_ref(_,EA0,LitPoolAddr-Disp,0,_,_),
+        !instruction_get_operation(EA0,"VLDR")
+    ).
+
+data_object_point(DataEA,Size,"symbol",2,"arm jump-table3"),
+data_object_candidate(DataEA,Size,"symbol"):-
+    arm_jump_table_data_block(EA_jmp,TableStart,Block,BlockSize),
+    arm_jump_table_candidate(EA_jmp,_,TableStart,DataEA,Size,_,_,"absolute",_),
+    Block <= DataEA, DataEA+Size <= Block+BlockSize.
+
+data_object_point(DataEA,Size,"symbol-symbol",2,"arm jump-table3"),
+data_object_candidate(DataEA,Size,"symbol-symbol"):-
+    arm_jump_table_data_block(EA_jmp,TableStart,Block,BlockSize),
+    arm_jump_table_candidate(EA_jmp,_,TableStart,DataEA,Size,_,_,Type,_),
+    Block <= DataEA, DataEA+Size <= Block+BlockSize,
+    (
+        Type = "rel_unsigned";
+        Type = "rel_signed"
+    ).
+
+jump_table_start(EA,Size,TableStart,Reference,1):-
+    arm_jump_table_candidate(EA,Reference,TableStart,DataEA,Size,_,_,_,_),
+    jump_table_candidate_refined(EA,DataEA,_).
+
+relative_jump_table_entry_candidate(DataEA,TableStart,Size,Reference,TargetAddr,as(Scale,number),Offset):-
+    arm_jump_table_candidate_start(_,EA,_,Reference,TableStart,Size,_,Scale,NeedsOffset),
+    // Find the first (valid) entry - not always at TableStart!
+    DataEA = min DataEA : {
+        arm_jump_table_candidate(EA,Reference,TableStart,DataEA,Size,_,_,_,Scale)
+    },
+    jump_table_candidate_refined(EA,DataEA,TargetAddr),
+    Offset = as(as(NeedsOffset,unsigned) band as(TargetAddr,unsigned),number).
+
+relative_jump_table_entry_candidate(DataEA,TableStart,Size,Reference,TargetAddr,as(Scale,number),Offset):-
+    // ensure the previous entry is a candidate.
+    relative_jump_table_entry_candidate(PrevDataEA,TableStart,Size,Reference,_,as(Scale,number),_),
+    DataEA = PrevDataEA + Size,
+    arm_jump_table_candidate_start(_,EA,_,Reference,TableStart,Size,_,Scale,NeedsOffset),
+    arm_jump_table_candidate(EA,Reference,TableStart,DataEA,Size,_,_,_,Scale),
+    jump_table_candidate_refined(EA,DataEA,TargetAddr),
+    Offset = as(as(NeedsOffset,unsigned) band as(TargetAddr,unsigned),number).

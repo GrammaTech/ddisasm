@@ -97,6 +97,9 @@ Convert between input_reg and register with arch.reg_map
 #elif defined(ARCH_ARM32)
     #include "arch/arm_binaries.dl"
     #include "arch/arm32_binaries.dl"
+    #include "arch/arm32_code_inference.dl"
+    #include "arch/arm32_jump_tables.dl"
+    #include "arch/arm32_symbolization.dl"
 #elif defined(ARCH_IA32)
     #include "arch/x86_32_symbolization.dl"
 #elif defined(ARCH_AMD64)

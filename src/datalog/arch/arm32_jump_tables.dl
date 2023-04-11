@@ -25,38 +25,6 @@ Define a set predicates to detect jump-tables for ARM32
 */
 
 /**
-Represents the first entry of an ARM jump table.
-
-Attributes:
-
-* EA_access: address of instruction that accesses the jump table entries
-* EA_jump: address of jump instruction
-* RegIndex: register used for indexing into the jumptable. May be "NONE" if the index reg is pre-multiplied.
-* Reference: relative base for offsets (if the Type is rel_*, 0 otherwise)
-* TableStart: address of first table entry
-* EntrySize: size of entries
-* Type: "absolute", "rel_signed", or "rel_unsigned"
-* Offset: "1" if the jump table pattern requires "+1" for symbol-symbol Thumb targets in symbolic expression
-*/
-.decl arm_jump_table_candidate_start(EA_access:address,EA_jump:address,RegIndex:reg_nullable,Reference:address,TableStart:address,EntrySize:unsigned,Type:symbol,Scale:unsigned,Offset:number)
-
-/**
-Represents an entry in an ARM jump table.
-
-Attributes:
-
-* EA_jump: address of jump instruction
-* Reference: relative base for offsets (if the Type is rel_*, 0 otherwise)
-* TableStart: address of first table entry
-* EntryAddr: address of table entry
-* EntrySize: size of entries
-* TargetAddr: resolved target of the jump
-* TableLimit: first address that cannot be part of the jump table
-* Type: "absolute", "rel_signed", or "rel_unsigned"
-*/
-.decl arm_jump_table_candidate(EA_jump:address,Reference:address,TableStart:address,EntryAddr:address,EntrySize:unsigned,TargetAddr:address,TableLimit:address,Type:symbol,Scale:unsigned)
-
-/**
 Instructions in the same block as the jumptable's jump instruction.
 */
 .decl arm_jump_table_block_instruction(EA:address,EA_jump:address)
@@ -337,11 +305,6 @@ arm_jump_table_cmp_limit(Jmp,TableStart,Immediate+Offset+1):-
     straight_line_def_used(Def,CmpIndexReg,Str,_),
     arch.store(Str,_,_,CmpIndexReg,BaseReg,"NONE",_,StackPos).
 
-/**
-Addresses at which jump table data blocks should be split
-*/
-.decl arm_jump_table_data_block_limit(EA_jmp:address,TableStart:address,Limit:address)
-
 // Generate a single block with the cmp-derived limit, if we have one.
 arm_jump_table_data_block_limit(EA_jmp,TableStart,TableStart+as(Count,unsigned)*Size):-
     arm_jump_table_candidate(EA_jmp,_,TableStart,_,Size,_,_,_,_),
@@ -403,41 +366,3 @@ data_block_candidate(Block,Size):-
 
 jump_table_candidate(EA,DataEA,DataSize,TargetEA):-
     arm_jump_table_candidate(EA,_,_,DataEA,DataSize,TargetEA,_,_,_).
-
-data_object_point(DataEA,Size,"symbol",2,"arm jump-table3"),
-data_object_candidate(DataEA,Size,"symbol"):-
-    arm_jump_table_data_block(EA_jmp,TableStart,Block,BlockSize),
-    arm_jump_table_candidate(EA_jmp,_,TableStart,DataEA,Size,_,_,"absolute",_),
-    Block <= DataEA, DataEA+Size <= Block+BlockSize.
-
-data_object_point(DataEA,Size,"symbol-symbol",2,"arm jump-table3"),
-data_object_candidate(DataEA,Size,"symbol-symbol"):-
-    arm_jump_table_data_block(EA_jmp,TableStart,Block,BlockSize),
-    arm_jump_table_candidate(EA_jmp,_,TableStart,DataEA,Size,_,_,Type,_),
-    Block <= DataEA, DataEA+Size <= Block+BlockSize,
-    (
-        Type = "rel_unsigned";
-        Type = "rel_signed"
-    ).
-
-jump_table_start(EA,Size,TableStart,Reference,1):-
-    arm_jump_table_candidate(EA,Reference,TableStart,DataEA,Size,_,_,_,_),
-    jump_table_candidate_refined(EA,DataEA,_).
-
-relative_jump_table_entry_candidate(DataEA,TableStart,Size,Reference,TargetAddr,as(Scale,number),Offset):-
-    arm_jump_table_candidate_start(_,EA,_,Reference,TableStart,Size,_,Scale,NeedsOffset),
-    // Find the first (valid) entry - not always at TableStart!
-    DataEA = min DataEA : {
-        arm_jump_table_candidate(EA,Reference,TableStart,DataEA,Size,_,_,_,Scale)
-    },
-    jump_table_candidate_refined(EA,DataEA,TargetAddr),
-    Offset = as(as(NeedsOffset,unsigned) band as(TargetAddr,unsigned),number).
-
-relative_jump_table_entry_candidate(DataEA,TableStart,Size,Reference,TargetAddr,as(Scale,number),Offset):-
-    // ensure the previous entry is a candidate.
-    relative_jump_table_entry_candidate(PrevDataEA,TableStart,Size,Reference,_,as(Scale,number),_),
-    DataEA = PrevDataEA + Size,
-    arm_jump_table_candidate_start(_,EA,_,Reference,TableStart,Size,_,Scale,NeedsOffset),
-    arm_jump_table_candidate(EA,Reference,TableStart,DataEA,Size,_,_,_,Scale),
-    jump_table_candidate_refined(EA,DataEA,TargetAddr),
-    Offset = as(as(NeedsOffset,unsigned) band as(TargetAddr,unsigned),number).
