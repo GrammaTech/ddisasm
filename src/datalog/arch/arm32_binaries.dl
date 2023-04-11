@@ -94,7 +94,8 @@ direct_call(EA,Dest):-
     instruction_immediate_offset(EA,_,_,_),
     instruction_has_relocation(EA,Rel),
     relocation(Rel,_,_,_,SymbolIndex,_,_),
-    defined_symbol(Dest0,_,_,_,_,_,_,SymbolIndex,_),
+    relocation_active_symbol_table(SymbolTable),
+    defined_symbol(Dest0,_,_,_,_,_,SymbolTable,SymbolIndex,_),
     instruction_get_operation(EA,Operation),
     (
         contains("X",Operation),
