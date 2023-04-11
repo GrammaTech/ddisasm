@@ -308,14 +308,14 @@ pc_relative_for_jump_table(EA_adr):-
     op_shifted(EA_add,3,4,"LSL"),
     substr(AddOperation,0,3) = "ADD",
     instruction_get_operation(EA_add,AddOperation),
-    straight_line_def_used(EA_add,Reg,EA_jump,_),
+    reg_def_use.def_used(EA_add,Reg,EA_jump,_),
     arch.jump(EA_jump),
     instruction_get_operation(EA_jump,Operation),
     !arch.load_word_operation(Operation),
     arch.jump_operation_op_index(Operation,Index),
     instruction_get_op(EA_jump,Index,DestOp),
     op_regdirect_contains_reg(DestOp,Reg),
-    straight_line_def_used(EA_adr,Reg1,EA_add,_),
+    reg_def_use.def_used(EA_adr,Reg1,EA_add,_),
     arch.pc_relative_addr(EA_adr,Reg1,_).
 
 
@@ -449,6 +449,7 @@ block_points(EA_entry,"code",Size,0,7,"arm: plt-block"):-
     unresolved_block(EA_entry,"code",Size),
     plt_entry_arm_candidate(EA_entry,_,_,_).
 
+
 /**
 E.g.,
   bx pc // thumb
@@ -457,16 +458,23 @@ E.g.,
   add ip, ip, #16, #20
   ldr pc, [ip, #2640]
 */
-block_points(EA-3,"code",Size,0,7,"arm: plt-block: bx pc"),
-plt_block(EA-3,Function):-
+.decl plt_bx_pc(EA:address,Function:symbol)
+
+plt_bx_pc(EA-3,Function):-
     plt_entry_arm_candidate(EA,_,Function,_),
     instruction_get_operation(EA-3,Operation2), // thumb
     arch.jump_operation_op_index(Operation2,TargetOpIndex),
     instruction_get_op(EA-3,TargetOpIndex,TargetOp),
     op_regdirect_contains_reg(TargetOp,PC),
-    arch.pc_reg(PC),
-    block_candidate_boundaries(EA-3,"code",Start,End),
-    Size = End - Start.
+    arch.pc_reg(PC).
+
+block_points(EA,"code",End-Start,0,7,"arm: plt-block: bx pc"):-
+    plt_bx_pc(EA,_),
+    block_candidate_boundaries(EA,"code",Start,End).
+
+
+plt_block(EA,Function):-
+    plt_bx_pc(EA,Function).
 
 /**
 EA_entry: The address of the PLT entry
