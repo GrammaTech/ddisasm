@@ -112,7 +112,7 @@ To build ddisasm from source, the following requirements should be installed:
   - GrammaTech builds and tests using the [GrammaTech/capstone](https://github.com/GrammaTech/capstone) fork.
 - [Souffle](https://souffle-lang.github.io), version 2.4
   - Must be configured with support for 64 bit numbers (via `-DSOUFFLE_DOMAIN_64BIT=1` during configuration)
-- [libehp](https://git.zephyr-software.com/opensrc/libehp) or GrammaTech's [fork]((https://github.com/GrammaTech/libehp), version 1.0.0 or higher
+- [libehp](https://git.zephyr-software.com/opensrc/libehp) or GrammaTech's [mirror]((https://github.com/GrammaTech/libehp), version 1.0.0 or higher
 - [LIEF](https://lief.quarkslab.com/), version 0.12.3 or higher
 
 Note that these versions are newer than what your package manager may provide
