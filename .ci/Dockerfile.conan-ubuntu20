@@ -62,10 +62,11 @@ RUN winepath
 ENV WINEPATH="/usr/lib/gcc/i686-w64-mingw32/9.3-win32"
 
 # Install Python dependencies
-RUN python3 -m pip install --no-cache-dir \
+RUN python3 -m pip install --no-cache-dir --upgrade pip && \
+    python3 -m pip install --no-cache-dir \
     pyyaml \
     psycopg2-binary \
-    lief==0.12.3
+    lief==0.13.0
 
 COPY --from=UASM /usr/local/bin/uasm /usr/local/bin/uasm
 COPY etc/sstrip /usr/bin/sstrip

@@ -75,7 +75,7 @@ class DdisasmConan(Properties, ConanFile):
     settings = ("os", "compiler", "build_type", "arch")
     options = {"run_tests": [True, False, None]}
 
-    lief_version = "0.12.3"
+    lief_version = "0.13.0"
     libehp_version = "0.1.1-gt3"
     souffle_version = "2.4"
     build_requires = (

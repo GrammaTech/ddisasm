@@ -40,7 +40,7 @@ RUN apt-get -y update \
       git \
       python3
 
-RUN git clone -b 0.12.3 --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF
+RUN git clone -b 0.13.0 --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF
 RUN cmake -DLIEF_PYTHON_API=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF /usr/local/src/LIEF -B/usr/local/src/LIEF/build
 RUN cmake --build /usr/local/src/LIEF/build -j4 --target all install
 

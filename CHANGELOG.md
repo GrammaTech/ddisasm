@@ -21,6 +21,7 @@
   for ddisasm.
 * Utilize Souffle's feature to prune intermediate relations to reduce ddisasm's
   peak memory usage; processing large binaries can use up to ~20% less memory.
+* Update LIEF to 0.13.0
 
 # 1.5.6
 * Discover ARM Thumb blocks at section start in stripped binaries.

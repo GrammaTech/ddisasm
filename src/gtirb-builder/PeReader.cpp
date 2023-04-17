@@ -220,9 +220,9 @@ void PeReader::addAuxData()
     }
 
     // Add `overlay` aux data table.
-    if(std::vector<uint8_t> Overlay = Pe->overlay(); Overlay.size() > 0)
+    if(auto Overlay = Pe->overlay(); Overlay.size() > 0)
     {
-        Module->addAuxData<gtirb::schema::Overlay>(std::move(Overlay));
+        Module->addAuxData<gtirb::schema::Overlay>(std::vector(Overlay.begin(), Overlay.end()));
     }
 }
 
@@ -329,7 +329,7 @@ std::vector<auxdata::PeResource> PeReader::resources()
                         Tmp = ResourceDir->characteristics();
                         writeToStream(ss, Tmp, 4);
 
-                        std::vector<uint8_t> DataFromLIEF = DataNode->content();
+                        auto DataFromLIEF = DataNode->content();
 
                         // LIEF ResourceData node 'offset' member is the offset in the file image of
                         // the resource data.  We need to identify it in the byte-intervals via EA.

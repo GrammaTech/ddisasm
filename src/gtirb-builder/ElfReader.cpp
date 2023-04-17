@@ -123,7 +123,7 @@ void ElfReader::resurrectSections()
         S->addFlag(gtirb::SectionFlag::Writable);
         S->addFlag(gtirb::SectionFlag::Initialized);
 
-        std::vector<uint8_t> Bytes = Elf->get_content_from_virtual_address(Addr, Size);
+        auto Bytes = Elf->get_content_from_virtual_address(Addr, Size);
         S->addByteInterval(*Context, gtirb::Addr(Addr), Bytes.begin(), Bytes.end(), Size,
                            Bytes.size());
 
@@ -169,13 +169,10 @@ void ElfReader::resurrectSections()
         GotAddr = It->second;
         GotSize = Size - (GotAddr - Addr);
 
-        std::vector<uint8_t> Bytes = Elf->get_content_from_virtual_address(GotAddr, GotSize);
-        std::vector<uint8_t> BytesCopy = Bytes;
-        std::reverse(BytesCopy.begin(), BytesCopy.end());
+        auto Bytes = Elf->get_content_from_virtual_address(GotAddr, GotSize);
         uint64_t BssRdistance = std::distance(
-            BytesCopy.begin(),
-            find_if(BytesCopy.begin(), BytesCopy.end(), [](auto x) { return x != 0; }));
-        BssDistance = BytesCopy.size() - BssRdistance;
+            Bytes.rbegin(), find_if(Bytes.rbegin(), Bytes.rend(), [](auto x) { return x != 0; }));
+        BssDistance = Bytes.size() - BssRdistance;
 
         GotS->addByteInterval(*Context, gtirb::Addr(GotAddr), Bytes.begin(), Bytes.end(),
                               BssDistance, Bytes.size() - BssRdistance);
@@ -197,7 +194,7 @@ void ElfReader::resurrectSections()
 
         uint64_t DataSize = GotAddr - Addr;
 
-        std::vector<uint8_t> DataBytes = Elf->get_content_from_virtual_address(Addr, DataSize);
+        auto DataBytes = Elf->get_content_from_virtual_address(Addr, DataSize);
         DataS->addByteInterval(*Context, gtirb::Addr(Addr), DataBytes.begin(), DataBytes.end(),
                                DataSize, DataBytes.size());
 
@@ -219,8 +216,7 @@ void ElfReader::resurrectSections()
             DataS2->addFlag(gtirb::SectionFlag::Readable);
             DataS2->addFlag(gtirb::SectionFlag::Writable);
 
-            std::vector<uint8_t> DataBytes2 =
-                Elf->get_content_from_virtual_address(DataAddr, DataSize2);
+            auto DataBytes2 = Elf->get_content_from_virtual_address(DataAddr, DataSize2);
             DataS2->addByteInterval(*Context, gtirb::Addr(DataAddr), DataBytes2.begin(),
                                     DataBytes2.end(), DataSize2, DataBytes2.size());
 
@@ -242,7 +238,7 @@ void ElfReader::resurrectSections()
     {
         // Find the first address starting consecutive zeros,
         // which is highly likely .bss
-        std::vector<uint8_t> Bytes = Elf->get_content_from_virtual_address(GotAddr, GotSize);
+        auto Bytes = Elf->get_content_from_virtual_address(GotAddr, GotSize);
         if(BssDistance >= 0 && BssDistance < Bytes.size())
         {
             uint64_t BssAddr = GotAddr + BssDistance;
@@ -314,7 +310,7 @@ void ElfReader::resurrectSymbols()
     std::map<std::string, uint64_t> DynamicEntries = getDynamicEntries();
 
     // Extract bytes from STRTAB -------------------------------------
-    std::vector<uint8_t> StrTabBytes;
+    LIEF::span<const uint8_t> StrTabBytes;
     auto It = DynamicEntries.find("STRTAB");
     if(It == DynamicEntries.end())
     {
@@ -367,7 +363,7 @@ void ElfReader::resurrectSymbols()
 
         uint64_t Size = DynSymNum * SymTabEntrySize;
 
-        std::vector<uint8_t> Bytes = Elf->get_content_from_virtual_address(Addr, Size);
+        auto Bytes = Elf->get_content_from_virtual_address(Addr, Size);
         auto Iter = Bytes.begin();
 
         // Extract a string at the given Index in STRTAB
@@ -766,7 +762,7 @@ void ElfReader::buildSections()
             }
 
             uint64_t Size = GnuStackSegment->virtual_size();
-            std::vector<uint8_t> Bytes = Elf->get_content_from_virtual_address(Addr, Size);
+            auto Bytes = Elf->get_content_from_virtual_address(Addr, Size);
             gtirb::ByteInterval *BI = S->addByteInterval(*Context, gtirb::Addr(Addr), Bytes.begin(),
                                                          Bytes.end(), Size, Bytes.size());
             auto DataBlock = gtirb::DataBlock::Create(*Context, Size);
@@ -782,7 +778,7 @@ void ElfReader::buildSections()
     }
 
     // Add `overlay` aux data table.
-    if(std::vector<uint8_t> Overlay = Elf->overlay(); Overlay.size() > 0)
+    if(auto Overlay = Elf->overlay(); Overlay.size() > 0)
     {
         Module->addAuxData<gtirb::schema::Overlay>(std::move(Overlay));
     }
