@@ -119,17 +119,11 @@ def is_padding(node: gtirb.CodeBlock) -> bool:
     return False
 
 
-def check_cfg(module: gtirb.Module) -> int:
+def check_unreachable(module: gtirb.Module) -> int:
     """
-    Determine if a GTIRB module has a CFG with:
-
-    * Unreachable code
-    * Unresolved jumps
-
-    Returns the number of errors found.
+    Check a GTIRB module for unexpected unreachable code
     """
     error_count = 0
-    checked_node_count = 0
 
     for node in module.cfg_nodes:
         if (
@@ -138,7 +132,6 @@ def check_cfg(module: gtirb.Module) -> int:
             or is_padding(node)
         ):
             continue
-        checked_node_count += 1
 
         func = get_func_entry_name(node)
         if len(list(node.incoming_edges)) == 0 and func != "main":
@@ -161,6 +154,23 @@ def check_cfg(module: gtirb.Module) -> int:
                 print("ERROR: unreachable code at", node_str(node))
                 error_count += 1
 
+    return error_count
+
+
+def check_unresolved_branch(module: gtirb.Module) -> int:
+    """
+    Check a GTIRB module for unresolved branches
+    """
+    error_count = 0
+
+    for node in module.cfg_nodes:
+        if (
+            not isinstance(node, gtirb.CodeBlock)
+            or belongs_to_skipped_func(node)
+            or is_padding(node)
+        ):
+            continue
+
         branches = []
 
         for edge in node.outgoing_edges:
@@ -178,11 +188,18 @@ def check_cfg(module: gtirb.Module) -> int:
             print("ERROR: unresolved jump in", node_str(node))
             error_count += 1
 
-    if checked_node_count == 0:
-        print("ERROR: CFG has no nodes")
-        error_count += 1
-
     return error_count
+
+
+def check_cfg_empty(module: gtirb.Module) -> int:
+    """
+    Check if a GTIRB module has an empty CFG
+    """
+    if len(list(module.cfg_nodes)) == 0:
+        print("ERROR: CFG has no nodes")
+        return 1
+
+    return 0
 
 
 def check_main_is_code(module: gtirb.Module) -> int:
@@ -263,18 +280,43 @@ def check_outgoing_edges(module: gtirb.Module) -> int:
     return error_count
 
 
+CHECKS = {
+    "unreachable": check_unreachable,
+    "unresolved_branch": check_unresolved_branch,
+    "cfg_empty": check_cfg_empty,
+    "main_is_code": check_main_is_code,
+    "decode_mode_matches_arch": check_decode_mode_matches_arch,
+    "outgoing_edges": check_outgoing_edges,
+}
+
+
+class NoSuchCheckError(Exception):
+    """Indicates an invalid GTIRB check was specified"""
+
+    pass
+
+
+def run_checks(module: gtirb.Module, selected_checks: List[str]):
+    """
+    Run specified checks
+
+    Raises NoSuchCheckError for unexpected names in selected_checks
+    """
+    error_count = 0
+    for selected_check in selected_checks:
+        if selected_check not in CHECKS:
+            raise NoSuchCheckError(f"No such check: {selected_check}")
+
+        error_count += CHECKS[selected_check](module)
+
+    return error_count
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("path")
 
-    checks = {
-        "cfg": check_cfg,
-        "main_is_code": check_main_is_code,
-        "decode_mode_matches_arch": check_decode_mode_matches_arch,
-        "outgoing_edges": check_outgoing_edges,
-    }
-
-    check_names = list(checks.keys())
+    check_names = list(CHECKS.keys())
     check_names.append("all")
 
     parser.add_argument(
@@ -286,14 +328,8 @@ def main():
     args = parser.parse_args()
 
     module = gtirb.IR.load_protobuf(args.path).modules[0]
-
-    if args.check == "all":
-        error_count = 0
-        for check_func in checks.values():
-            error_count += check_func(module)
-    else:
-        error_count = checks[args.check](module)
-
+    checks = list(CHECKS.keys()) if args.check == "all" else [args.check]
+    error_count = run_checks(module, checks)
     sys.exit(error_count)
 
 
