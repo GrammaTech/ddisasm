@@ -292,6 +292,13 @@ tests:
     test:
       check_cfg: false
 
+  - name: ex_dyn_library2
+    <<: *position-independent
+    binary: fun.so
+    reassemble:
+      compiler: "gcc"
+      flags: ["-m32", "-shared", "-nostartfiles", "-lm"]
+      skip: false
 
   # ----------------------------------------------------------------------------
   # Small C and C++ examples. (stripped)

@@ -228,6 +228,41 @@ def check_decode_mode_matches_arch(module: gtirb.Module) -> int:
     return error_count
 
 
+def check_outgoing_edges(module: gtirb.Module) -> int:
+    """
+    Check outgoing edges for invalid configurations
+    """
+    error_count = 0
+
+    for node in module.cfg_nodes:
+        fallthrough_count = 0
+        direct_call_count = 0
+        direct_jump_count = 0
+
+        for edge in node.outgoing_edges:
+
+            if edge.label.direct and edge.label.type == gtirb.Edge.Type.Call:
+                direct_call_count += 1
+            elif (
+                edge.label.direct and edge.label.type == gtirb.Edge.Type.Branch
+            ):
+                direct_jump_count += 1
+            elif edge.label.type == gtirb.Edge.Type.Fallthrough:
+                fallthrough_count += 1
+
+        if fallthrough_count > 1:
+            print("ERROR: multiple fallthrough from ", node_str(node))
+            error_count += 1
+        if direct_call_count > 1:
+            print("ERROR: multiple direct call from ", node_str(node))
+            error_count += 1
+        if direct_jump_count > 1:
+            print("ERROR: multiple direct jump from ", node_str(node))
+            error_count += 1
+
+    return error_count
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("path")
@@ -236,6 +271,7 @@ def main():
         "cfg": check_cfg,
         "main_is_code": check_main_is_code,
         "decode_mode_matches_arch": check_decode_mode_matches_arch,
+        "outgoing_edges": check_outgoing_edges,
     }
 
     check_names = list(checks.keys())
