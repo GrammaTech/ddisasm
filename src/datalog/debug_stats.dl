@@ -52,6 +52,7 @@ immediate_symbol(EA,Op_index,DestAddr):-
     DestAddr = as(Dest,address).
 
 .decl missed_jump_table(EA_jump:address)
+.output missed_jump_table
 
 missed_jump_table(EA):-
     reg_jump(EA,_),
