@@ -20,12 +20,9 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-
-#include "tls.dl"
-#include "exceptions.dl"
-#include "relocations.dl"
-
-// This module defines predicates and rules specific of ELF binaries
+/**
+This module defines predicates and rules specific of ELF binaries
+*/
 
 .decl elf_section_type(Name:symbol,Code:unsigned)
 
@@ -122,6 +119,7 @@ non_zero_data_section(Name):-
 
 ////////////////////////////////////////////////////////////////////////////
 // detect references  to libraries (calls to plt)
+
 .decl plt_entry(ea:address, function:symbol)
 
 plt_entry(EA,Function):-
@@ -157,107 +155,6 @@ plt_block(Block,Function):-
     Block >= Beg,
     EA < End.
 
-.decl plt_data_reference(ea:address)
-
-plt_data_reference(EA):-
-    plt_block(Dest,_),
-    symbolic_data(EA,_,Dest).
-
-//////////////////////////////////////////////////////////////////////////
-
-/**
-Value of register 'Reg' at address 'EA' is a GOT-relative base reference.
-*/
-.decl reg_has_got(EA:address,Reg:register)
-
-// Identify load PC operations:
-// e.g. (clang)
-//    call  .L1$pb
-// .L1$pb:
-//    pop  REG
-// .Ltmp0:
-//    add  REG, offset _GLOBAL_OFFSET_TABLE_+(.Ltmp0-.L1$pb)
-// e.g. (gcc)
-//    call _x86.get_pc_thunk.REG
-//    add REG, _GLOBAL_OFFSET_TABLE_
-reg_has_got(EA,Reg):-
-    value_reg(EA,Reg,_,"NONE",_,Offset,_),
-    got_section(Name),
-    loaded_section(as(Offset,address),_,Name).
-
-/**
-Address 'EA' is used as a GOT-relative base reference. 'EA' is the beginning of
-either the .got or .got.plt section.
-*/
-.decl got_reference_pointer(EA:address)
-.output got_reference_pointer
-
-got_reference_pointer(EA):-
-    loaded_section(EA,_,".got.plt").
-
-got_reference_pointer(EA):-
-    loaded_section(EA,_,".got"),
-    !loaded_section(_,_,".got.plt").
-
-got_reference(EA,Symbol):-
-    loaded_section(Beg,End,".got"),
-    EA >= Beg, EA < End,
-    relocation(EA,RelType,Symbol,_,_,_,_),
-    RelType != "RELATIVE",
-    !tls_index(EA,_),
-    !tls_descriptor(EA,_),
-    symbol(_,_,_,_,_,_,_,_,Symbol).
-
-got_reference(Got_entry,Symbol):-
-    loaded_section(Beg,End,".got"),
-    Got_entry >= Beg,
-    Got_entry < End,
-    arch.pointer_size(Ptr),
-    symbolic_expr(Got_entry,Ptr,Symbol,_).
-
-/**
-Operand instruction at 'EA' at index 'Index' is a GOT-relative reference to an
-address 'Dest'.
-*/
-.decl got_relative_operand(EA:address,Index:operand_index,Dest:address)
-
-// GOT-relative references consist of a load of the GOT pointer to a register:
-//     call    __x86.get_pc_thunk.ax
-//     add     eax, OFFSET FLAT:_GLOBAL_OFFSET_TABLE_
-// Followed by a use of the register, such as:
-//     lea     edx, .LC0@GOTOFF[eax]
-//     movzx   eax, WORD PTR array@GOTOFF[ebx+eax*2]
-//     movsx   eax, BYTE PTR array@GOTOFF[esi+ebx]
-got_relative_operand(EA,Index,Dest):-
-    reg_has_got(EA_base,Reg),
-    reg_def_use.def_used(EA_base,Reg,EA,Index),
-    instruction_get_op(EA,Index,Op),
-    (
-      op_indirect_mapped(Op,"NONE",Reg,_,_,Offset,_);
-      op_indirect_mapped(Op,"NONE",_,Reg,1,Offset,_)
-    ),
-    Offset != 0,
-    got_reference_pointer(Got),
-    Dest=Got+as(Offset,address).
-
-got_relative_operand(EA3,Index,as(Dest,address)):-
-    reg_has_got(EA1,Reg1),
-    reg_def_use.def_used(EA1,Reg1,EA2,_),
-    arch.reg_reg_arithmetic_operation(EA2,Reg3,Reg1,Reg2,Mult,0),
-    reg_def_use.def_used(EA2,Reg3,EA3,_),
-    op_immediate_and_reg(EA3,_,Reg3,Index,_),
-    value_reg(EA3,Reg3,_,Reg2,Mult,Dest,_).
-
-got_relative_operand(EA,Index,as(Dest,address)):-
-    relocation(EA+DisplacementOffset,"GOTOFF",Symbol,Addend,SymbolIndex,_,_),
-    relocation_adjustment_total(EA+DisplacementOffset,Adjustment),
-    symbol(TargetEA,_,_,_,_,_,_,SymbolIndex,Symbol),
-    Dest = as(TargetEA,number) + Addend + Adjustment,
-    instruction_displacement_offset(EA,Index,DisplacementOffset,_).
-
-symbolic_operand_candidate(EA,Index,Dest,"data"):-
-    got_relative_operand(EA,Index,Dest).
-
 .decl get_pc_thunk(EA:address,Reg:register)
 
 // call    __x86.get_pc_thunk.REG
@@ -275,150 +172,6 @@ get_pc_thunk(EA,Reg):-
     op_indirect_mapped(Op1,"NONE","ESP","NONE",1,0,_),
     arch.return(EA+Size).
 
-//////////////////////////////////////////////////////////////////////////
-// find the main function even if it does not have a symbol
-//
-.decl start_function(ea:address)
-
-start_function(EA):-
-    binary_format("ELF"),
-    function_symbol(EA,"_start").
-
-start_function(Start_location):-
-    binary_format("ELF"),
-    !function_symbol(Start_location,"_start"),
-    entry_point(Start_location).
-
-main_function(EA):-
-    binary_format("ELF"),
-    function_symbol(EA,"main").
-
-/**
- * Decide whether the main function should be inferred.
- */
-.decl do_infer_main_function() inline
-
-do_infer_main_function():-
-    binary_format("ELF"),
-    !binary_type("REL"),
-    !function_symbol(_,"main").
-
-/**
- * Locate where main() is dispatched (i.e., where __libc_start_main is called.)
- */
-.decl inferred_main_dispatch(EA:address)
-
-// Most runtimes dispatch main with the first "call" from the binary entry point.
-inferred_main_dispatch(CallEA):-
-    !binary_isa("X86"),
-    do_infer_main_function(),
-    CallEA = min EA:{
-        start_function(Entry),
-        arch.call(EA,_),
-        code_in_block(EA,_),
-        EA >= Entry
-    }.
-
-// ELF X86-32 may have an additional function call in _start, so we add an
-// additional heuristic that checks for a consecutive HLT instruction.
-inferred_main_dispatch(CallEA):-
-    binary_isa("X86"),
-    do_infer_main_function(),
-    CallEA = min EA:{
-        start_function(Entry),
-        arch.call(EA,_),
-        code_in_block(EA,_),
-        next(EA,HltEA),
-        instruction(HltEA,_,_,"HLT",_,_,_,_,_,_),
-        EA >= Entry
-     }.
-
-/**
-The location and register where the address of main is loaded.
- */
-.decl inferred_main_in_reg(EA:address,Reg:register)
-
-// Most architectures pass main in the first argument register.
-inferred_main_in_reg(EA,Reg):-
-    !binary_isa("X86"),
-    inferred_main_dispatch(EA),
-    arch.integer_reg_param(Reg,1).
-
-// x86_32
-inferred_main_in_reg(Push,Reg):-
-    binary_isa("X86"),
-    inferred_main_dispatch(Call),
-    // Get the value pushed onto the stack as an argument (assumes cdecl).
-    next(Push,Call),
-    instruction_get_operation(Push,"PUSH"),
-    instruction_get_src_op(Push,_,Op),
-    (
-        op_indirect_contains_reg(Op,Reg);
-        op_regdirect_contains_reg(Op,Reg)
-    ).
-
-/**
-* Infer the location of the main function.
-*/
-.decl inferred_main_function(Main_location:address)
-
-inferred_main_function(Main_location):-
-    inferred_main_in_reg(Main_load,Reg),
-    reg_def_use.def_used(EA_def,Reg,Main_load,_),
-    value_reg(EA_def,Reg,_,"NONE",_,Offset,_),
-    Main_location = as(Offset, address),
-    code(Main_location).
-
-inferred_main_function(Main):-
-    inferred_main_in_reg(EA,Reg),
-    instruction_get_op(EA,_,Op),
-    op_indirect_contains_reg(Op,Reg),
-    symbolic_operand(EA,_,Dest,"data"),
-    address_in_data(Dest,Main).
-
-// Inform the use_def analysis that the register is used here as an address.
-reg_def_use.used(EA,Reg,0),
-reg_used_for(EA,Reg,"InferredMain"):-
-    inferred_main_in_reg(EA,Reg).
-
-main_function(Main_location):-
-    inferred_main_function(Main_location).
-
-inferred_special_symbol(EA,"_start","GLOBAL","FUNC","Beg"):-
-    !binary_type("REL"),
-    !symbol(EA,_,"FUNC",_,_,_,_,_,_),
-    start_function(EA).
-
-inferred_special_symbol(EA,"__do_global_dtors_aux","LOCAL","FUNC","Beg"):-
-    function_symbol(EA,"__do_global_dtors_aux").
-
-inferred_special_symbol(EA,"__do_global_dtors_aux","LOCAL","FUNC","Beg"):-
-    !function_symbol(EA,"__do_global_dtors_aux"),
-    function_inference.function_entry(EA),
-    // referenced from .fini_array
-    address_in_data(FiniArray,EA),
-    loaded_section(Beg,End,".fini_array"),
-    FiniArray >= Beg,
-    FiniArray < End,
-    // compare a value in bss with 0 in the first block
-    code_in_refined_block(EA_cmp,EA),
-    instruction(EA_cmp,_,_,"CMP",Op1,_,0,0,_,_),
-    op_immediate(Op1,0),
-    pc_relative_operand(EA_cmp,2,DataRef),
-    bss_section(SectionName),
-    loaded_section(BegData,EndData,SectionName),
-    DataRef >= BegData,
-    DataRef <= EndData.
-
-inferred_special_symbol(EA,"_DYNAMIC","LOCAL","NONE","Beg"):-
-    binary_format("ELF"),
-    !symbol(EA,_,_,_,_,_,_,_,"_DYNAMIC"),
-    loaded_section(EA,_,".dynamic").
-
-inferred_special_symbol(EA,"_GLOBAL_OFFSET_TABLE_","LOCAL","NONE","Beg"):-
-    !symbol(_,_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_"),
-    got_reference_pointer(EA).
-
 no_return_function("abort(@.*)?"):- binary_format("ELF").
 no_return_function("_?exit(@.*)?"):- binary_format("ELF").
 no_return_function("__chk_fail(@.*)?"):- binary_format("ELF").
@@ -427,228 +180,147 @@ no_return_function("__assert_fail(@.*)?"):- binary_format("ELF").
 no_return_function("longjmp(@.*)?"):- binary_format("ELF").
 no_return_function("__clang_call_terminate"):- binary_format("ELF").
 
-////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+// exception inputs
 
-relocation_adjustment(EA,as(Addend,number),"implicit-addend"):-
-    binary_format("ELF"),
-    relocation(EA,Type,_,_,_,_,"REL"),
-    relocation_size(Type,Size),
+/**
+A CIE can be associated to multiple FDEs and it contains information common to all
+of them. 'CieAddr' uniquely identifies the CIE.
+*/
+.decl cie_entry(CieAddr: address,Length:unsigned,CodeAlignmentFactor:unsigned,DataAlignmentFactor:number)
+.input cie_entry
+
+/**
+`cie_encoding` complements `cie_entry` and defines the encodings of the pointers in the FDEs and in the
+LSDAs associated to this CIE.
+*/
+.decl cie_encoding(CieAddr: address,FdeEncoding:unsigned,LsdaEncoding:unsigned)
+.input cie_encoding
+
+/**
+The personality routine associated to a CIE entry. This is the procedure that takes care of unwinding
+the stack and exceptions. For C++ it is typically: '__gxx_personality_v0'.
+*/
+.decl cie_personality(CieAddr:address,Personality:address,PersonalityPos:address,PersonalitySize:unsigned,Encoding:unsigned)
+.input cie_personality
+
+/**
+A FDE entry defines how stack unwinding is done in a region of code from 'start' to 'end'.
+Each FDE points to a parent CIE that contains properties common to multiple FDEs.
+'FdeAddr' and 'Length' determine the location of the FDE entry in the eh_frame section.
+A FDE entry can have 'Lsda' associated that contains exception handling information.
+*/
+.decl fde_entry(FdeAddr: address,Length:unsigned,Cie:address,Start:address,End:address,Lsda:address)
+.input fde_entry
+
+/**
+Ancillary predicate that specifies the actual locations of the symbolic expressions
+in the FDE entry.
+*/
+.decl fde_pointer_locations(addr:address,startLocation:address,endLocation:address,
+                            endSize:unsigned,lsdaLocation:address,lsdaSize:unsigned)
+.input fde_pointer_locations
+
+/**
+The instructions for stack unwinding are encoded into a dwarf program
+formed by a list of instructions. Each FDE corresponds to a region
+in the code and it has its own program. This predicate captures
+one instruction in that program.
+
+- FdeAddr is the address of the FDE and indentifies it uniquely.
+- Index identifies the instruction within the FDE uniquely.
+- Size is the size of the instruction in bytes.
+- InsnAddr is the address where the instruction is located
+- Insn is the actual opcode of the instruction
+- Op1 and Op2 are the operands of the instruction.
+
+*/
+.decl fde_instruction(FdeAddr:address,Index:unsigned,Size:unsigned,InsnAddr:address,Insn:symbol,Op1:number,Op2:number)
+.input fde_instruction
+
+/**
+A LSDA defines the exception information of a region of code (typically a procedure).
+This is located in section '.gcc_except_table'. A LSDA entry contains two main elements
+a callsite table (see `lsda_callsite`) and a type table (see `lsda_type_entry`).
+*/
+.decl lsda(lsdaAddress:address,callsiteTable:address,callsiteTableEncoding:unsigned,callSiteTableLength:unsigned,
+           typeTable:address,typeTableEncoding:unsigned,landingPadBaseAddress: address)
+.input lsda
+
+/**
+Complementary predicate with the locations of the various pointers in a LSDA used for symbolization.
+*/
+.decl lsda_pointer_locations(lsdaAddress:address,typeTablePointerLocation:address,callsiteTablePointerLoc:address)
+.input lsda_pointer_locations
+
+/**
+The range [Start,End) corresponds to the try block
+and 'LandingPad' to the location where the catch block is located.
+'EA_start', 'EA_end' and 'EA_landingPad' a the locations of the symbolic expressions
+in the .gcc_except_table that point to 'Start', 'End' and 'LandingPad' respectively.
+*/
+.decl lsda_callsite(CallSiteTable_address:address,EA_start:address,Start:address,
+    EA_end:address,End:address,
+    EA_landingPad:address,LandingPad:address,EA_endLandindPad:address)
+.input lsda_callsite
+
+/**
+The exception handling mechanism chooses which catch block catches an given exception
+based on the type of the exception. This is done by having references to the types
+which are encoded in the type table.
+A `lsda_type_entry` is an entry in the type table. The "type" is represented as a
+symbolic expression pointing to 'address'.
+*/
+.decl lsda_type_entry(lsdaTypeTableAddress:address,index:unsigned,address:address)
+.input lsda_type_entry
+
+/**
+Address where a function starts according to the ARM exidx table.
+
+This address does not set the low bit for Thumb functions.
+*/
+.decl arm_exidx_entry(FunctionStart:address,CantUnwind:unsigned)
+.input arm_exidx_entry
+
+////////////////////////////////////////////////////////////////////////////
+// basic exception processing
+
+.decl fde_addresses(start:address, end:address)
+
+fde_addresses(Start,End):-
+    fde_entry(_,_,_,Start,End,_).
+
+/**
+FDE start points can on occasion be misaligned with the actual start
+of the function. This has been seen on glibc restore_rt which generates
+code as follows:
+
+.text
+.align 16
+__restore_rt:
+    movl $15, %rax
+    syscall
+*/
+.decl misaligned_fde_start(start:address,start_adjusted:address)
+.output misaligned_fde_start
+
+misaligned_fde_start(Start,StartAligned):-
+    fde_addresses(Start,End),
     (
-        Size = 8, data_byte(EA,Addend);
-        Size != 8, data_word(EA,Size/8,Addend)
-    ).
-
-/**
-Type of relocation relevant to pc-relative attribute
-*/
-.decl reloc_type_relpc(Type:symbol)
-
-reloc_type_relpc("PC32").
-reloc_type_relpc("GOTPCRELX").
-reloc_type_relpc("REX_GOTPCRELX").
-reloc_type_relpc("PLT32").
-
-relocation_adjustment(EA+Offset,N,"distance-to-pc"):-
-    (
-        binary_isa("X86");
-        binary_isa("X64")
-    ),
-    code(EA),
-    (
-        instruction(EA,Size,_,_,_,_,_,_,_,Offset);
-        instruction(EA,Size,_,_,_,_,_,_,Offset,_)
-    ),
-    relocation(EA+Offset,Type,Symbol,_,SymbolIndex,_,_),
-    reloc_type_relpc(Type),
-    symbol(_,_,_,_,_,_,_,SymbolIndex,Symbol),
-    // Adjust addend for trailing instruction bytes.
-    N = as(Size-Offset,number), N > 0.
-
-/**
-Type of relocation possibly with non-empty Symbol name
-*/
-.decl reloc_type_with_name(Type:symbol)
-
-reloc_type_with_name("R32").
-reloc_type_with_name("R64").
-reloc_type_with_name("R32S").
-reloc_type_with_name("PC32").
-reloc_type_with_name("PLT32").
-reloc_type_with_name("GOTPCRELX").
-reloc_type_with_name("REX_GOTPCRELX").
-reloc_type_with_name("ABS64").
-
-symbolic_expr_from_relocation(EA,Size/8,Symbol,Addend+Adjustment,TargetEA):-
-    binary_format("ELF"),
-    relocation(EA,Type,Symbol,Addend,SymbolIndex,_,_),
-    relocation_size(Type,Size),
-    reloc_type_with_name(Type),
-    relocation_adjustment_total(EA,Adjustment),
-    symbol(TargetEA,_,_,_,_,_,_,SymbolIndex,Symbol),
-    Symbol != "".
-
-/**
-Type of relocation possibly with empty Symbol name
-*/
-.decl reloc_type_nameless(Type:symbol)
-
-reloc_type_nameless("R32").
-reloc_type_nameless("R64").
-reloc_type_nameless("R32S").
-
-// Relocation indirectly references a named symbol with an offset from a SECTION symbol.
-symbolic_expr_from_relocation(EA,Size/8,Symbol,0,TargetEA):-
-    binary_type("REL"),
-    // Nameless relocation referencing a SECTION symbol.
-    relocation(EA,Type,"",Addend,SymbolIndex,_,_),
-    relocation_size(Type,Size),
-    reloc_type_nameless(Type),
-    relocation_adjustment_total(EA,Adjustment),
-    symbol(_,_,"SECTION",_,_,SectionIndex,_,SymbolIndex,_),
-    section(_,_,Begin,_,SectionIndex),
-    // Addend is the offset of a symbol within the Section.
-    TargetEA = as(as(Begin,number)+Addend+Adjustment,address),
-    (
-        symbol(TargetEA,_,_,_,_,_,_,_,Symbol);
-        !symbol(TargetEA,_,_,_,_,_,_,_,_), Symbol = ""
-    ).
-
-symbolic_expr_from_relocation(EA,Size,Symbol,Addend,TargetEA):-
-    binary_format("ELF"),
-    arch.pointer_size(Size),
-    relocation(EA,"GLOB_DAT",Symbol,Addend,SymbolIndex,_,_),
-    symbol(TargetEA,_,_,_,_,_,_,SymbolIndex,Symbol).
-
-symbolic_expr_from_relocation(EA,Size,"",0,as(Dest,address)):-
-    arch.pointer_size(Size),
-    relocation(EA,"IRELATIVE","",Dest,_,_,_).
-
-////////////////////////////////////////////////////////////////////
-/**
-Collect all the symbols whose address, size and type are the same as the
-symbol with `COPY` relocation.
-*/
-.decl copy_relocated_symbol(EA:address,Name:symbol)
-.output copy_relocated_symbol
-
-copy_relocated_symbol(EA,Name):-
-    relocation(EA,"COPY",Name,_,_,_,_).
-
-copy_relocated_symbol(EA,Name):-
-    copy_relocated_symbol(EA,Name2),
-    symbol(EA,Size,Type,_,_,_,_,_,Name2),
-    symbol(EA,Size,Type,_,_,_,_,_,Name),
-    Name != Name2.
-
-////////////////////////////////////////////////////////////////////
-// Static binaries
-
-/**
-Best GNU_IFUNC symbol for plt entries.
-Uses `ifunc_symbol_score` to deterministically select
-a single ifunc symbol for each EA.
-*/
-.decl best_ifunc_symbol(EA:address,SymbolName:symbol)
-
-
-// We need two symbols, a function symbol and a GNU_IFUNC symbol
-// so we can create a IRELATIVE relocation
-inferred_special_symbol(DestAddr,NameFunc,"GLOBAL","GNU_IFUNC","Beg"),
-inferred_special_symbol(DestAddr,Name,"LOCAL","FUNC","Beg"),
-best_ifunc_symbol(DestAddr,NameFunc):-
-    relocation(_,"IRELATIVE","",Dest,_,_,_),
-    DestAddr = as(Dest,address),
-    !symbol(DestAddr,_,"GNU_IFUNC",_,_,_,_,_,_),
-    NameFunc = cat("FUN_",@to_string_hex(as(Dest,unsigned))),
-    Name = cat(NameFunc,"_IFUNC").
-
-/**
-Provide a score to GNU_IFUNC symbols based on scope, visibility, and
-their table index.
-*/
-.decl ifunc_symbol_score(EA:address,SymbolName:symbol,Score:unsigned)
-
-/**
-Auxiliary predicate to define `ifunc_symbol_score`
-Prefer symbols with LOCAL over GLOBAL, and with GLOBAl over
-anything else (WEAK).
-*/
-.decl ifunc_scope_score(Scope:symbol,Score:unsigned)
-
-ifunc_scope_score("LOCAL",2).
-ifunc_scope_score("GLOBAL",1).
-
-ifunc_scope_score(Scope,0):-
-    symbol(_,_,_,Scope,_,_,_,_,_),
-    Scope != "GLOBAL",
-    Scope != "LOCAL".
-
-ifunc_symbol_score(EA,SymbolName,Score):-
-    defined_symbol(EA,Size,"GNU_IFUNC",Scope,Visibility,SectIndex,_,TableIndex,SymbolName),
-    ifunc_scope_score(Scope,ScopeScore),
-    symbol_visibility_score(Visibility,VisibilityScore),
-    // Prefer symbols that have an entry in .dynsym (after all the other factors)
-    // For those use the table index in dynsym.
-    (
-        defined_symbol(EA,Size,"GNU_IFUNC",Scope,Visibility,SectIndex,".dynsym",DynSymTableIndex,SymbolName),
-        UsedTableIndex = DynSymTableIndex,
-        UNUSED(TableIndex),
-        DynSymScore = 1
+        StartAligned = @functor_aligned(Start,8)
         ;
-        !defined_symbol(EA,Size,"GNU_IFUNC",Scope,Visibility,SectIndex,".dynsym",_,SymbolName),
-        UsedTableIndex = TableIndex,
-        DynSymScore = 0
+        StartAligned = @functor_aligned(Start,16)
     ),
-    // Encode lexicographic ordering into a single score.
-    Score = (ScopeScore bshl 34)
-            bor (VisibilityScore bshl 33)
-            bor (DynSymScore bshl 32)
-            bor as(UsedTableIndex,unsigned).
+    StartAligned > Start,
+    function_symbol(StartAligned,_),
+    StartAligned < End.
 
-best_ifunc_symbol(EA,SymbolName):-
-   ifunc_symbol_score(EA,SymbolName,Score),
-   Score = max S: {ifunc_symbol_score(EA,_,S)}.
+.decl lsda_callsite_addresses(Start:address,End:address,LandingPad:address)
 
-// these symbols point to the begining and end of the iplt section
-// that contaisn the IRELATIVE relocations
+lsda_callsite_addresses(Start,End,LandingPad):-
+    lsda_callsite(_,_,Start,_,End,_,LandingPad,_).
 
-inferred_special_symbol(Beg,"__rela_iplt_start","GLOBAL","NONE","Beg"):-
-    loaded_section(Beg,_,".rela.plt"),
-    !symbol(_,_,_,_,_,_,_,_,"__rela_iplt_start").
+.decl special_encoding(Code:unsigned,Name:symbol)
 
-inferred_special_symbol(End,"__rela_iplt_end","GLOBAL","NONE","End"):-
-    loaded_section(_,End,".rela.plt"),
-    !symbol(_,_,_,_,_,_,_,_,"__rela_iplt_end").
-
-abi_intrinsic(Beg,"__rela_iplt_start"),
-abi_intrinsic(End,"__rela_iplt_end"):-
-    loaded_section(Beg,End,".rela.plt").
-
-// Special loop pattern seen in `__run_exit_handlers`
-// of libc ubuntu20
-// The alignment for symbols introduced by the pprinter is causing crashes
-//   mov RBX,OFFSET __start___libc_atexit
-//   mov RAX,OFFSET __stop___libc_atexit
-//   ...
-//    sub RAX,1
-//    sub RAX,RBX
-//    shr RAX,3
-//    lea R12,QWORD PTR [RBX+RAX*8+8]
-//    ...
-//    call QWORD PTR [RBX]
-// __stop___libc_atexit has 16 alignment, which introduces a zero address
-// in the list of pointer iterated by this code
-// We rewrite the code above as:
-//   mov RBX,OFFSET __start___libc_atexit
-//   mov RAX,OFFSET __start___libc_atexit+ CONSTANT
-moved_label_class(EAStop,ImmIndexStop,"libc atexit"),
-moved_immediate_candidate(EAStop,ImmIndexStop,ImmediateStopAddr,ImmediateStartAddr):-
-    arch.move_reg_imm(EAStart,_,ImmediateStart,_),
-    code(EAStart),
-    ImmediateStartAddr = as(ImmediateStart, address),
-    defined_symbol(ImmediateStartAddr,_,_,_,_,_,_,_,"__start___libc_atexit"),
-    next(EAStart,EAStop),
-    arch.move_reg_imm(EAStop,_,ImmediateStop,ImmIndexStop),
-    code(EAStop),
-    ImmediateStopAddr = as(ImmediateStop, address),
-    defined_symbol(ImmediateStopAddr,_,_,_,_,_,_,_,"__stop___libc_atexit").
+special_encoding(1,"uleb128").
+special_encoding(9,"sleb128").

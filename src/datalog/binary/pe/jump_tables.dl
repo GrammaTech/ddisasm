@@ -1,0 +1,230 @@
+//===- jump_tables.dl ---------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019-2023 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+PE-specific pre-code-inference jump table rules
+*/
+
+// instructions just before a potential jump table
+.decl jump_table_prelude(EA:address,Steps:unsigned)
+
+jump_table_prelude(EA,0):-
+    reg_jump(EA,_),
+    possible_ea(EA).
+
+jump_table_prelude(EA,0):-
+    reg_call(EA,_),
+    possible_ea(EA).
+
+jump_table_prelude(EA_prev,Steps+1):-
+    jump_table_prelude(EA,Steps), Steps < 6,
+    must_fallthrough(EA_prev,EA).
+
+// lea R8,QWORD PTR [$L_180016d58]  ; load offset-table
+// mov R8,QWORD PTR [R8+RDX*8-16]   ; index into offset-table
+// lea R9,QWORD PTR [$L_180015e50]  ; load base address
+// add R8,R9
+// call R8
+// Detect potential label-relative offset table before data analyses.
+relative_address_start(Table,8,Ref,Dest,"first"):-
+    // loads table address
+    jump_table_prelude(EA1,_),
+    take_address(EA1,Table),
+    next(EA1,EA2),
+    // indexes table
+    arch.load(EA2,_,_,_,_,_,_,_),
+    next(EA2,EA3),
+    // loads reference address
+    take_address(EA3,Ref),
+    data_word(Table,8,Diff),
+    RefSigned = as(Ref,number),
+    Dest = as(RefSigned + Diff,address),
+    possible_ea(Dest).
+
+// mov ECX,DWORD PTR [R9+R8*4+(IMAGEREL N_1a050)]
+relative_address_start(ImageBase+OffsetUnsigned,MultUnsigned,ImageBase,Dest,"first"):-
+    base_address(ImageBase),
+    jump_table_prelude(EA,_),
+    instruction_get_operation(EA,"MOV"),
+    instruction_get_src_op(EA,_,Op),
+    op_indirect_mapped(Op,_,RegBase,RegIndex,Mult,Offset,Size), Offset > 0,
+    MultUnsigned = as(Mult, unsigned),
+    OffsetUnsigned = as(Offset,unsigned),
+    MultUnsigned * 8 = Size,
+    RegBase != "NONE", RegIndex != "NONE",
+    (MultUnsigned = 4; MultUnsigned = 8),
+    data_word(ImageBase+OffsetUnsigned,MultUnsigned,Diff),
+    ImageBaseSigned = as(ImageBase, number),
+    Dest = as(ImageBaseSigned + Diff,address),
+    possible_ea(Dest).
+
+// Find jump tables with corresponding single-byte index tables.
+//   i.e.  movzx REG,byte ptr [REG+IndexTableStart]
+//         jmp dword ptr [REG*4+AddressTableStart]
+// These reference two tables such as:
+//    TableStart       DWORD AAAA
+//                     DWORD BBBB
+//                            ...
+//    IndexTableStart  BYTE  N
+//                            ...
+//  Where the DWORD values are addresses and BYTE values are offsets into
+//  the DWORD table.
+relative_address_start(IndexTableStart,1,TableStart,Dest,"first"):-
+    arch.pointer_size(Pt_size),
+    Mult = as(Pt_size,number),
+    // Existing address table,
+    relative_address_start(TableStart,Pt_size,_,_,_),
+    op_indirect(Op_jmp,_,_,_,Mult,as(TableStart,number),_),
+    instruction_get_op(EA_jmp,_,Op_jmp),
+    arch.jump(EA_jmp),
+    // Offset by an index loaded in a previous instruction.
+    // TODO: Sometimes arguments are pushed before the JMP.
+    (
+        next(EA_mov,EA_jmp)
+        ;
+        next(EA_pop1,EA_jmp), !arch.memory_access("LOAD",EA_pop1,_,_,_,_,_,_,_),
+        next(EA_mov,EA_pop1)
+        ;
+        next(EA_pop2,EA_jmp), !arch.memory_access("LOAD",EA_pop2,_,_,_,_,_,_,_),
+        next(EA_pop1,EA_pop2), !arch.memory_access("LOAD",EA_pop1,_,_,_,_,_,_,_),
+        next(EA_mov,EA_pop1)
+    ),
+    arch.load(EA_mov,_,_,_,_,_,_,_),
+    instruction_get_op(EA_mov,_,Op_mov),
+    op_indirect(Op_mov,_,_,_,1,Offset0,8),
+    // Sometimes, the offset value is off-by-4 from the actual index table.
+    // This is a heuristic to handle such case.
+    (
+        Offset = Offset0
+        ;
+        Offset = Offset0+4
+    ),
+    IndexTableStart = as(Offset,address),
+    // Dest = AddressTable[Index]
+    data_byte(IndexTableStart,Byte),
+    Dest = TableStart + Byte*4.
+
+// Detect potential byte-offset, indirect jump-table index tables before data analyses.
+// These are like those above but with the additional __ImageBase base register.
+// lea R14,[__ImageBase]
+// ...
+// movsxd RAX,EDX
+// movzx EAX,BYTE PTR [R14+RAX*1+(IMAGEREL IndexTableStart)]
+// mov ECX,DWORD PTR [R14+RAX*4+(IMAGEREL BaseRelativeAddressTableStart)]
+// add RCX,R14
+// jmp RCX
+relative_address_start(Table,1,Ref,Dest,"first"):-
+    base_address(ImageBase),
+    // base-relative table address load and index
+    arch.load(EA1,_,_,_,_,_,_,_),
+    instruction_get_src_op(EA1,_,Op1),
+    op_indirect(Op1,_,_,_,1,Offset1,8), Offset1 > 0,
+    Table = ImageBase+as(Offset1,unsigned),
+    data_byte(Table,Byte),
+    // loads base-relative reference address
+    next(EA1,EA2),
+    instruction_get_src_op(EA2,_,Op2),
+    op_indirect(Op2,_,_,_,4,Offset2,32), Offset2 > 0,
+    Ref = ImageBase+as(Offset2,unsigned),
+    Dest = Ref + Byte.
+
+// Find the simplest form of jump table.
+//   i.e.  jmp dword ptr [REG*4 + TableStart]
+relative_address_start(TableStart,Size,0,Dest,"first"):-
+    indirect_jump(EA),
+    instruction_get_op(EA,_,Op),
+    // Table starts at the Offset in operand.
+    op_indirect(Op,"NONE","NONE",_,Mult,Offset,_),
+    Size = as(Mult,unsigned),
+    TableStart = as(Offset,address),
+    // Table entry is the complete Dest address.
+    data_word(TableStart,Size,TableEntry),
+    Dest = as(TableEntry,address),
+    arch.pointer_size(Pt_size), Pt_size = Size,
+    possible_ea(Dest),
+    // Check on the second entry as well.
+    // This is based on the assumption that a jump-table consists of
+    // multiple entries.
+    data_word(TableStart+Size,Size,TableEntry2),
+    Dest2 = as(TableEntry2,address),
+    possible_ea(Dest2).
+
+// Find the simplest form of jump table with moved label.
+//   i.e.  jmp dword ptr [REG*4 + TableStart - Mult]
+relative_address_start(TableStart,Size,0,Dest1,"first"):-
+    padded_rel_addr_start(_,_,TableStart,_,Dest1,Dest2),
+    arch.pointer_size(Size),
+    possible_ea(Dest1),
+    possible_ea(Dest2).
+
+// lea REG, TableStart
+// mov REG, dword ptr [REG + REG2*4 - 8]
+// call REG
+relative_address_start(TableStart,4,0,Dest,"first"):-
+    instruction(EA_load,_,_,"LEA",Op,_,_,_,_,_),
+    op_indirect(Op,"NONE","NONE","NONE",_,Offset,_),
+    TableStart = as(Offset,address),
+    data_word(TableStart,4,TableEntry),
+    Dest = as(TableEntry,address),
+    possible_ea(Dest),
+    // Check on the second entry as well.
+    // This is based on the assumption that a jump-table consists of
+    // multiple entries.
+    data_word(TableStart+4,4,TableEntry2),
+    Dest2 = as(TableEntry2,address),
+    possible_ea(Dest2),
+
+    next(EA_load,EA_mov),
+    arch.load(EA_mov,_,_,_,_,_,_,_),
+    next(EA_mov,EA_call),
+    reg_call(EA_call,_).
+
+relative_address(EA+1,1,IndexTable,AddressTable,Dest,"first"):-
+    binary_isa("X64"),
+    base_address(ImageBase),
+    relative_address(EA,1,IndexTable,AddressTable,_,"first"),
+    data_byte(EA+1,Byte),
+    Dest = AddressTable + Byte*4,
+    data_word(Dest,4,Word),
+    possible_ea(ImageBase+as(Word,unsigned)),
+    !relative_address_start(EA+1,_,_,_,_).
+
+// TODO: We use relative_address as a convenience. The address in data is not a
+// true symbol-symbol, it is a complete 4-byte address in x86.
+relative_address(EA+1,1,IndexTable,AddressTable,Dest,"first"):-
+    binary_isa("X86"),
+    ImageBase = 0,
+    relative_address(EA,1,IndexTable,AddressTable,_,"first"),
+    data_byte(EA+1,Byte),
+    Dest = AddressTable + Byte*4,
+    data_word(Dest,4,Word),
+    possible_ea(ImageBase+as(Word,unsigned)),
+    !relative_address_start(EA+1,_,_,_,_).
+
+relative_jump_table_entry_candidate(EA,TableStart,1,Ref,Dest,4,0):-
+    // Byte offsets reference a preceding relative address table.
+    relative_address(EA,1,TableStart,Ref,Dest,"first"), Dest < TableStart,
+    relative_address_start(Ref,4,_,_,_),
+    // Addresses belong to the same segment.
+    loaded_section(Start,End,_),
+    Ref >= Start, Ref < End,
+    Dest >= Start, Dest < End.
