@@ -220,7 +220,7 @@ python-manylinux-2010-release:
   cache:
     paths: [ccache]
   rules:
-    *run-only-main
+   *run-only-main
   script:
     - !reference [.setup-ccache]
     - !reference [.setup-conan-linux]
@@ -232,6 +232,17 @@ python-manylinux-2010-release:
     - cmake --build . --target=python-wheel --parallel=$(nproc)
     - auditwheel repair python/dist/*.whl
     - ccache --show-stats
+
+python-manylinux-2010-test:
+  image: python:3.9
+  stage: package-tests
+  needs:
+    - python-manylinux-2010-release
+  rules:
+   *run-only-main
+  script:
+    - pip3 install _build/wheelhouse/ddisasm*.whl --extra-index-url=$EXTRA_INDEX_URL
+    - ddisasm --version
 
 python-manylinux-2010-publish-internal:
   image: python:3.9
