@@ -159,9 +159,13 @@ class DdisasmConan(Properties, ConanFile):
             ] = "/DBOOST_ALL_NO_LIB /DBOOST_UUID_FORCE_AUTO_LINK"
             self.add_dep_lib_path("libffi")
         else:
-            cmake = CMake(self, generator=None, parallel=False)
-            defs.update({"GTIRB_PPRINTER_STRIP_DEBUG_SYMBOLS:BOOL": "ON"})
-
+            cmake = CMake(self, generator=None, parallel=True)
+            defs.update(
+                {
+                    "GTIRB_PPRINTER_STRIP_DEBUG_SYMBOLS:BOOL": "ON",
+                    "DDISASM_GENERATE_MANY": "ON",
+                }
+            )
         revision = os.environ.get("CI_COMMIT_SHORT_SHA")
         if revision:
             defs["DDISASM_BUILD_REVISION"] = revision
