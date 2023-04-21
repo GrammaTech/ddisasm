@@ -274,6 +274,21 @@ python-manylinux-2010-publish-internal:
     - twine check ddisasm-*.whl
     - twine upload --verbose --repository repypi ddisasm-*.whl
 
+python-manylinux-2010-publish-external:
+  stage: export
+  image: python:3.9-slim
+  needs:
+    - python-manylinux-2010-release
+  script:
+    - cd _build/wheelhouse/
+    - pip3 install twine ddisasm-*.whl
+    - VERSION=$(python3 -c "import ddisasm; print(ddisasm.__version__)")
+    # Do not publish .dev versions on the public pypi
+    - if [[ "$VERSION" =~ \.dev[[:digit:]]*.*$ ]]; then exit 1; fi
+    - python3 -m twine upload --verbose ddisasm-*.whl -u __token__ -p $PYPI_API_KEY
+  rules:
+    - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
+
 .conan-windows-template: &conan-windows-template
   stage: build
   tags: [ddisasm-windows]
