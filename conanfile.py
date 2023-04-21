@@ -170,8 +170,6 @@ class DdisasmConan(Properties, ConanFile):
         if revision:
             defs["DDISASM_BUILD_REVISION"] = revision
 
-        if self.settings.build_type == "Release":
-            cmake.build_type = "RelWithDebInfo"
         self.add_dep_bin_path("gtirb-pprinter", "mcpp")
         self.add_dep_lib_path("gtirb-pprinter", "gtirb", "capstone")
         bin_dir = os.path.join(os.getcwd(), "bin")
