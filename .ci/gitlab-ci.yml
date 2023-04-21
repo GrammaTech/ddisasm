@@ -275,7 +275,7 @@ python-manylinux-2010-publish-internal:
     - twine upload --verbose --repository repypi ddisasm-*.whl
 
 python-manylinux-2010-publish-external:
-  stage: export
+  stage: deploy
   image: python:3.9-slim
   needs:
     - python-manylinux-2010-release
