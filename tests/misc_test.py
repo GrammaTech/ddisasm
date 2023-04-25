@@ -11,6 +11,7 @@ from disassemble_reassemble_check import (
     make,
 )
 from pathlib import Path
+from typing import Optional, Tuple
 import gtirb
 
 if platform.system() == "Linux":
@@ -446,7 +447,7 @@ class ElfSymbolVersionsTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
-    def test_symbol_versions(self):
+    def test_lib_symbol_versions(self):
         """
         Test that symbols have the right version.
         """
@@ -506,6 +507,46 @@ class ElfSymbolVersionsTests(unittest.TestCase):
             # Needed versions are not hidden
             self.assertFalse(symver_entries[bar1][1])
             self.assertFalse(symver_entries[bar2][1])
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_copy_symbol_versions(self):
+        def lookup_sym_ver_need(symbol_name: str) -> Optional[Tuple[str, str]]:
+            """
+            Get the library and version for a needed symbol
+            """
+            _, ver_needs, ver_entries = m.aux_data["elfSymbolVersions"].data
+
+            for sym, (ver_id, hidden) in ver_entries.items():
+
+                if sym.name != symbol_name:
+                    continue
+
+                for lib, lib_ver_needs in ver_needs.items():
+                    if ver_id in lib_ver_needs:
+                        return (lib, lib_ver_needs[ver_id])
+                    else:
+                        raise KeyError(f"No ver need: {ver_id}")
+
+            raise KeyError(f"No ver entry: {symbol_name}")
+
+        binary = "ex"
+        with cd(ex_dir / "ex_copy_relo"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+
+            self.assertTrue(disassemble(binary, format="--ir")[0])
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+
+            lib, version = lookup_sym_ver_need("environ")
+
+            self.assertRegex(lib, r"libc\.so\.\d+")
+            self.assertRegex(version, r"GLIBC_[\d\.]+")
+
+            with self.assertRaisesRegex(KeyError, "No ver entry:"):
+                lookup_sym_ver_need("environ_copy")
 
 
 class OverlayTests(unittest.TestCase):

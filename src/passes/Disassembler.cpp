@@ -424,6 +424,11 @@ void buildSymbolForwarding(gtirb::Context &Context, gtirb::Module &Module,
                            souffle::SouffleProgram &Program)
 {
     std::map<gtirb::UUID, gtirb::UUID> SymbolForwarding;
+
+    auto *SymbolVersions = Module.getAuxData<gtirb::provisional_schema::ElfSymbolVersions>();
+    gtirb::provisional_schema::ElfSymbolVersionsEntries &SymVerEntries =
+        std::get<2>(*SymbolVersions);
+
     for(auto &T : *Program.getRelation("copy_relocated_symbol"))
     {
         gtirb::Addr EA;
@@ -438,8 +443,18 @@ void buildSymbolForwarding(gtirb::Context &Context, gtirb::Module &Module,
             Name = stripSymbolVersion(Name);
             CopySymbol->setName(Name + "_copy");
             SymbolForwarding[CopySymbol->getUUID()] = RealSymbol->getUUID();
+
+            // If the copy symbol is versioned, move the version to the real
+            // symbol.
+            auto MapNode = SymVerEntries.extract(CopySymbol->getUUID());
+            if(!MapNode.empty())
+            {
+                MapNode.key() = RealSymbol->getUUID();
+                SymVerEntries.insert(std::move(MapNode));
+            }
         }
     }
+
     for(auto &T : *Program.getRelation("abi_intrinsic"))
     {
         gtirb::Addr EA;
