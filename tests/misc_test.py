@@ -443,7 +443,7 @@ class SymbolSelectionTests(unittest.TestCase):
             self.check_first_sym_expr(m, "load_end", "nums_end")
 
 
-class ElfSymbolVersionsTests(unittest.TestCase):
+class ElfSymbolAuxdataTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
@@ -512,24 +512,20 @@ class ElfSymbolVersionsTests(unittest.TestCase):
         platform.system() == "Linux", "This test is linux only."
     )
     def test_copy_symbol_versions(self):
-        def lookup_sym_ver_need(symbol_name: str) -> Optional[Tuple[str, str]]:
+        def lookup_sym_ver_need(
+            symbol: gtirb.Symbol,
+        ) -> Optional[Tuple[str, str]]:
             """
             Get the library and version for a needed symbol
             """
             _, ver_needs, ver_entries = m.aux_data["elfSymbolVersions"].data
 
-            for sym, (ver_id, hidden) in ver_entries.items():
-
-                if sym.name != symbol_name:
-                    continue
-
-                for lib, lib_ver_needs in ver_needs.items():
-                    if ver_id in lib_ver_needs:
-                        return (lib, lib_ver_needs[ver_id])
-                    else:
-                        raise KeyError(f"No ver need: {ver_id}")
-
-            raise KeyError(f"No ver entry: {symbol_name}")
+            ver_id, hidden = ver_entries[symbol]
+            for lib, lib_ver_needs in ver_needs.items():
+                if ver_id in lib_ver_needs:
+                    return (lib, lib_ver_needs[ver_id])
+                else:
+                    raise KeyError(f"No ver need: {ver_id}")
 
         binary = "ex"
         with cd(ex_dir / "ex_copy_relo"):
@@ -540,13 +536,28 @@ class ElfSymbolVersionsTests(unittest.TestCase):
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
 
-            lib, version = lookup_sym_ver_need("environ")
+            # The proxy symbol should have an elfSymbolVersion entry
+            sym_environ = next(m.symbols_named("__environ"))
+            lib, version = lookup_sym_ver_need(sym_environ)
 
             self.assertRegex(lib, r"libc\.so\.\d+")
             self.assertRegex(version, r"GLIBC_[\d\.]+")
 
-            with self.assertRaisesRegex(KeyError, "No ver entry:"):
-                lookup_sym_ver_need("environ_copy")
+            sym_environ_copy = next(m.symbols_named("__environ_copy"))
+            with self.assertRaises(KeyError, msg=str(sym_environ_copy)):
+                lookup_sym_ver_need(sym_environ_copy)
+
+            # Both the copy symbol and proxy symbol should have elfSymbolInfo
+            elf_symbol_info = m.aux_data["elfSymbolInfo"].data
+
+            self.assertEqual(
+                elf_symbol_info[sym_environ][1:4],
+                ("OBJECT", "GLOBAL", "DEFAULT"),
+            )
+            self.assertEqual(
+                elf_symbol_info[sym_environ_copy][1:4],
+                ("OBJECT", "GLOBAL", "DEFAULT"),
+            )
 
 
 class OverlayTests(unittest.TestCase):

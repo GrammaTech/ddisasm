@@ -425,6 +425,7 @@ void buildSymbolForwarding(gtirb::Context &Context, gtirb::Module &Module,
 {
     std::map<gtirb::UUID, gtirb::UUID> SymbolForwarding;
 
+    auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
     auto *SymbolVersions = Module.getAuxData<gtirb::provisional_schema::ElfSymbolVersions>();
     gtirb::provisional_schema::ElfSymbolVersionsEntries &SymVerEntries =
         std::get<2>(*SymbolVersions);
@@ -443,6 +444,12 @@ void buildSymbolForwarding(gtirb::Context &Context, gtirb::Module &Module,
             Name = stripSymbolVersion(Name);
             CopySymbol->setName(Name + "_copy");
             SymbolForwarding[CopySymbol->getUUID()] = RealSymbol->getUUID();
+
+            auto CopySymbolInfoIt = SymbolInfo->find(CopySymbol->getUUID());
+            if(CopySymbolInfoIt != SymbolInfo->end())
+            {
+                SymbolInfo->insert({RealSymbol->getUUID(), CopySymbolInfoIt->second});
+            }
 
             // If the copy symbol is versioned, move the version to the real
             // symbol.
