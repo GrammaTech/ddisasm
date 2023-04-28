@@ -203,13 +203,14 @@ conan-gcc9-release-publish:
   tags: [ddisasm-windows]
   artifacts:
     paths:
-      - .conan
+      - conan_home.tar.gz
+      - conan_aux.tar.gz
     # Set a short expiry time - only needed until it is published by a later job.
     expire_in: 8 hours
   script:
     - systeminfo
     - pip3 install --upgrade conan~=$CONAN_VERSION
-    # Build conan packages in a directory that we can publish as an artifact.
+    # Build conan packages in a known location
     - export CONAN_USER_HOME=$(cygpath -w $(pwd))
     # Set up user and remote
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
@@ -219,6 +220,30 @@ conan-gcc9-release-publish:
     # Run build script
     - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
     - python .ci/run_conan.py build $CONAN_OPTIONS -s build_type=$BUILD_TYPE
+    # Create archives of both .conan HOME directory and C:\conan, where conan
+    # begins to put files if paths get too long.
+    - tar -cvzf conan_home.tar.gz .conan/
+    - tar -C $(cygpath -u C:\\) -cvzf conan_aux.tar.gz .conan
+
+.conan-windows-test-template: &conan-windows-test-template
+  stage: test-and-tag
+  tags: [ddisasm-windows]
+  script:
+    - tar -xf conan_home.tar.gz
+    - tar -xf conan_aux.tar.gz -C $(cygpath -u C:\\)
+    # Install packages needed for the tests
+    - python -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
+    # Collect bin/ and lib/ paths for installed dependencies
+    # We first collect bin/ and lib/ paths into INSTALL_DIRS.
+    # If conan paths get too long, conan creates a file called ".conan_link"
+    # which contains a Windows path to a directory containing the package
+    # contents. We read these into $DEREF_DIRS.
+    # TODO: there must be a way to get conan to build the environment for us?
+    - export INSTALL_DIRS=$(find .conan/data/ -type d \( -name bin -o -name lib \) -exec /bin/bash -c 'cygpath -w $(realpath $0)' {} \; | paste -sd ";")
+    - export DEREF_DIRS=$(find .conan/data/ -type f -name .conan_link -exec /bin/bash -c 'find $(cygpath -u $(cat $0)) -type d \( -name bin -o -name lib \)' {} \; | xargs -n1 cygpath -w | paste -sd ";")
+    # Change directory to the conan build directory
+    - cd $(find . -type d -path '*.conan/data/ddisasm/dev/rewriting+ddisasm/*/build/*' -print -quit)
+    - cmd.exe /C "set PATH=%PATH%;${INSTALL_DIRS};${DEREF_DIRS} && ddisasm --version && C:\\VS\\VC\\Auxiliary\\Build\\vcvarsall.bat ${ARCH} && ctest -V"
 
 .conan-windows-publish-template: &conan-windows-publish-template
   stage: deploy
@@ -228,6 +253,8 @@ conan-gcc9-release-publish:
   script:
     - export CONAN_USER_HOME=$(cygpath -w $(pwd))
     - pip3 install --upgrade conan~=$CONAN_VERSION
+    - tar -xf conan_home.tar.gz
+    - tar -xf conan_aux.tar.gz -C $(cygpath -u C:\\)
     - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
     - python .ci/run_conan.py upload
 
@@ -240,7 +267,9 @@ conan-gcc9-release-publish:
       - ddisasm*.zip
   script:
     # Initialize
-      # Setting CI_PROJECT_DIR to the PWD because GitLab Runner sets a relative path for CI_PROJECT_DIR with VirtualBox runners.
+    - tar -xf conan_home.tar.gz
+    - tar -xf conan_aux.tar.gz -C $(cygpath -u C:\\)
+    # Setting CI_PROJECT_DIR to the PWD because GitLab Runner sets a relative path for CI_PROJECT_DIR with VirtualBox runners.
     - export CI_PROJECT_DIR=`cygpath -w $(pwd)`
     - export CONAN_USER_HOME="${CI_PROJECT_DIR}"
     - export PYTHONPATH="${PYTHONPATH};${CI_PROJECT_DIR}"
@@ -293,7 +322,22 @@ conan-windows-debug-publish:
 conan-windows-release:
   variables:
     BUILD_TYPE: Release
+    CONAN_OPTIONS: -o run_tests=False
   <<: *conan-windows-template
+
+conan-windows-release-test-x86:
+  needs: [conan-windows-release]
+  dependencies: [conan-windows-release]
+  variables:
+    ARCH: x86
+  <<: *conan-windows-test-template
+
+conan-windows-release-test-x64:
+  needs: [conan-windows-release]
+  dependencies: [conan-windows-release]
+  variables:
+    ARCH: x64
+  <<: *conan-windows-test-template
 
 conan-windows-release-publish:
   needs:
