@@ -96,6 +96,10 @@ store_operation(Operation):-
 is_nop(EA):-
     instruction_get_operation(EA,"NOP").
 
+// e.g.: mov r0, r0
+is_nop(EA):-
+    move_reg_reg(EA,Reg,Reg).
+
 // We have no return_operation, so we override.
 .override return
 return(EA):-
