@@ -217,6 +217,20 @@ arm_jump_table_candidate_target("rel_signed",Thumb,EA,Reference,Size,Scale,Targe
     data_word(EA,Size,Diff),
     TargetAddr = as(Diff*as(Scale,number)+as(Reference,number),address) bor Thumb.
 
+.decl arm_jump_table_skip_first_entry(EA_jump:address)
+
+arm_jump_table_skip_first_entry(EA_jump):-
+    arm_jump_table_candidate_start(_,EA_jump,_,Reference,TableStart,Size,Type,Scale,_),
+    arm_jump_table_candidate_target(Type,EA_jump band 1,TableStart,Reference,Size,Scale,TargetAddr),
+    (
+        !instruction(TargetAddr,_,_,_,_,_,_,_,_,_)
+        ;
+        invalid(TargetAddr,_)
+        ;
+        arch.instruction_at(AlignedTargetAddr,TargetAddr),
+        AlignedTargetAddr = TableStart
+    ).
+
 // base case
 arm_jump_table_candidate(EA_jump,Reference,TableStart,EA,Size,TargetAddr,TableLimit,Type,Scale):-
     arm_jump_table_candidate_start(_,EA_jump,_,Reference,TableStart,Size,Type,Scale,_),
@@ -225,7 +239,13 @@ arm_jump_table_candidate(EA_jump,Reference,TableStart,EA,Size,TargetAddr,TableLi
     // in the starting entry. we have observed:
     // * zero padding in a tbb jump table
     // * "bpkt #0" as padding in ARM ldr/add in libRSCpuRef.so
-    EA = range(TableStart,TableStart+Size+1,Size),
+    (
+        !arm_jump_table_skip_first_entry(EA_jump),
+        EA = TableStart
+        ;
+        arm_jump_table_skip_first_entry(EA_jump),
+        EA = TableStart + Size
+    ),
     arm_jump_table_candidate_target(Type,EA_jump band 1,EA,Reference,Size,Scale,TargetAddr),
     arch.instruction_at(AlignedTargetAddr,TargetAddr),
     instruction(TargetAddr,_,_,_,_,_,_,_,_,_),
