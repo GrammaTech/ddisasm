@@ -958,13 +958,6 @@ block_points(Block,"code",Size,0,1,"code section start"):-
     code_section(Section),
     loaded_section(Block,_,Section).
 
-block_points(Block,"code",Size,0,1,"address in data"):-
-    !binary_isa("X86"),
-    !binary_isa("ARM"),
-    unresolved_block(Block,"code",Size),
-    address_in_data(Address,Block),
-    !address_in_data_is_printable(Address).
-
 block_points(Block,"code",Size,0,1,"aligned address in data"):-
     !binary_isa("X86"),
     !binary_isa("ARM"),
