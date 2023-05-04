@@ -233,17 +233,15 @@ conan-gcc9-release-publish:
     - tar -xf conan_aux.tar.gz -C $(cygpath -u C:\\)
     # Install packages needed for the tests
     - python -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
-    # Collect bin/ and lib/ paths for installed dependencies
-    # We first collect bin/ and lib/ paths into INSTALL_DIRS.
-    # If conan paths get too long, conan creates a file called ".conan_link"
-    # which contains a Windows path to a directory containing the package
-    # contents. We read these into $DEREF_DIRS.
-    # TODO: there must be a way to get conan to build the environment for us?
-    - export INSTALL_DIRS=$(find .conan/data/ -type d \( -name bin -o -name lib \) -exec /bin/bash -c 'cygpath -w $(realpath $0)' {} \; | paste -sd ";")
-    - export DEREF_DIRS=$(find .conan/data/ -type f -name .conan_link -exec /bin/bash -c 'find $(cygpath -u $(cat $0)) -type d \( -name bin -o -name lib \)' {} \; | xargs -n1 cygpath -w | paste -sd ";")
+    - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
+    - export CONAN_USER_HOME=$(cygpath -w $(pwd))
+    - export CONAN_REF=$(python -c 'print(__import__("conanfile").Properties().conan_recipe, end="")')
     # Change directory to the conan build directory
     - cd $(find . -type d -path '*.conan/data/ddisasm/dev/rewriting+ddisasm/*/build/*' -print -quit)
-    - cmd.exe /C "set PATH=%PATH%;${INSTALL_DIRS};${DEREF_DIRS} && ddisasm --version && C:\\VS\\VC\\Auxiliary\\Build\\vcvarsall.bat ${ARCH} && ctest -V"
+    # Create virtualrunenv script (activate_run.bat)
+    - conan install ${CONAN_REF} -g virtualrunenv
+    # Run the tests
+    - cmd.exe /C "activate_run.bat && ddisasm --version && C:\\VS\\VC\\Auxiliary\\Build\\vcvarsall.bat ${ARCH} && ctest -V"
 
 .conan-windows-publish-template: &conan-windows-publish-template
   stage: deploy
