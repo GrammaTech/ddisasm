@@ -323,7 +323,7 @@ conan-windows-release-package:
     - mkdir build
     - cd build
     - cmake -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCPACK_DEBIAN_PACKAGE_RELEASE="$(lsb_release -sc)" -DBUILD_FUNINFER=1 -DDDISASM_STRIP_DEBUG_SYMBOLS=ON -DDDISASM_GENERATE_MANY=ON ..
-    - make -j$(nproc)
+    - make
     # Report ccache stats.
     - ccache --show-stats
 
@@ -384,7 +384,7 @@ build-static:
     - mkdir gtirb/build
     - cd gtirb/build
     - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_BUILD_SHARED_LIBS=OFF
-    - make -j$(nproc)
+    - make
     - cd python; python3 setup.py develop; cd ..
     - cd ../..
     # build gtirb-pprinter
@@ -393,13 +393,13 @@ build-static:
     - mkdir gtirb-pprinter/build
     - cd gtirb-pprinter/build
     - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_PPRINTER_BUILD_SHARED_LIBS=OFF
-    - make -j$(nproc)
+    - make
     - cd ../..
     # build ddisasm
     - mkdir build
     - cd build
     - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DDDISASM_BUILD_SHARED_LIBS=OFF -DDDISASM_GENERATE_MANY=ON
-    - make -j$(nproc)
+    - make
     # Report ccache stats.
     - ccache --show-stats
     # Run the regression tests.
@@ -461,7 +461,7 @@ static-drivers:
     - cd gtirb
     - mkdir build && cd build
     - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Debug -DGTIRB_BUILD_SHARED_LIBS=OFF
-    - make -j$(nproc)
+    - make
     - cd python; python3 setup.py develop; cd ..
     - cd ../..
     # build gtirb-pprinter
@@ -470,12 +470,12 @@ static-drivers:
     - cd gtirb-pprinter
     - mkdir build && cd build
     - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Debug -DGTIRB_PPRINTER_BUILD_SHARED_LIBS=OFF
-    - make -j$(nproc)
+    - make
     - cd ../..
     # build ddisasm
     - mkdir build && cd build
     - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Debug -DDDISASM_STATIC_DRIVERS=ON -DDDISASM_GENERATE_MANY=ON
-    - make -j$(nproc)
+    - make
     # Run the regression tests.
     - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
     # For verification purposes, print ldd of the driver here.
