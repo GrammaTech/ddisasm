@@ -1020,19 +1020,43 @@ block_points(Block,"code",Size,BlockPred,2,"must-fallthrough"):-
     !unresolved_block(BlockPred,"code",_),
     !impossible_block(BlockPred,"code",_,_).
 
-block_points(Block,"code",Size,0,Points,"may-fallthrough"):-
+block_points(Block,"code",Size,0,2,"unresovled-may-fallthrough"):-
     unresolved_block(Block,"code",Size),
     may_fallthrough(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     !candidate_block_is_padding(BlockPred),
-    (
-        !unresolved_block(BlockPred,"code",_),
-        !impossible_block(BlockPred,"code",_,_),
-        Points = 7
-        ;
-        unresolved_block(BlockPred,"code",_),
-        Points = 2
-    ).
+    unresolved_block(BlockPred,"code",_).
+
+/**
+Transitive may_fallthrough points
+
+TODO: more generic:
+- non-overlapping block may reach
+- non-overlapping block must reach
+- known block may reach
+*/
+.decl transitive_may_fallthrough(Block:address,Type:block_type,Size:unsigned)
+
+// Base case: a non-overlapping block directly falls through to this block.
+transitive_may_fallthrough(Block,"code",Size):-
+    unresolved_block(Block,"code",Size),
+    may_fallthrough(EA,Block),
+    code_in_block_candidate_refined(EA,BlockPred),
+    // No fallthrough from padding blocks
+    !candidate_block_is_padding(BlockPred),
+    // No fallthrough to padding instructions
+    !is_padding(Block),
+    !unresolved_block(BlockPred,"code",_),
+    !impossible_block(BlockPred,"code",_,_).
+
+transitive_may_fallthrough(Block,"code",Size):-
+    unresolved_block(Block,"code",Size),
+    may_fallthrough(EA,Block),
+    code_in_block_candidate_refined(EA,BlockPred),
+    transitive_may_fallthrough(BlockPred,"code",_).
+
+block_points(Block,"code",Size,0,7,"may-fallthrough"):-
+    transitive_may_fallthrough(Block,"code",Size).
 
 // its address appears somewhere
 block_points(Block,"code",Size,0,3,"appears"):-
