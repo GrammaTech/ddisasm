@@ -295,7 +295,7 @@ endif()
 if(ENABLE_CONAN)
   set(LIEF_LIBRARIES CONAN_PKG::lief)
 else()
-  find_package(LIEF 0.12.3 REQUIRED COMPONENTS STATIC)
+  find_package(LIEF 0.13.0 REQUIRED COMPONENTS STATIC)
 endif()
 
 # ---------------------------------------------------------------------------
