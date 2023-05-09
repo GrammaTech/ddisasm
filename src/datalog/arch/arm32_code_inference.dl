@@ -406,20 +406,22 @@ litpool_ref(EA,EA,RefAddr,0,Size,OpIndex):-
     !arch.pc_reg(Reg).
 
 /**
+Data is loaded from a register-relative address.
+*/
+.decl reg_relative_load(LoadEA:address,Reg:register,Size:unsigned)
+
+/**
 (B) ADR/LDR or ADR/LDRD
 adr BaseReg, Label    or   add/sub BaseReg, pc, off
 ldr Reg1, [BaseReg, Offset]  or ldrd Reg1, Reg2, [BaseReg, Offset]
 */
-litpool_ref(EA,EA_ldr,RefAddr,as(Offset,unsigned),Size,OpIndex):-
+reg_relative_load(EA,BaseRegNN,Size):-
+    arch.load(EA,_,_,Reg1,BaseReg,"NONE",_,Offset),
+    reg_nonnull(BaseReg,BaseRegNN),
+    instruction_memory_access_size(EA,_,Size),
     !invalid(EA,_),
-    !invalid(EA_ldr,_),
-    arch.pc_relative_addr(EA,BaseReg,RefAddr),
-    instruction_immediate_offset(EA,OpIndex,_,_),
-    straight_line_def_used(EA,BaseReg,EA_ldr,_),
-    arch.load(EA_ldr,_,_,Reg1,BaseReg,"NONE",_,Offset),
     Offset >= 0,
-    !arch.memory_access("LOAD",EA_ldr,_,_,_,_,_,_,Offset-4),
-    instruction_memory_access_size(EA_ldr,_,Size),
+    !arch.memory_access("LOAD",EA,_,_,_,_,_,_,Offset-4),
     !arch.pc_reg(Reg1),
     !arch.pc_reg(BaseReg).
 
@@ -428,36 +430,75 @@ litpool_ref(EA,EA_ldr,RefAddr,as(Offset,unsigned),Size,OpIndex):-
 adr r1, Label    or   add/sub r1, pc, offset
 ldm r1, {r2, r3}
 */
-litpool_ref(EA,EA_ldm,RefAddr,0,Size,OpIndex):-
+reg_relative_load(EA,RegNN,Size):-
+    arch.load(EA,_,_,_,Reg,_,_,_),
+    reg_nonnull(Reg,RegNN),
+    instruction_get_operation(EA,Operation),
     !invalid(EA,_),
-    !invalid(EA_ldm,_),
-    arch.pc_relative_addr(EA,Reg,RefAddr),
-    straight_line_def_used(EA,Reg,EA_ldm,_),
-    instruction_get_operation(EA_ldm,Operation),
     contains("LDM",Operation),
-    arch.memory_access(_,EA_ldm,_,_,_,Reg,_,_,_),
-    instruction_get_dest_op(EA_ldm,_,RegBitFieldOp),
+    instruction_get_dest_op(EA,_,RegBitFieldOp),
     op_register_bitfield(RegBitFieldOp,MaxIndex,_),
     !op_register_bitfield(RegBitFieldOp,MaxIndex+1,_),
     RegCnt = MaxIndex + 1,
     arch.pointer_size(Pt_size),
-    Size = RegCnt * Pt_size,
-    instruction_immediate_offset(EA,OpIndex,_,_).
+    Size = RegCnt * Pt_size.
 
 /**
 (D) ADR/VLDn
 adr r1, Label    or   add/sub r1, pc, offset
 vldn.type {dn,...}, r1
 */
-litpool_ref(EA,EA_vld,RefAddr,0,AccessSize,OpIndex):-
+reg_relative_load(EA,RegNN,AccessSize):-
+    arch.memory_access_aggregated("LOAD",EA,Reg,_,_,_,AccessSize),
+    reg_nonnull(Reg,RegNN),
     !invalid(EA,_),
-    !invalid(EA_vld,_),
-    arch.memory_access_aggregated("LOAD",EA_vld,Reg,_,_,_,AccessSize),
-    instruction_get_operation(EA_vld,Operation),
-    match("VLD[1-4].*",Operation),
-    straight_line_def_used(EA,Reg,EA_vld,_),
+    instruction_get_operation(EA,Operation),
+    match("VLD[1-4].*",Operation).
+
+/**
+PC-relative address is used
+*/
+.decl used_pc_relative_addr(EA:address,Reg:register,RefAddr:address)
+
+litpool_ref(EA,EA_load,RefAddr,0,AccessSize,OpIndex),
+used_pc_relative_addr(EA,Reg,RefAddr):-
     arch.pc_relative_addr(EA,Reg,RefAddr),
+    !invalid(EA,_),
+    straight_line_def_used(EA,Reg,EA_load,_),
+    reg_relative_load(EA_load,Reg,AccessSize),
     instruction_immediate_offset(EA,OpIndex,_,_).
+
+.decl data_block_limit(Limit:address)
+
+data_block_limit(Limit):-
+    block_limit(Inst),
+    // Block limit gives in instruction identifier; covert to the aligned
+    // instruction start address.
+    arch.instruction_at(Limit,Inst).
+
+data_block_limit(Limit):-
+    litpool_ref(_,_,RefAddr,Offset,_,_),
+    Limit = RefAddr + Offset.
+
+/**
+References to potential litpools with indeterminate sizes.
+*/
+.decl indefinite_litpool_ref(Start:address,Size:unsigned)
+
+// If there's no known use of a pc-relative register,
+// it may be a reference to data that is getting passed to a function.
+indefinite_litpool_ref(RefAddr,Size):-
+    arch.pc_relative_addr(EA,Reg,RefAddr),
+    !invalid(EA,_),
+    !used_pc_relative_addr(EA,Reg,RefAddr),
+    NextLimit = min Limit : {
+        data_block_limit(Limit),
+        Limit > RefAddr
+    },
+    Size = NextLimit - RefAddr.
+
+data_block_candidate(RefAddr,Size):-
+    indefinite_litpool_ref(RefAddr,Size).
 
 /*
 Collect all literal pool addresses computed from `litpool_ref`s.
@@ -1093,39 +1134,46 @@ negative_block_points(Block,"code",Size,0,-7,"arm: ldmdaeq"):-
     op_regdirect_contains_reg(DestOp2,Reg).
 
 /**
-0x00000000 is unlikely a real instruction.
+00 00 00 00 (ARM: andeq r0, r0, r0) or 00 00 (Thumb: mov r0, r0) is unlikely a real instruction.
 */
 negative_block_points(Block,"code",Size,0,-2,"arm: contains unplausible instr"):-
-    code_in_block_candidate_refined(EA,Block),
+    code_in_block_candidate_refined(Inst,Block),
+    arch.instruction_at(EA,Inst),
+    instruction(Inst,InstSize,_,_,_,_,_,_,_,_),
+    data_word(EA,InstSize,0),
     block_candidate_boundaries(Block,"code",Start,End),
-    Size = End-Start,
-    (EA band 1) = 0,
-    data_word(EA,4,0).
+    Size = End-Start.
 
-/**
-A code block that must fall through to a function symbol, and overlaps with a
-literal pool is highly likely false.
-*/
-negative_block_points(Block,"code",Size,0,-9,"arm: possibly a litpool followed by a function symbol"):-
-    code_in_block_candidate_refined(EA,Block),
-    unresolved_block_overlap(Block,"code",Size,BlockLitPool,"data",_),
-    litpool_boundaries(BlockLitPool,_),
+// A code block that must fall through to a function start is highly likely false.
+negative_block_points(Block,"code",Size,0,-10,"arm: must-fallthrough to function symbol"):-
+    function_symbol(BlockSucc,_),
     must_fallthrough(EA,BlockSucc),
-    Block != BlockSucc,
-    function_symbol(BlockSucc,_).
-
-/**
-This is similar to the one above, but weaker.
-In some cases, the data bytes prior to a function symbol may not be explicitly
-referenced as a literal pool.
-*/
-negative_block_points(Block,"code",Size,0,-1,"arm: must-fallthrough to a function symbol is not likely code"):-
     code_in_block_candidate_refined(EA,Block),
+    Block != BlockSucc,
     block_candidate_boundaries(Block,"code",Start,End),
-    Size = End-Start,
+    Size = End-Start.
+
+// Same as above, but with an exidx boundary
+negative_block_points(Block,"code",Size,0,-10,"arm: must-fallthrough to exidx boundary"):-
+    arm_exidx_entry(EASucc,0),
+    arch.instruction_at(EASucc,BlockSucc),
     must_fallthrough(EA,BlockSucc),
+    code_in_block_candidate_refined(EA,Block),
     Block != BlockSucc,
-    function_symbol(BlockSucc,_).
+    block_candidate_boundaries(Block,"code",Start,End),
+    Size = End-Start.
+
+// Same as above, but without an explicit function symbol
+negative_block_points(Block,"code",Size,0,-8,"arm: must-fallthrough to known function start"):-
+    direct_call(CallFrom,BlockSucc),
+    code_in_block_candidate_refined(CallFrom,CallFromBlock),
+    known_block(CallFromBlock,"code",_,_),
+    !function_symbol(BlockSucc,_),
+    must_fallthrough(EA,BlockSucc),
+    code_in_block_candidate_refined(EA,Block),
+    Block != BlockSucc,
+    block_candidate_boundaries(Block,"code",Start,End),
+    Size = End-Start.
 
 data_block_candidate(Block,Pt_size):-
     aligned_address_in_data(Block,Addr),
