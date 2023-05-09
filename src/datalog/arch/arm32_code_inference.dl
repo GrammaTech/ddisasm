@@ -477,7 +477,7 @@ Create data block candidate for each valid literal pool.
 data_block_candidate(LitPoolAddr,Size):-
     litpool_ref(EA,_,RefAddr,LitPoolOffset,Size,_),
     LitPoolAddr = RefAddr + LitPoolOffset,
-    code_in_block_candidate_refined(EA,_).
+    code_in_block_candidate(EA,_).
 
 data_block_candidate(LitPoolAddr,Pt_size*2):-
     arch.pc_relative_addr(EA,Reg,LitPoolAddr),
