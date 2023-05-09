@@ -23,7 +23,13 @@ default: &default
     strip_exe: "strip"
     strip: false
     skip: false
-    check_cfg: true
+    cfg_checks:
+      - unreachable
+      - unresolved_branch
+      - cfg_empty
+      - main_is_code
+      - decode_mode_matches_arch
+      - outgoing_edges
 
 cpp: &default-cpp
   <<: *default
@@ -34,7 +40,7 @@ cpp: &default-cpp
 
   test:
     <<: *default-test
-    check_cfg: false
+    cfg_checks: []
 
 test-strip-default: &test-strip-default
   test:
@@ -42,7 +48,7 @@ test-strip-default: &test-strip-default
     strip: true
     # We don't check the CFG for stripped binaries, as there are some false
     # positives in startup code that are hard to filter out.
-    check_cfg: false
+    cfg_checks: []
 
 assembly: &assembly
   <<: *default
@@ -74,7 +80,7 @@ c-object: &c-object
 
   test:
     <<: *default-test
-    check_cfg: false
+    cfg_checks: []
 
 cpp-object: &cpp-object
   <<: *c-object
@@ -120,7 +126,7 @@ tests:
     test:
       <<: *default-test
       # TODO: this example fails because function pointers are not resolved in the CFG
-      check_cfg: false
+      cfg_checks: []
 
 
   - name: ex_float
@@ -147,7 +153,7 @@ tests:
     test:
       <<: *default-test
       # noreturn may result in unreachable code.
-      check_cfg: false
+      cfg_checks: []
 
   - name: ex_pointerReatribution
     <<: *default
@@ -208,7 +214,7 @@ tests:
       flags: ["-shared", "-nostartfiles"]
       skip: false
     test:
-      check_cfg: false
+      cfg_checks: []
 
   - name: ex_call_once
     <<: *default-cpp
@@ -239,7 +245,7 @@ tests:
       strip_exe: "strip"
       strip: false
       # CFG checks on static binaries is pretty slow, and a lot of failures (false positives?) in library code.
-      check_cfg: false
+      cfg_checks: []
 
   # # stripped version
   - name: ex1
@@ -257,7 +263,7 @@ tests:
       strip_exe: "strip"
       strip: true
       # CFG checks on static binaries is pretty slow, and a lot of failures (false positives?) in library code.
-      check_cfg: false
+      cfg_checks: []
 
   # ----------------------------------------------------------------------------
   # Small C and C++ examples (stripped).
@@ -398,32 +404,32 @@ tests:
     <<: *assembly
     test:
       <<: *default-test
-      check_cfg: false
+      cfg_checks: []
 
   - name: ex_enclosed_instr
     <<: *assembly
     test:
       <<: *default-test
-      check_cfg: false
+      cfg_checks: []
 
   - name: ex_two_data_accesses
     <<: *assembly
     test:
       <<: *default-test
-      check_cfg: false
+      cfg_checks: []
 
   - name: ex_overlapping_nops
     <<: *assembly
     test:
       <<: *default-test
-      check_cfg: false
+      cfg_checks: []
 
   - name: ex_noreturn_use_def
     <<: *assembly
     test:
       <<: *default-test
       # this example has some intentional unreachable code.
-      check_cfg: false
+      cfg_checks: []
 
   - name: ex_synchronous_access3
     <<: *assembly

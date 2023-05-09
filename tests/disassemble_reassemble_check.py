@@ -334,7 +334,7 @@ def disassemble_reassemble_test(
     exec_wrapper=None,
     arch=None,
     extra_ddisasm_flags=[],
-    check_cfg=False,
+    cfg_checks=None,
     upload=True,
 ):
     """
@@ -385,12 +385,8 @@ def disassemble_reassemble_test(
 
                 # Do some GTIRB checks
                 module = gtirb.IR.load_protobuf(gtirb_filename).modules[0]
-                if check_cfg:
-                    gtirb_errors += check_gtirb.check_cfg(module)
-
-                gtirb_errors += check_gtirb.check_main_is_code(module)
-                gtirb_errors += check_gtirb.check_decode_mode_matches_arch(
-                    module
+                gtirb_errors += check_gtirb.run_checks(
+                    module, cfg_checks or []
                 )
 
                 if upload:

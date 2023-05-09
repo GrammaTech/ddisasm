@@ -35,6 +35,7 @@ examples/**/*.so
 examples/**/*.i
 examples/**/*.ii
 examples/**/*.o.s
+examples/**/*.so.s
 examples/**/*.gtirb
 examples/**/*.exp
 examples/**/*.lib

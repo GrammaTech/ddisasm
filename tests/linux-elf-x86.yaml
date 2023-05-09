@@ -23,14 +23,20 @@ default: &default
     strip_exe: "strip"
     strip: false
     skip: false
-    check_cfg: true
+    cfg_checks:
+      - unreachable
+      - unresolved_branch
+      - cfg_empty
+      - main_is_code
+      - decode_mode_matches_arch
+      - outgoing_edges
 
 cpp: &default-cpp
   <<: *default
   test:
     <<: *default-test
     # Don't run CFG checks on CPP binaries
-    check_cfg: false
+    cfg_checks: []
   reassemble:
     compiler: "g++"
     flags: ["-m32", "-fno-pie", "-no-pie", "-nostartfiles"]
@@ -57,7 +63,7 @@ position-independent: &position-independent
     # TODO: re-enable CFG checks.
     # PIE CFG tests are currently disabled due to failures in clang PIE binaries.
     # See issue #329
-    check_cfg: false
+    cfg_checks: []
 
 strip: &strip
   test:
@@ -69,7 +75,7 @@ position-independent-cpp: &position-independent-cpp
   test:
     <<: *default-test
     # Don't run CFG checks on CPP binaries
-    check_cfg: false
+    cfg_checks: []
   reassemble:
     compiler: "g++"
     flags: ["-m32", "-pie", "-nostartfiles"]
@@ -111,7 +117,7 @@ tests:
     test:
       <<: *default-test
       # TODO: this example fails because function pointers are not resolved in the CFG
-      check_cfg: false
+      cfg_checks: []
 
   - name: ex_float
     <<: *default
@@ -137,7 +143,7 @@ tests:
     test:
       <<: *default-test
       # noreturn may result in unreachable code.
-      check_cfg: false
+      cfg_checks: []
 
   - name: ex_pointerReatribution
     <<: *default
@@ -201,7 +207,7 @@ tests:
     test:
       <<: *default-test
       # TODO: this example fails because function pointers are not resolved in the CFG
-      check_cfg: false
+      cfg_checks: []
 
   - name: ex_float
     <<: *position-independent
@@ -290,8 +296,15 @@ tests:
       flags: ["-shared", "-nostartfiles"]
       skip: false
     test:
-      check_cfg: false
+      cfg_checks: []
 
+  - name: ex_dyn_library2
+    <<: *position-independent
+    binary: fun.so
+    reassemble:
+      compiler: "gcc"
+      flags: ["-m32", "-shared", "-nostartfiles", "-lm"]
+      skip: false
 
   # ----------------------------------------------------------------------------
   # Small C and C++ examples. (stripped)

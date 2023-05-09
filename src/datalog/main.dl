@@ -528,7 +528,8 @@ direct_jump(EA,as(Dest,address)):-
     instruction_immediate_offset(EA,_,_,_),
     instruction_has_relocation(EA,Rel),
     relocation(Rel,_,_,_,SymbolIndex,_,_),
-    defined_symbol(Dest,_,_,_,_,_,_,SymbolIndex,_).
+    relocation_active_symbol_table(SymbolTable),
+    defined_symbol(Dest,_,_,_,_,_,SymbolTable,SymbolIndex,_).
 
 direct_jump(EA,EA):-
     instruction_has_loop_prefix(EA).
@@ -585,7 +586,8 @@ direct_call(EA,Dest):-
     instruction_immediate_offset(EA,_,_,_),
     instruction_has_relocation(EA,Rel),
     relocation(Rel,_,_,_,SymbolIndex,_,_),
-    defined_symbol(Dest,_,_,_,_,_,_,SymbolIndex,_).
+    relocation_active_symbol_table(SymbolTable),
+    defined_symbol(Dest,_,_,_,_,_,SymbolTable,SymbolIndex,_).
 
 // Syntactically indirect call, but statically resolved direct-call
 // E.g., In MIPS, "jalr t9", where t9 can be statically resolved by
@@ -744,6 +746,31 @@ defined_symbol(EA,Size,Type,Scope,Visibility,SectIndex,OriginTable,TableIndex,Na
     ),
     // Avoid FILE symbols.
     Type != "FILE".
+
+/**
+The name of symbol table to use when looking up symbols from relocations
+
+Although it'd be better to check what symbol table is referenced by the
+relocation section's sh_link attribute, LIEF (as of 0.13.0) does not expose
+this metadata in the LIEF::ELF::Relocation object. LIEF actually uses a similar
+strategy to this, using dynsym if it exists, and otherwise symtab - rather than
+using the sh_link metadata.
+
+This strategy will fail for binaries built with --emit-relocs, since they can
+have relocations referencing both symbol tables.
+*/
+.decl relocation_active_symbol_table(Name:symbol)
+
+relocation_active_symbol_table(".dynsym"):-
+    binary_format("ELF"),
+    !binary_type("REL").
+
+relocation_active_symbol_table(".symtab"):-
+    binary_format("ELF"),
+    binary_type("REL").
+
+relocation_active_symbol_table(""):-
+    binary_format("PE").
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
