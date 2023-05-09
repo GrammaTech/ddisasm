@@ -1159,23 +1159,24 @@ block_points(TableStart,"data",Size,0,Points,"arm: jump table"):-
     arm_jump_table_data_block(_,TableStart,TableStart,Size),
     unresolved_block(TableStart,"data",Size),
     (
-        !defined_symbol(TableStart,_,_,_,_,_,_,_,"$d"), Points = 15
+        !defined_symbol(TableStart,_,_,_,_,_,_,_,"$d"), Mult = 15
         ;
         // If it's a defined symbol, the points 10 are already given.
-        defined_symbol(TableStart,_,_,_,_,_,_,_,"$d"), Points = 5
-    ).
+        defined_symbol(TableStart,_,_,_,_,_,_,_,"$d"), Mult = 5
+    ),
+    Points = Mult * as(Size,number).
 
 // Subsequent data blocks compete with code blocks.
 // Give a few points to encourage selection unless there's a compelling reason
 // to select the code.
-block_points(Block,"data",Size,0,2,"arm: jump table"):-
+block_points(Block,"data",Size,0,2 * as(Size,number),"arm: jump table"):-
     arm_jump_table_data_block(_,TableStart,Block,Size),
     unresolved_block(Block,"data",Size),
     Block != TableStart.
 
 // Give points to a jump table data block and all prior blocks if its end
 // aligns with the jump table's limit (derived from targets).
-block_points(Block,"data",BlockSize,0,10,"arm: jump table fits target"):-
+block_points(Block,"data",BlockSize,0,10 * as(Size,number),"arm: jump table fits target"):-
     // Find LastBlock where the active limit aligns with the end of the block.
     arm_jump_table_data_block(EA_jump,TableStart,LastBlock,LastBlockSize),
     arm_jump_table_candidate_start(_,EA_jump,_,_,TableStart,Size,_,_,_),
