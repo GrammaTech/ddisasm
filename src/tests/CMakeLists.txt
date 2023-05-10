@@ -54,7 +54,7 @@ else()
   else()
     target_link_libraries(
       ${PROJECT_NAME} -Wl,--whole-archive ${GENERATED_STATIC_LIB}
-      no_return_pass -Wl,--no-whole-archive)
+      no_return_pass -Wl,--no-whole-archive ${LIBSTDCXX_FS})
   endif()
 endif()
 

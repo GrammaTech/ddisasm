@@ -168,6 +168,53 @@ if(USING_LIBCPP)
   endif()
 endif()
 
+# Using libstdc++'s std::filesystem in GCC 8 needs to have libstdc++fs linked
+# in. Because one could use libstdc++ with Clang instead of gcc, we detect
+# whether to use the flag by just trying it out.
+check_cxx_source_compiles(
+  "
+  #include <ciso646>
+  int main() {
+    return _GLIBCXX_RELEASE;
+  }
+  "
+  USING_LIBSTDCXX)
+
+if(USING_LIBSTDCXX)
+  include(CMakePushCheckState)
+  cmake_push_check_state(RESET)
+
+  set(CMAKE_REQUIRED_FLAGS -std=c++17)
+  check_cxx_source_compiles(
+    "
+    #include <filesystem>
+    int main() {
+        return std::filesystem::path(\"/\").is_absolute() ? 0 : 1;
+    }
+    "
+    LIBSTDCXX_WORKS_WITHOUT_LIBFS)
+
+  if(NOT LIBSTDCXX_WORKS_WITHOUT_LIBFS)
+    set(CMAKE_REQUIRED_LIBRARIES stdc++fs)
+    check_cxx_source_compiles(
+      "
+      #include <filesystem>
+      int main() {
+        return std::filesystem::path(\"/\").is_absolute() ? 0 : 1;
+      }
+      "
+      LIBSTDCXX_WORKS_WITH_LIBFS)
+
+    if(LIBSTDCXX_WORKS_WITH_LIBFS)
+      set(LIBSTDCXX_FS stdc++fs)
+    else()
+      message(FATAL_ERROR "could not determine how to link std::filesystem")
+    endif()
+  endif()
+
+  cmake_pop_check_state()
+endif()
+
 # ---------------------------------------------------------------------------
 # gtirb
 # ---------------------------------------------------------------------------
