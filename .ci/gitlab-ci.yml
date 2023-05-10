@@ -224,7 +224,7 @@ python-manylinux-2010-release:
   script:
     - !reference [.setup-ccache]
     - !reference [.setup-conan-linux]
-    - RELEASE_VERSION=$([[ $CI_COMMIT_REF_NAME =~ release-.* ]] && echo "ON" || echo "OFF")
+    - RELEASE_VERSION=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "ON" || echo "OFF")
     - mkdir _build
     - cd _build
     - conan install ..  '--build=*' -o gtirb-pprinter:run_tests=False
