@@ -78,6 +78,14 @@ default:
   - ccache --zero-stats
   - ccache --show-stats
 
+.setup-conan-linux:
+  - export CONAN_USER_HOME=$(pwd)
+  - pip3 install --upgrade conan~=$CONAN_VERSION
+  - conan profile new default --detect
+  - conan profile update settings.compiler.libcxx=libstdc++11 default
+  - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
+  - conan user ci_user -r gitlab -p
+
 .build-ci-image: &build-ci-image
   stage: build-images
   image:
@@ -126,6 +134,13 @@ build-ci-image-static:
   variables:
     DOCKERFILE_PATH: .ci/Dockerfile.static
     IMAGE_NAME: static
+    UBUNTU_CODENAME: "" # Don't push to DockerHub
+
+build-ci-image-manylinux2010:
+  <<: *build-ci-image
+  variables:
+    DOCKERFILE_PATH: .ci/Dockerfile.manylinux2010
+    IMAGE_NAME: manylinux2010_x86_64
     UBUNTU_CODENAME: "" # Don't push to DockerHub
 
 check-format:
@@ -177,12 +192,7 @@ check-format:
     *run-only-main
   script:
     - !reference [.setup-ccache]
-    - export CONAN_USER_HOME=$(pwd)
-    - pip3 install --upgrade conan~=$CONAN_VERSION
-    - conan profile new default --detect
-    - conan profile update settings.compiler.libcxx=libstdc++11 default
-    - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
-    - conan user ci_user -r gitlab -p
+    - !reference [.setup-conan-linux]
     # Install gtirb python wheel
     - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run build script
@@ -197,6 +207,87 @@ conan-gcc9-release-publish:
     - build-conan-gcc9-release
   dependencies: [build-conan-gcc9-release]
   <<: *conan-linux-publish-template
+
+python-manylinux-2010-release:
+  stage: build
+  needs: [check-format]
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/manylinux2010_x86_64:$IMAGE_TAG
+  artifacts:
+    paths:
+      - _build/wheelhouse/*.whl
+    # Set a short expiry time - only needed until it is published by a later job.
+    expire_in: 8 hours
+  cache:
+    paths: [ccache]
+  rules:
+   *run-only-main
+  script:
+    - !reference [.setup-ccache]
+    - !reference [.setup-conan-linux]
+    - RELEASE_VERSION=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "ON" || echo "OFF")
+    - mkdir _build
+    - cd _build
+    - conan install ..  '--build=*' -o gtirb-pprinter:run_tests=False
+    - cmake .. -DENABLE_CONAN=ON -DDDISASM_BUILD_PYTHON_PACKAGE=ON -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Release -DDDISASM_RELEASE_VERSION=$RELEASE_VERSION
+    - cmake --build . --target=python-wheel --parallel=$(nproc)
+    - auditwheel repair python/dist/*.whl
+    - ccache --show-stats
+
+python-manylinux-2010-test:
+  image: python:3.9
+  stage: package-tests
+  needs:
+    - python-manylinux-2010-release
+  rules:
+   *run-only-main
+  script:
+    - pip3 install _build/wheelhouse/ddisasm*.whl --extra-index-url=$EXTRA_INDEX_URL
+    - ddisasm --version
+
+python-manylinux-2010-publish-internal:
+  image: python:3.9
+  stage: deploy
+  needs:
+    - python-manylinux-2010-release
+  rules:
+    *publish-rules
+  script:
+    - cd _build/wheelhouse/
+    - pip3 install twine wheel setuptools --upgrade
+    - wget https://git.grammatech.com/research/templates/python-module/raw/master/.pypirc
+    - sed "s/password = <access token>/password = $GL_PKG_API_TOKEN/" .pypirc > ~/.pypirc
+    - pip3 install ddisasm-*.whl --extra-index-url=$EXTRA_INDEX_URL
+    - NEW_VERSION=$(python3 -c "import ddisasm; print(ddisasm.__version__)")
+    - if [[ "$NEW_VERSION" =~ \.dev[[:digit:]]*(\+.*)?$ && "$CI_COMMIT_REF_NAME" =~ ^release-.* ]]; then exit 1; fi
+    - if [[ "$CI_COMMIT_BRANCH" == "$CI_DEFAULT_BRANCH" ]]; then
+        if [[ ! "$NEW_VERSION" =~ \.dev[[:digit:]]*$ ]]; then
+          echo "[ERROR] Only .dev versions can be uploaded from the master branch.";
+          exit 1;
+        fi;
+        if pip3 install --extra-index-url=$EXTRA_INDEX_URL "ddisasm>$NEW_VERSION" 2>/dev/null; then
+          echo "[ERROR] The package version being published on master should always be >= the version in the repository.";
+          exit 1;
+        fi;
+        wget https://git.grammatech.com/research/templates/python-module/raw/master/delete_remote_packages.py;
+        python3 delete_remote_packages.py $GL_PKG_API_TOKEN ddisasm-*.whl;
+      fi
+    - twine check ddisasm-*.whl
+    - twine upload --verbose --repository repypi ddisasm-*.whl
+
+python-manylinux-2010-publish-external:
+  stage: deploy
+  image: python:3.9-slim
+  needs:
+    - python-manylinux-2010-release
+  script:
+    - cd _build/wheelhouse/
+    - pip3 install twine ddisasm-*.whl
+    - VERSION=$(python3 -c "import ddisasm; print(ddisasm.__version__)")
+    # Do not publish .dev versions on the public pypi
+    - if [[ "$VERSION" =~ \.dev[[:digit:]]*.*$ ]]; then exit 1; fi
+    - python3 -m twine upload --verbose ddisasm-*.whl -u __token__ -p $PYPI_API_KEY
+  rules:
+    - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
 
 .conan-windows-template: &conan-windows-template
   stage: build

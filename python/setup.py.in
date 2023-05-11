@@ -1,0 +1,60 @@
+from pathlib import Path
+
+from setuptools import find_packages, setup
+
+
+README = Path(__file__).parent / "README.md"
+long_description = README.read_text(encoding="utf-8")
+
+GTIRB_VERSION = (
+    "@gtirb_VERSION_MAJOR@."
+    "@gtirb_VERSION_MINOR@."
+    "@gtirb_VERSION_PATCH@"
+    "@GTIRB_PYTHON_DEV_SUFFIX@"
+)
+
+DDISASM_VERSION = (
+    "@PROJECT_VERSION_MAJOR@."
+    "@PROJECT_VERSION_MINOR@."
+    "@PROJECT_VERSION_PATCH@"
+    "@DDISASM_PYTHON_DEV_SUFFIX@"
+)
+
+setup(
+    name="ddisasm",
+    version=DDISASM_VERSION,
+    description="A fast and accurate disassembler",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    author="GrammaTech, Inc.",
+    author_email="gtirb@grammatech.com",
+    url="https://github.com/grammatech/ddisasm",
+    license="AGPL-3.0",
+    classifiers=[
+        "License :: OSI Approved :: GNU Affero General Public License v3",
+        "Topic :: Software Development :: Disassemblers",
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Developers",
+        'Intended Audience :: System Administrators',
+        'Operating System :: Microsoft :: Windows',
+        'Operating System :: POSIX',
+    ],
+    keywords=[
+        "reverse-engineering",
+        "disassembler",
+        "binary-analysis",
+        "intermediate-representation",
+        "binary-rewriting",
+        "gtirb",
+    ],
+    python_requires=">=3.6",
+    install_requires=[
+        f"gtirb=={GTIRB_VERSION}",
+        "importlib_resources ; python_version<'3.9'",
+    ],
+    packages=find_packages("src"),
+    package_dir={"": "src"},
+    include_package_data=True,
+    package_data={"": ["ddisasm*", ".libs/*", "py.typed"]},
+    entry_points={"console_scripts": ["ddisasm = ddisasm.__main__:_main"]},
+)

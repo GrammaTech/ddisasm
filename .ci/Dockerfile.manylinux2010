@@ -1,0 +1,5 @@
+FROM quay.io/pypa/manylinux2010_x86_64
+
+RUN yum install ccache ninja-build -y
+
+ENV PATH="${PATH}:/opt/python/cp39-cp39/bin/"
