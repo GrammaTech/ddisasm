@@ -17,8 +17,8 @@ from pathlib import Path
 import networkx as nx
 
 THIS_DIRECTORY = Path(__file__).resolve().parent
+MAIN_DIRECTORY = THIS_DIRECTORY.parent.parent.parent.parent
 
-MAIN_DIRECTORY = THIS_DIRECTORY.parent.parent.parent
 
 # Dictionaries with dependencies between
 # predicates computed by souffle
@@ -339,6 +339,7 @@ class AutoFileDirective(Directive):
         self.env = self.state.document.settings.env
         sourcedir = Path(self.env.app.config.datalogautodoc_basedir)
         self.sourcepath = sourcedir / self.arguments[0]
+        print(self.sourcepath)
         self.state.document.settings.record_dependencies.add(self.sourcepath)
         file_nodes = self._parsefile()
         return file_nodes
@@ -352,7 +353,7 @@ def load_dependence_graph():
     """
     global SCC_GRAPH
     dependencies = (
-        (THIS_DIRECTORY.parent.parent / "src_docs/dependencies.csv")
+        (THIS_DIRECTORY.parent.parent / "3-REFERENCES" / "src_docs" / "dependencies.csv")
         .read_text()
         .splitlines()
     )
