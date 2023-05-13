@@ -2,15 +2,19 @@
 % GrammaTech Inc
 % September 2018
 
-# NAME
+NAME
+=========
 
 ddisasm - disassemble a binary and generate assembly code that is ready for reassembly.
 
-# SYNOPSIS
+SYNOPSIS
+============
 
 **ddisasm** *BINARY*  [*options*...]
 
-# DESCRIPTION
+DESCRIPTION
+============
+
 
 The datalog disassembler **ddisasm** executable disassembles a binary
 *BINARY* and produces GTIRB, an intermediate representation for binary
@@ -22,64 +26,105 @@ used to pretty print the GTIRB to reassembleable assembly code.
 Currently `ddisasm` supports x64 executables in ELF format.
 
 
-# OPTIONS
+OPTIONS
+==========
 
 Ddisasm accepts the following parameters:
 
-`--help`
+.. code-block:: bash
+
+    --help
+    
 :   produce help message
 
-`--ir arg`
+.. code-block:: bash
+
+    --ir arg
+    
 :   GTIRB output file
 
-`--json arg`
+.. code-block:: bash
+
+    --json arg
+    
 :   GTIRB json output file
 
-`--asm arg`
+.. code-block:: bash
+
+    --asm arg
+    
 :   ASM output file
 
-`--debug`
+.. code-block:: bash
+
+    --debug
+    
 :   if the assembly code is printed, it is printed with debugging information
 
-`--debug-dir arg`
+.. code-block:: bash
+
+    --debug-dir arg
+    
 :   location to write CSV files for debugging
 
-`-K [ --keep-functions ] arg`
+.. code-block:: bash
+
+    -K [ --keep-functions ] arg
+    
 :   Print the given functions even if they are skipped by default (e.g. _start)
 
-`--self-diagnose`
+.. code-block:: bash
+
+    --self-diagnose
+    
 :   This option is useful for debugging. Use relocation information to emit a self diagnose
     of the symbolization process. This option only works if the target
     binary contains complete relocation information. You can enable
     that in `ld` using the option `--emit-relocs`.
+    
+.. code-block:: bash
 
-`-F [ --skip-function-analysis ]`
+     -F [ --skip-function-analysis ]
+     
 :   Skip additional analyses to compute more precise function boundaries.
 
-`-j [ --threads ]`
+.. code-block:: bash
+
+    -j [ --threads ]
+    
 :   Number of cores to use. It is set to the number of cores in the machine by default.
 
-# EXAMPLES
+EXAMPLES
+==========
 
-**ddisasm** ./examples/ex1/ex
+.. code-block:: bash
+
+    ./examples/ex1/ex
 
 Disassemble binary `ex` and print the assembly result in stdout
 
-**ddisasm** ex --asm ex.s
+.. code-block:: bash
+
+    ex --asm ex.s
 
 Disassemble binary `ex` and print the assembly result in file `ex.s`
 
-**ddisasm** ex --ir ex.gtirb
+.. code-block:: bash
+
+    ex --ir ex.gtirb
 
 Disassemble binary `ex` and write its GTIRB intermediate represention
 in `ex.gtirb`
 
-**ddisasm** ex --asm ex.s --debug
+.. code-block:: bash
+
+    ex --asm ex.s --debug
 
 Disassemble binary `ex` and print the assembly code with debugging information in file `ex.s`
 
 
-# SEE ALSO
+EE ALSO
+=============
 
 **gtirb-pprinter** (1).
 The `gtirb-pprinter` prints gtirb files as assembly code.
