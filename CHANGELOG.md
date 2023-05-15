@@ -3,6 +3,8 @@
 * Replace symbolic expression attributes with composable labels.
 * ddisasm output now displays runtimes of "load", "compute", and "transform"
   phases of each analysis pass
+* Add known_block and impossible_block passes to code inference.
+* Various ARM32 code inference improvements.
 * Various command-line options now apply to all datalog passes:
   * `--debug-dir` creates subdirectories for each datalog pass
   * `--interpreter` argument now specifies the source code repository's root
@@ -15,13 +17,19 @@
   * `--with-souffle-relations` keeps relations from all passes; entries in the
     `souffleFacts` and `souffleOutputs` auxdata are now namespaced
     with the name of the analysis pass, e.g., `disassembly.block_points`.
+* Add support for x86-32 dynamic TLS.
+* Improve IFUNC symbolic expression symbol selection.
+* Several refactorings towards spliting code inference and symbolization.
+* Refactor ELF symbol reading.
+* Add "overlay" AuxData table.
 * Update Souffle to version 2.4.
 * Add cmake option `DDISASM_GENERATE_MANY` to use Souffle's `--generate-many`
   code generation option; this should yield much faster incremental build times
   for ddisasm.
 * Utilize Souffle's feature to prune intermediate relations to reduce ddisasm's
   peak memory usage; processing large binaries can use up to ~20% less memory.
-* Update LIEF to 0.13.0
+* Update LIEF to 0.13.0.
+* Add Linux Python package for ddisasm.
 
 # 1.5.6
 * Discover ARM Thumb blocks at section start in stripped binaries.
