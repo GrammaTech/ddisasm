@@ -1,4 +1,6 @@
-# 1.6.0 (Unreleased)
+# 1.6.1 (Unreleased)
+
+# 1.6.0
 * ARM: Improve code inference using unwind information from .ARM.exidx section
 * Replace symbolic expression attributes with composable labels.
 * ddisasm output now displays runtimes of "load", "compute", and "transform"
