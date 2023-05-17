@@ -105,7 +105,7 @@ bool Arm64Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction)
                         return false;
                 }
                 Facts.Instructions.shiftedOp(
-                    relations::ShiftedOp{Addr, static_cast<uint8_t>(i + 1),
+                    relations::ShiftedOp{Addr, rotated_op_index(i + 1, OpCount),
                                          static_cast<uint8_t>(CsOp.shift.value), ShiftType});
             }
 
@@ -145,7 +145,7 @@ bool Arm64Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction)
                         return false;
                 }
                 Facts.Instructions.shiftedOp(
-                    relations::ShiftedOp{Addr, static_cast<uint8_t>(i + 1),
+                    relations::ShiftedOp{Addr, rotated_op_index(i + 1, OpCount),
                                          static_cast<uint8_t>(CsOp.shift.value), ShiftType});
             }
         }

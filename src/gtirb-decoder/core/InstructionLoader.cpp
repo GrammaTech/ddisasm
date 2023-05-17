@@ -29,6 +29,18 @@ std::string uppercase(std::string S)
     return S;
 };
 
+uint8_t rotated_op_index(uint8_t Index, uint8_t OpCount)
+{
+    if(Index == 1)
+    {
+        return OpCount;
+    }
+    else
+    {
+        return Index - 1;
+    }
+}
+
 const std::vector<relations::RegBitFieldOp> OperandFacts::reg_bitfields() const
 {
     std::vector<relations::RegBitFieldOp> RegBitFieldsForSouffle;

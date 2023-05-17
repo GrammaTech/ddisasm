@@ -1255,3 +1255,57 @@ block_points(TargetEA,"code",CodeSize,0,3,"arm: jump table target"):-
     arm_jump_table_candidate(EA_jmp,_,TableStart,DataEA,Size,TargetEA,_,_,_),
     Block <= DataEA, DataEA+Size <= Block+BlockSize,
     unresolved_block(TargetEA,"code",CodeSize).
+
+/**
+A computed PC-relative address that isn't a jump table.
+
+This example was generated in zlib with gcc 9.4. -Os:
+
+    adr r1, Label
+    add r2, r1, r2, lsl #4
+    mov pc, r2
+.Label:
+    cmp r3, r1, lsl #31
+    nop
+    adc r0, r0, r0
+    it hs
+    subhs r3, r3, r1, lsl #31
+.Label+16:
+    cmp r3, r1, lsl #30
+    nop
+    adc r0, r0, r0
+    it hs
+    subhs r3, r3, r1, lsl #30
+.Label+32:
+    ...
+
+In the above pattern, Label is supposed to be code rather than data
+(literal pools).
+*/
+.decl branch_to_calculated_pc_rel_addr(EA:address,Dest:address)
+
+branch_to_calculated_pc_rel_addr(EA,Dest):-
+    arch.pc_relative_addr(EA,RegBase,RefAddr),
+    straight_line_def_used(EA,RegBase,EA_calc,_),
+    arch.reg_reg_arithmetic_operation(EA_calc,RegJump,RegBase,_,16,0),
+    straight_line_def_used(EA_calc,RegJump,EA_jump,JumpIndex),
+    instruction_get_operation(EA_jump,JumpOperation),
+    arch.jump_operation_op_index(JumpOperation,JumpIndex),
+    instruction_get_op(EA_jump,JumpIndex,DestOp),
+    op_regdirect_contains_reg(DestOp,RegJump),
+    arch.instruction_at(RefAddr,Dest),
+    code_in_block_candidate(Dest,_),
+    EA band 1 = Dest band 1.
+
+block_points(Block,"code",Size,0,Points,"arm: calculated dest"):-
+    branch_to_calculated_pc_rel_addr(EA,Block),
+    unresolved_block(Block,"code",Size),
+    code_in_block_candidate_refined(EA,BlockPred),
+    (
+        !unresolved_block(BlockPred,"code",_),
+        !impossible_block(BlockPred,"code",_,_),
+        Points = 6
+        ;
+        unresolved_block(BlockPred,"code",_),
+        Points = 2
+    ).
