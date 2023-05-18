@@ -743,7 +743,9 @@ wis_memo(0,0,0).
 
 wis_memo(I,Value,Pred):-
     wis_memo(IPrev,LeaveWeight,_),
+    // specifying this expression in both forms allows it to be indexed in both rule plans.
     I = IPrev + 1,
+    IPrev = I - 1,
     unresolved_interval_weight(I,IWeight),
     wis_prior(I,P),
     wis_memo(P,TakeWeight0,_),
@@ -757,6 +759,9 @@ wis_memo(I,Value,Pred):-
         Value = TakeWeight,
         Pred = P
     ).
+
+// ensure @delta_wis_memo is evaluated first in both plans
+.plan 1: (4, 3, 2, 1)
 
 /**
 Weighted interval schedule: reconstruct schedule of selected intervals
