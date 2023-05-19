@@ -372,6 +372,19 @@ code_in_block_candidate(EA,EA):-
     possible_ea(EA).
 
 
+.decl padding_block_limit(Limit:address)
+
+padding_block_limit(Start):-
+    block_limit(Start).
+
+padding_block_limit(Inst):-
+    data_block_candidate(Start,_),
+    arch.instruction_at(Start,Inst).
+
+padding_block_limit(Inst):-
+    data_block_candidate(Start,Size),
+    arch.instruction_at(Start+Size,Inst).
+
 /**
 Build padding candidates from nop instructions
 */
@@ -382,11 +395,15 @@ nop_in_padding_candidate(EA,EA):-
     next(Prev,EA),
     !is_padding(Prev).
 
+nop_in_padding_candidate(EA,EA):-
+    padding_block_limit(EA),
+    is_padding(EA).
+
 nop_in_padding_candidate(Next,Start):-
     nop_in_padding_candidate(EA,Start),
     next(EA,Next),
     is_padding(Next),
-    !block_limit(Next).
+    !padding_block_limit(Next).
 
 /**
 Padding block candidates can help fill in space when evaluating overlapping
