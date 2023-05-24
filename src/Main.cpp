@@ -360,15 +360,18 @@ int main(int argc, char **argv)
     // Output PE-specific build artifacts.
     if(isPEFormat(*GTIRB->IR))
     {
-        if(vm.count("generate-import-libs"))
+        for(auto &Module : Modules)
         {
-            gtirb_bprint::PeBinaryPrinter BP(pprinter, {}, {});
-            BP.libs(*GTIRB->IR);
-        }
-        if(vm.count("generate-resources"))
-        {
-            gtirb_bprint::PeBinaryPrinter BP(pprinter, {}, {});
-            BP.resources(*GTIRB->IR, *GTIRB->Context);
+            if(vm.count("generate-import-libs"))
+            {
+                gtirb_bprint::PeBinaryPrinter BP(pprinter, {}, {});
+                BP.libs(Module);
+            }
+            if(vm.count("generate-resources"))
+            {
+                gtirb_bprint::PeBinaryPrinter BP(pprinter, {}, {});
+                BP.resources(Module, *GTIRB->Context);
+            }
         }
     }
 
