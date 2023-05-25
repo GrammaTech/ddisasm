@@ -11,6 +11,7 @@ from disassemble_reassemble_check import (
     make,
 )
 from pathlib import Path
+from typing import Optional, Tuple
 import gtirb
 
 if platform.system() == "Linux":
@@ -442,11 +443,11 @@ class SymbolSelectionTests(unittest.TestCase):
             self.check_first_sym_expr(m, "load_end", "nums_end")
 
 
-class ElfSymbolVersionsTests(unittest.TestCase):
+class ElfSymbolAuxdataTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
-    def test_symbol_versions(self):
+    def test_lib_symbol_versions(self):
         """
         Test that symbols have the right version.
         """
@@ -506,6 +507,57 @@ class ElfSymbolVersionsTests(unittest.TestCase):
             # Needed versions are not hidden
             self.assertFalse(symver_entries[bar1][1])
             self.assertFalse(symver_entries[bar2][1])
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_copy_symbol_versions(self):
+        def lookup_sym_ver_need(
+            symbol: gtirb.Symbol,
+        ) -> Optional[Tuple[str, str]]:
+            """
+            Get the library and version for a needed symbol
+            """
+            _, ver_needs, ver_entries = m.aux_data["elfSymbolVersions"].data
+
+            ver_id, hidden = ver_entries[symbol]
+            for lib, lib_ver_needs in ver_needs.items():
+                if ver_id in lib_ver_needs:
+                    return (lib, lib_ver_needs[ver_id])
+                else:
+                    raise KeyError(f"No ver need: {ver_id}")
+
+        binary = "ex"
+        with cd(ex_dir / "ex_copy_relo"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+
+            self.assertTrue(disassemble(binary, format="--ir")[0])
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+
+            # The proxy symbol should have an elfSymbolVersion entry
+            sym_environ = next(m.symbols_named("__environ"))
+            lib, version = lookup_sym_ver_need(sym_environ)
+
+            self.assertRegex(lib, r"libc\.so\.\d+")
+            self.assertRegex(version, r"GLIBC_[\d\.]+")
+
+            sym_environ_copy = next(m.symbols_named("__environ_copy"))
+            with self.assertRaises(KeyError, msg=str(sym_environ_copy)):
+                lookup_sym_ver_need(sym_environ_copy)
+
+            # Both the copy symbol and proxy symbol should have elfSymbolInfo
+            elf_symbol_info = m.aux_data["elfSymbolInfo"].data
+
+            self.assertEqual(
+                elf_symbol_info[sym_environ][1:4],
+                ("OBJECT", "GLOBAL", "DEFAULT"),
+            )
+            self.assertEqual(
+                elf_symbol_info[sym_environ_copy][1:4],
+                ("OBJECT", "GLOBAL", "DEFAULT"),
+            )
 
 
 class OverlayTests(unittest.TestCase):
