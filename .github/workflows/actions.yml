@@ -108,3 +108,37 @@ jobs:
       - run: mkdir ${HOME}/.wine
       # Run tests
       - run: cd build && PATH=$(pwd)/bin:$PATH ctest -V
+  build-pages:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+    needs: docker
+    container: ${{ needs.docker.outputs.image_path }}focal:${{ needs.docker.outputs.image_tag }}
+    steps:
+      - name: Checkout ddisasm
+        uses: actions/checkout@v3
+      - name: Generate API documentation
+        run: |
+          python3  doc/build_index.py
+          python3 -m sphinx  doc public
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v1.0.8
+        with:
+          path: public
+
+  deploy-pages:
+    needs: build-pages
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
