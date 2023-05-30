@@ -188,6 +188,8 @@ cfg_edge_to_top(Src,Conditional,"return"):-
 cfg_edge_to_symbol(Src,Symbol,"branch"):-
     refined_block(Src),
     plt_block(Src,Symbol),
+    refined_block_control_instruction(Src,EA),
+    arch.jump(EA),
     !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
     !inferred_special_symbol(_,Symbol,_,_,_).
 

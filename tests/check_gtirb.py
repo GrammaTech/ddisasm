@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 import argparse
-import gtirb
 from typing import List, Union
 import sys
+
+import capstone_gt
+import gtirb
+from gtirb_capstone.instructions import GtirbInstructionDecoder
 
 
 def lookup_sym(node: gtirb.Block) -> Union[str, None]:
@@ -280,6 +283,50 @@ def check_outgoing_edges(module: gtirb.Module) -> int:
     return error_count
 
 
+def check_edge_instruction_group(module: gtirb.Module) -> int:
+    """
+    Check edges for valid instruction groups
+    """
+    # TODO: support non-x64 checks
+    if module.isa != gtirb.Module.ISA.X64:
+        return 0
+
+    err_count = 0
+    decoder = GtirbInstructionDecoder(module.isa)
+
+    # gather blocks of all indirect edges
+    for edge in module.ir.cfg:
+        if not (
+            edge.label.type == gtirb.Edge.Type.Branch
+            or edge.label.type == gtirb.Edge.Type.Call
+            or edge.label.type == gtirb.Edge.Type.Return
+        ):
+            continue
+
+        block = edge.source
+
+        # get the last instruction
+        for instruction in decoder.get_instructions(block):
+            last_inst = instruction
+
+        # ensure instruction can be an edge
+        valid_groups = (
+            capstone_gt.x86.X86_GRP_JUMP,
+            capstone_gt.x86.X86_GRP_CALL,
+            capstone_gt.x86.X86_GRP_RET,
+            capstone_gt.x86.X86_GRP_BRANCH_RELATIVE,
+        )
+        if not any(last_inst.group(grp) for grp in valid_groups):
+            print(
+                "ERROR: invalid edge instruction group at 0x{:08x}: {}".format(
+                    last_inst.address, last_inst.groups
+                )
+            )
+            err_count += 1
+
+    return err_count
+
+
 CHECKS = {
     "unreachable": check_unreachable,
     "unresolved_branch": check_unresolved_branch,
@@ -287,6 +334,7 @@ CHECKS = {
     "main_is_code": check_main_is_code,
     "decode_mode_matches_arch": check_decode_mode_matches_arch,
     "outgoing_edges": check_outgoing_edges,
+    "edge_instruction_group": check_edge_instruction_group,
 }
 
 

@@ -30,6 +30,7 @@ default: &default
       - main_is_code
       - decode_mode_matches_arch
       - outgoing_edges
+      - edge_instruction_group
 
 cpp: &default-cpp
   <<: *default
