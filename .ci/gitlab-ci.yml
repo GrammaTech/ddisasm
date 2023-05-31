@@ -195,7 +195,7 @@ check-format:
     - !reference [.setup-ccache]
     - !reference [.setup-conan-linux]
     # Install gtirb python wheel
-    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
+    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb gtirb-capstone capstone-gt --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run build script
     - CONAN_CPU_COUNT=8 CMAKE_CXX_COMPILER_LAUNCHER=ccache PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/run_conan.py build -s build_type=Release
 
@@ -324,7 +324,7 @@ python-manylinux-2010-publish-external:
     - tar -xf conan_home.tar.gz
     - tar -xf conan_aux.tar.gz -C $(cygpath -u C:\\)
     # Install packages needed for the tests
-    - python -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
+    - python -m pip install gtirb gtirb-capstone capstone-gt --extra-index-url=$EXTRA_INDEX_URL --pre
     - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
     - export CONAN_USER_HOME=$(cygpath -w $(pwd))
     - export CONAN_REF=$(python -c 'print(__import__("conanfile").Properties().conan_recipe, end="")')
@@ -467,7 +467,7 @@ conan-windows-release-package:
     - !reference [.setup-apt]
     - !reference [.install-deps]
     # Install gtirb python API
-    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
+    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb gtirb-capstone capstone-gt --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run tests
     - cd build && PATH=$(pwd)/bin:$PATH ctest -V
 
@@ -539,6 +539,7 @@ build-static:
     # Report ccache stats.
     - ccache --show-stats
     # Run the regression tests.
+    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb-capstone capstone-gt --extra-index-url=$EXTRA_INDEX_URL --pre
     - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
 
 
