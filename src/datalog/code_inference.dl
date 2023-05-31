@@ -372,6 +372,11 @@ code_in_block_candidate(EA,EA):-
     possible_ea(EA).
 
 
+/**
+Addresses where the propagation of padding blocks should be limited.
+
+Similar to (and a superset of) block_limit for code blocks.
+*/
 .decl padding_block_limit(Limit:address)
 
 padding_block_limit(Start):-
@@ -664,6 +669,26 @@ unresolved_block_overlap(Block1,Type1,Size1,Block2,Type2,Size2):-
         Type1 != "data";
         Type2 != "data"
     ).
+
+//////////////////////////////////////////////////////////////////////
+// Weighted interval scheduling
+//
+// This algorithm is typically applied in job scheduling, where the intervals
+// represent jobs that must occur at a certain time with a certain duration,
+// and the maximal total priority for all jobs must be selected.
+//
+// Here, we use it to select blocks, maximizing the total selected weight.
+// It can be solved in linear time utilizing dynamic programming, and is easy
+// to implement in datalog.
+//
+// Unfortunately, it is unable to express dependencies between blocks, and we
+// must account for that in the weights.
+//
+// The following unresolved_interval* relations establish the intervals to be
+// "scheduled", and the wis_* relations implement the algorithm itself.
+//
+// For details of the algoritm's implementation, see:
+// https://www.cs.umd.edu/class/fall2017/cmsc451-0101/Lects/lect10-dp-intv-sched.pdf
 
 /**
 Valid unresolved intervals

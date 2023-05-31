@@ -217,6 +217,17 @@ arm_jump_table_candidate_target("rel_signed",Thumb,EA,Reference,Size,Scale,Targe
     data_word(EA,Size,Diff),
     TargetAddr = as(Diff*as(Scale,number)+as(Reference,number),address) bor Thumb.
 
+/**
+Indicates the jump table used be EA_jump is allowed to skip the first entry in
+the table.
+
+Sometimes the compiler knows the index is non-zero, and puts padding in the
+starting entry. We have observed a couple of cases where this is necessary:
+
+    * zero padding in a tbb jump table
+    * "bpkt #0" as padding in ARM ldr/add in libRSCpuRef.so
+
+*/
 .decl arm_jump_table_skip_first_entry(EA_jump:address)
 
 arm_jump_table_skip_first_entry(EA_jump):-
@@ -227,6 +238,9 @@ arm_jump_table_skip_first_entry(EA_jump):-
         ;
         invalid(TargetAddr,_)
         ;
+        // The calculated target is in the same place as the table, most likely
+        // because the entry is zero. This is definitely a padding entry, since
+        // the table must have a non-zero number of entries.
         arch.instruction_at(AlignedTargetAddr,TargetAddr),
         AlignedTargetAddr = TableStart
     ).
@@ -234,11 +248,6 @@ arm_jump_table_skip_first_entry(EA_jump):-
 // base case
 arm_jump_table_candidate(EA_jump,Reference,TableStart,EA,Size,TargetAddr,TableLimit,Type,Scale):-
     arm_jump_table_candidate_start(_,EA_jump,_,Reference,TableStart,Size,Type,Scale,_),
-    // we try both at TableStart (first entry) and TableStart+Size
-    // sometimes the compiler knows the index is non-zero, and puts padding
-    // in the starting entry. we have observed:
-    // * zero padding in a tbb jump table
-    // * "bpkt #0" as padding in ARM ldr/add in libRSCpuRef.so
     (
         !arm_jump_table_skip_first_entry(EA_jump),
         EA = TableStart

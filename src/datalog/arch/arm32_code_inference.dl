@@ -468,11 +468,16 @@ used_pc_relative_addr(EA,Reg,RefAddr):-
     reg_relative_load(EA_load,Reg,AccessSize),
     instruction_immediate_offset(EA,OpIndex,_,_).
 
+/**
+Addresses where the propagation of indefinite data blocks should be limited.
+
+Similar to (and a superset of) block_limit for code blocks.
+*/
 .decl data_block_limit(Limit:address)
 
 data_block_limit(Limit):-
     block_limit(Inst),
-    // Block limit gives in instruction identifier; covert to the aligned
+    // Block limit gives in instruction identifier; convert to the aligned
     // instruction start address.
     arch.instruction_at(Limit,Inst).
 
