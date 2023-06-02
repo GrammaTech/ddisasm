@@ -348,7 +348,7 @@ Note: Relation names are namespaced with the name of the pass in which they belo
 
 ## dynamicEntries
 
-`unsanctioned`
+`provisional`
 
 |       |                                               |
 |------:|-----------------------------------------------|
