@@ -1,6 +1,6 @@
-In case of doubt, Fell free to see usage
+In case of doubt, Fell free to see usage link above:
 
-:doc:`from manuals <./MANUAL/ddisasm.rst>` 
+:doc:`see manual. <./MANUAL/ddisasm.rst>` 
 
 
 1. Get started!
@@ -28,5 +28,14 @@ In case of doubt, Fell free to see usage
     :titlesonly:
 
     api-ref.rst
+
+4. Explanation.
+=============================
+
+.. toctree::
+    :glob:
+    :titlesonly:
+
+    explanation.rst
 
 :ref:`predicateindex`
