@@ -1,4 +1,6 @@
+In case of doubt, Fell free to see usage
 
+:doc:`from manuals <./MANUAL/ddisasm.rst>` 
 
 
 1. Get started!

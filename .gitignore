@@ -1,3 +1,11 @@
+#documentation
+
+!doc/source/3-REFERENCES/src_docs/
+src/datalog/
+
+
+#builds
+
 *.o
 *.a
 
@@ -39,6 +47,8 @@ examples/**/*.so.s
 examples/**/*.gtirb
 examples/**/*.exp
 examples/**/*.lib
+
+#cache
 
 /gtirb
 /gtirb-pprinter
