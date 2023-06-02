@@ -7,7 +7,7 @@ import subprocess
 
 DDISASM_ROOT = Path(__file__).resolve().parent.parent
 
-DL_DOCS = DDISASM_ROOT / "src" / "datalog"
+DL_DOCS = DDISASM_ROOT / "doc" / "source" / "3-REFERENCES" / "src_docs" 
 CSV_DOCS = DDISASM_ROOT / "doc" / "source" / "3-REFERENCES" / "src_docs"
 
 
