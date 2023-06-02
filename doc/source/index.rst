@@ -1,6 +1,6 @@
-In case of doubt, Fell free to see usage link above:
+In case of doubt, Fell free to see usage link here:
 
-:doc:`see manual. <./MANUAL/ddisasm.rst>` 
+:download:`see manual. <./MANUAL/ddisasm.rst>` 
 
 
 1. Get started!
