@@ -236,6 +236,16 @@ invalid(EA,"mips-zero_dest_op"):-
     !instruction_get_operation(EA, "MOVE"),
     op_regdirect_contains_reg(Op,"ZERO").
 
+// Prior to capstone 662bb3f, it did not support decoding ARM64 udf
+// instructions. This retains that behavior, for now.
+// Binutils <2.35 does not support assembling udf instructions on ARM64.
+// TODO: ideally, we would add UDF to arch.halt_operation() and rely on code
+// inference to avoid it. However, ARM64 does not yet create data blocks for
+// jump tables, and relative jump table entries frequently decode as UDF.
+invalid(EA,"arm64-udf"):-
+    binary_isa("ARM64"),
+    instruction_get_operation(EA,"UDF").
+
 .decl possible_ea(EA:address) inline
 
 possible_ea(EA):-
