@@ -45,14 +45,13 @@ class SymbolicOperandsTests(unittest.TestCase):
                 symbol = next(m.symbols_named(name))
                 block = symbol.referent
                 self.assertIsInstance(block, gtirb.CodeBlock)
-                if isinstance(block, gtirb.CodeBlock):
-                    _, _, sym_expr = next(
-                        block.byte_interval.symbolic_expressions_at(
-                            range(block.address, block.address + block.size)
-                        )
+                _, _, sym_expr = next(
+                    block.byte_interval.symbolic_expressions_at(
+                        range(block.address, block.address + block.size)
                     )
-                    self.assertIsInstance(sym_expr, gtirb.SymAddrConst)
-                    self.assertEqual(sym_expr.offset, 0)
+                )
+                self.assertIsInstance(sym_expr, gtirb.SymAddrConst)
+                self.assertEqual(sym_expr.offset, 0)
             # check that we don't symbolize LEA instructions used for
             # regular arithmetic
             not_symbolized = ["lea_multiplied", "lea_cmp"]
@@ -60,17 +59,12 @@ class SymbolicOperandsTests(unittest.TestCase):
                 symbol = next(m.symbols_named(name))
                 block = symbol.referent
                 self.assertIsInstance(block, gtirb.CodeBlock)
-                self.assertEqual(
-                    len(
-                        list(
-                            block.byte_interval.symbolic_expressions_at(
-                                range(
-                                    block.address, block.address + block.size
-                                )
-                            )
+                self.assertFalse(
+                    list(
+                        block.byte_interval.symbolic_expressions_at(
+                            range(block.address, block.address + block.size)
                         )
-                    ),
-                    0,
+                    )
                 )
 
 
