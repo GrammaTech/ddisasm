@@ -195,7 +195,8 @@ check-format:
     - !reference [.setup-ccache]
     - !reference [.setup-conan-linux]
     # Install gtirb python wheel
-    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb gtirb-capstone capstone-gt --extra-index-url=$EXTRA_INDEX_URL --pre
+    - python3 -m pip install pip --upgrade
+    - python3 -m pip install -r requirements-dev.txt --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run build script
     - CONAN_CPU_COUNT=8 CMAKE_CXX_COMPILER_LAUNCHER=ccache PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/run_conan.py build -s build_type=Release
 
@@ -308,7 +309,8 @@ python-manylinux-2010-publish-external:
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
     - conan user ci_user -r gitlab -p
     # Install packages needed for the tests
-    - python -m pip install pip --upgrade && python -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
+    - python -m pip install pip --upgrade
+    - python -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run build script
     - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
     - python .ci/run_conan.py build $CONAN_OPTIONS -s build_type=$BUILD_TYPE
@@ -324,7 +326,7 @@ python-manylinux-2010-publish-external:
     - tar -xf conan_home.tar.gz
     - tar -xf conan_aux.tar.gz -C $(cygpath -u C:\\)
     # Install packages needed for the tests
-    - python -m pip install gtirb gtirb-capstone capstone-gt --extra-index-url=$EXTRA_INDEX_URL --pre
+    - python -m pip install -r requirements-dev.txt --extra-index-url=$EXTRA_INDEX_URL --pre
     - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
     - export CONAN_USER_HOME=$(cygpath -w $(pwd))
     - export CONAN_REF=$(python -c 'print(__import__("conanfile").Properties().conan_recipe, end="")')
@@ -467,7 +469,8 @@ conan-windows-release-package:
     - !reference [.setup-apt]
     - !reference [.install-deps]
     # Install gtirb python API
-    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb gtirb-capstone capstone-gt --extra-index-url=$EXTRA_INDEX_URL --pre
+    - python3 -m pip install pip --upgrade
+    - python3 -m pip install -r requirements-dev.txt --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run tests
     - cd build && PATH=$(pwd)/bin:$PATH ctest -V
 
@@ -539,7 +542,8 @@ build-static:
     # Report ccache stats.
     - ccache --show-stats
     # Run the regression tests.
-    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb-capstone capstone-gt --extra-index-url=$EXTRA_INDEX_URL --pre
+    - python3 -m pip install pip --upgrade
+    - python3 -m pip install -r ../requirements-dev.txt --extra-index-url=$EXTRA_INDEX_URL --pre
     - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
 
 
@@ -615,6 +619,8 @@ static-drivers:
     - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Debug -DDDISASM_STATIC_DRIVERS=ON -DDDISASM_GENERATE_MANY=ON
     - make -j8
     # Run the regression tests.
+    - python3 -m pip install pip --upgrade
+    - python3 -m pip install -r ../requirements-dev.txt --extra-index-url=$EXTRA_INDEX_URL --pre
     - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
     # For verification purposes, print ldd of the driver here.
     - ldd bin/ddisasm
@@ -667,7 +673,8 @@ test-make-install:
     - !reference [.setup-apt]
     - !reference [.install-deps]
     # Install gtirb python API
-    - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
+    - python3 -m pip install pip --upgrade
+    - python3 -m pip install -r requirements-dev.txt --extra-index-url=$EXTRA_INDEX_URL --pre
     - cd build && make -t && make install
     - cd .. && PYTHONPATH=$PYTHONPATH:$(pwd)/tests python3 -m unittest end2end_test.TestExamples.test_1
 
