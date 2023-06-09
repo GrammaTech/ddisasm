@@ -435,6 +435,10 @@ tests:
   - name: ex_synchronous_access3
     <<: *assembly
 
+  - name: ex_plt_nop
+    <<: *assembly
+    flags: ["-no-pie", "-nostartfiles"]
+
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
   # ----------------------------------------------------------------------------
