@@ -294,14 +294,25 @@ def check_edge_instruction_group(module: gtirb.Module) -> int:
     err_count = 0
     decoder = GtirbInstructionDecoder(module.isa)
 
-    # gather blocks of all indirect edges
     for edge in module.ir.cfg:
-        if not (
-            edge.label.type == gtirb.Edge.Type.Branch
-            or edge.label.type == gtirb.Edge.Type.Call
-            or edge.label.type == gtirb.Edge.Type.Return
-        ):
+        if edge.label.type == gtirb.Edge.Type.Fallthrough:
+            # fallthrough edges do not map to a specified instruction group
             continue
+
+        # TODO: there is one more generic capstone group, X86_GRP_PRIVILEGE.
+        # does it belong in Syscall?
+        edge_type_groups = {
+            gtirb.Edge.Type.Branch: set(
+                (
+                    capstone_gt.x86.X86_GRP_JUMP,
+                    capstone_gt.x86.X86_GRP_BRANCH_RELATIVE,
+                )
+            ),
+            gtirb.Edge.Type.Call: set((capstone_gt.x86.X86_GRP_CALL,)),
+            gtirb.Edge.Type.Return: set((capstone_gt.x86.X86_GRP_RET,)),
+            gtirb.Edge.Type.Syscall: set((capstone_gt.x86.X86_GRP_INT,)),
+            gtirb.Edge.Type.Sysret: set((capstone_gt.x86.X86_GRP_IRET,)),
+        }
 
         block = edge.source
 
@@ -310,12 +321,7 @@ def check_edge_instruction_group(module: gtirb.Module) -> int:
             last_inst = instruction
 
         # ensure instruction can be an edge
-        valid_groups = (
-            capstone_gt.x86.X86_GRP_JUMP,
-            capstone_gt.x86.X86_GRP_CALL,
-            capstone_gt.x86.X86_GRP_RET,
-            capstone_gt.x86.X86_GRP_BRANCH_RELATIVE,
-        )
+        valid_groups = edge_type_groups[edge.label.type]
         if not any(last_inst.group(grp) for grp in valid_groups):
             print(
                 "ERROR: invalid edge instruction group at 0x{:08x}: {}".format(
