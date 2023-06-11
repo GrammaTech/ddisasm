@@ -391,30 +391,13 @@ known_block(Block,"code",Size,"arm: THM_CALL relocation"):-
 // literal pools
 
 /**
-(A) LDR or LDRD
-ldr Reg, [pc, off]   or   ldrd Reg1, Reg2, [pc, off]
-*/
-litpool_ref(EA,EA,RefAddr,0,Size,OpIndex):-
-    !invalid(EA,_),
-    arch.pc_reg(PC),
-    arch.load(EA,_,_,Reg,PC,"NONE",_,Offset),
-    !arch.memory_access("LOAD",EA,_,_,_,_,_,_,Offset-4),
-    instruction_memory_access_size(EA,OpIndex,Size),
-    arch.pc_relative_disp(EA,Disp),
-    align_addr(EA_aligned,EA),
-    RefAddr = EA_aligned + as(Disp+Offset,address),
-    !arch.pc_reg(Reg).
-
-/**
 Data is loaded from a register-relative address.
+
+Used to construct litpool_ref
 */
 .decl reg_relative_load(LoadEA:address,Reg:register,Size:unsigned)
 
-/**
-(B) ADR/LDR or ADR/LDRD
-adr BaseReg, Label    or   add/sub BaseReg, pc, off
-ldr Reg1, [BaseReg, Offset]  or ldrd Reg1, Reg2, [BaseReg, Offset]
-*/
+// ldr Reg1, [BaseReg, Offset]  or ldrd Reg1, Reg2, [BaseReg, Offset]
 reg_relative_load(EA,BaseRegNN,Size):-
     arch.load(EA,_,_,Reg1,BaseReg,"NONE",_,Offset),
     reg_nonnull(BaseReg,BaseRegNN),
@@ -425,11 +408,7 @@ reg_relative_load(EA,BaseRegNN,Size):-
     !arch.pc_reg(Reg1),
     !arch.pc_reg(BaseReg).
 
-/**
-(C) ADR/LDM
-adr r1, Label    or   add/sub r1, pc, offset
-ldm r1, {r2, r3}
-*/
+// ldm r1, {r2, r3}
 reg_relative_load(EA,RegNN,Size):-
     arch.load(EA,_,_,_,Reg,_,_,_),
     reg_nonnull(Reg,RegNN),
@@ -443,17 +422,26 @@ reg_relative_load(EA,RegNN,Size):-
     arch.pointer_size(Pt_size),
     Size = RegCnt * Pt_size.
 
-/**
-(D) ADR/VLDn
-adr r1, Label    or   add/sub r1, pc, offset
-vldn.type {dn,...}, r1
-*/
+// vldn.type {dn,...}, r1
 reg_relative_load(EA,RegNN,AccessSize):-
     arch.memory_access_aggregated("LOAD",EA,Reg,_,_,_,AccessSize),
     reg_nonnull(Reg,RegNN),
     !invalid(EA,_),
     instruction_get_operation(EA,Operation),
     match("VLD[1-4].*",Operation).
+
+// LDR or LDRD, e.g.:
+// ldr Reg, [pc, off]   or   ldrd Reg1, Reg2, [pc, off]
+litpool_ref(EA,EA,RefAddr,0,Size,OpIndex):-
+    !invalid(EA,_),
+    arch.pc_reg(PC),
+    arch.load(EA,_,_,Reg,PC,"NONE",_,Offset),
+    !arch.memory_access("LOAD",EA,_,_,_,_,_,_,Offset-4),
+    instruction_memory_access_size(EA,OpIndex,Size),
+    arch.pc_relative_disp(EA,Disp),
+    align_addr(EA_aligned,EA),
+    RefAddr = EA_aligned + as(Disp+Offset,address),
+    !arch.pc_reg(Reg).
 
 /**
 PC-relative address is used

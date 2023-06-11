@@ -392,6 +392,8 @@ padding_block_limit(Inst):-
 
 /**
 Build padding candidates from nop instructions
+
+This is analagous to code_in_block_candidate, but for blocks of type "padding".
 */
 .decl nop_in_padding_candidate(EA:address,Start:address)
 
@@ -791,7 +793,11 @@ wis_prior(I,Prior):-
 /**
 Weighted interval schedule: memoized subproblems
 
-Value is the optimized total weight for intervals 1:I.
+Value is the optimized total weight for intervals [1:I].
+
+`Value` is the total weight for selected intervals, and `Pred` (i.e., the
+Predecessor) is the previous entry in `wis_memo`, later used to reconstruct
+the optimal solution.
 */
 .decl wis_memo(I:unsigned,Value:unsigned,Pred:unsigned)
 .output wis_memo
@@ -834,7 +840,7 @@ wis_schedule_iter(I):-
     unresolved_interval_order(I,_,_),
     !unresolved_interval_order(I+1,_,_).
 
-// Add to schedule if request I was taken.
+// Add to schedule if interval I was taken.
 wis_schedule(I):-
     wis_schedule_iter(I),
     wis_memo(I,_,P),
