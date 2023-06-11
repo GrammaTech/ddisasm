@@ -757,21 +757,36 @@ unresolved_interval_weight(ID,Weight):-
     Weight = Size * 5 + MaxPoints.
 
 /**
-Weighted interval schedule: prior finished
+Weighted interval schedule: `Count` of intervals that end prior to the start of
+interval `I`.
 
-The number of intervals that end before the start of interval I
+Only calculated for intervals that have prior intervals.
+*/
+.decl wis_has_prior(I:unsigned,Count:unsigned)
+
+wis_has_prior(I,Prior):-
+    unresolved_interval_order(Prior,_,PriorEnd),
+    // check the we have the last interval ending at PriorEnd
+    unresolved_interval_order(Prior+1,_,NextEnd),
+    NextEnd > PriorEnd,
+    // find intervals that start after PriorEnd but before NextEnd.
+    // for those intervals `Prior` is the prior.
+    unresolved_interval_order(I,Start,_),
+    NextEnd > Start, Start >= PriorEnd.
+
+/**
+wis_prior extends wis_has_prior, including intervals that have no prior
+intervals (i.e., with `Count` of 0).
 */
 .decl wis_prior(I:unsigned,Count:unsigned)
 .output wis_prior
 
-wis_prior(0,0).
+wis_prior(I,0):-
+    unresolved_interval_order(I,_,_),
+    !wis_has_prior(I,_).
 
-wis_prior(I,Count):-
-    unresolved_interval_order(I,Start,_),
-    Count = as(count : {
-        unresolved_interval_order(_,_,End),
-        End <= Start // or equal: allow last end == start
-    }, unsigned).
+wis_prior(I,Prior):-
+    wis_has_prior(I,Prior).
 
 /**
 Weighted interval schedule: memoized subproblems
