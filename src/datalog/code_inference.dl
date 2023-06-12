@@ -540,13 +540,17 @@ Two blocks overlap.
 */
 .decl block_overlap(Block1:address,Type1:block_type,Size1:unsigned,Block2:address,Type2:block_type,Size2:unsigned)
 
-block_overlap(Block1,Type1,EndAddr1-BegAddr1,Block2,Type2,EndAddr2-BegAddr2):-
+block_overlap(Block1,Type1,Size1,Block2,Type2,Size2):-
     block_candidate_boundaries(Block1,Type1,BegAddr1,EndAddr1),
     block_candidate_boundaries(Block2,Type2,BegAddr2,EndAddr2),
+    Size1 = EndAddr1-BegAddr1,
+    Size2 = EndAddr2-BegAddr2,
     (
         Block1 != Block2
-    ;
-        Block1 = Block2, Type1 != Type2
+        ;
+        Type1 != Type2
+        ;
+        Size1 != Size2
     ),
     BegAddr1 <= BegAddr2,
     BegAddr2 < EndAddr1.
