@@ -829,6 +829,28 @@ wis_memo(I,Value,Pred):-
 // ensure @delta_wis_memo is evaluated first in both plans
 .plan 1: (4, 3, 2, 1)
 
+.decl interval_schedule_tie(A:address,SizeA:unsigned,B:address,SizeB:unsigned)
+.output interval_schedule_tie
+
+interval_schedule_tie(A,SizeA,B,SizeB):-
+    wis_memo(IPrev,LeaveWeight,_),
+    I = IPrev + 1,
+    unresolved_interval_weight(I,IWeight),
+    wis_prior(I,P),
+    wis_memo(P,TakeWeight0,_),
+    TakeWeight = TakeWeight0 + IWeight,
+    LeaveWeight = TakeWeight,
+    unresolved_interval_order(I,A,EndA),
+    unresolved_interval_order(IPrev,B,EndB),
+    SizeA = EndA - A,
+    SizeB = EndB - B,
+    // We only care about ties if I is selected in the final schedule.
+    // Otherwise, it had no impact on the output.
+    // It's a non-issue if IPrev is selected. Because the wis_memo rule favors
+    // interval I in case of ties, then if IPrev was selected, some interval
+    // after IPrev but conflicting with I was selected.
+    wis_schedule(I).
+
 /**
 Weighted interval schedule: reconstruct schedule of selected intervals
 */

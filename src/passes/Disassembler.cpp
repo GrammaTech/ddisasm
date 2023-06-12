@@ -1590,4 +1590,20 @@ void performSanityChecks(AnalysisPassResult &Result, souffle::SouffleProgram &Pr
         }
         Messages.push_back(ErrMsg.str());
     }
+
+    auto intervalScheduleTie = Program.getRelation("interval_schedule_tie");
+    if(intervalScheduleTie->size() > 0)
+    {
+        std::stringstream WarnMsg;
+        WarnMsg << "The following interval schedules have equal weights:";
+        for(auto &output : *intervalScheduleTie)
+        {
+            uint64_t IntervalA, SizeA, IntervalB, SizeB;
+            output >> IntervalA >> SizeA >> IntervalB >> SizeB;
+            WarnMsg << "\n"
+                    << IntervalA << "(" << SizeA << " bytes), " << IntervalB << " (" << SizeB
+                    << " bytes)";
+        }
+        Result.Warnings.push_back(WarnMsg.str());
+    }
 }
