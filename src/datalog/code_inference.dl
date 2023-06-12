@@ -699,7 +699,6 @@ unresolved_block_overlap(Block1,Type1,Size1,Block2,Type2,Size2):-
 Valid unresolved intervals
 */
 .decl unresolved_interval(Start:address,End:address)
-.output unresolved_interval
 
 unresolved_interval(Start,End):-
     unresolved_block(Block,Type,Size),
@@ -712,7 +711,6 @@ unresolved_interval(Start,End):-
 Sort intervals by end address
 */
 .decl unresolved_interval_order(ID:unsigned,Start:address,End:address)
-.output unresolved_interval_order
 
 unresolved_interval_order(ID,FirstStart,FirstEnd):-
     ID = 1,
@@ -748,7 +746,6 @@ unresolved_interval_order(LastID+1,NextStart,NextEnd):-
 Take the best scoring block that occupies an identical interval.
 */
 .decl unresolved_interval_weight(ID:unsigned,Weight:unsigned)
-.output unresolved_interval_weight
 
 unresolved_interval_weight(ID,Weight):-
     unresolved_interval_order(ID,Start,End),
@@ -784,7 +781,6 @@ wis_prior extends wis_has_prior, including intervals that have no prior
 intervals (i.e., with `Count` of 0).
 */
 .decl wis_prior(I:unsigned,Count:unsigned)
-.output wis_prior
 
 wis_prior(I,0):-
     unresolved_interval_order(I,_,_),
@@ -803,7 +799,6 @@ Predecessor) is the previous entry in `wis_memo`, later used to reconstruct
 the optimal solution.
 */
 .decl wis_memo(I:unsigned,Value:unsigned,Pred:unsigned)
-.output wis_memo
 
 wis_memo(0,0,0).
 
@@ -855,10 +850,8 @@ interval_schedule_tie(A,SizeA,B,SizeB):-
 Weighted interval schedule: reconstruct schedule of selected intervals
 */
 .decl wis_schedule(Interval:unsigned)
-.output wis_schedule
 
 .decl wis_schedule_iter(Iter:unsigned)
-.output wis_schedule_iter
 
 // Start from the end, which holds the completed optimal solution.
 wis_schedule_iter(I):-
