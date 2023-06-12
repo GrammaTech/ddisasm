@@ -296,7 +296,6 @@ basic_target(Val):-
 block_limit(as(EA,address)):-
     (
         op_immediate(_,EA);
-        // TODO: merge pc_relative_operand and arch.pc_relative_addr?
         pc_relative_operand(_,_,EA);
         arch.pc_relative_addr(_,_,EA);
         basic_target(EA);
