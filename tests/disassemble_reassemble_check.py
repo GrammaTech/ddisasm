@@ -384,10 +384,11 @@ def disassemble_reassemble_test(
                 )
 
                 # Do some GTIRB checks
-                module = gtirb.IR.load_protobuf(gtirb_filename).modules[0]
-                gtirb_errors += check_gtirb.run_checks(
-                    module, cfg_checks or []
-                )
+                if success:
+                    module = gtirb.IR.load_protobuf(gtirb_filename).modules[0]
+                    gtirb_errors += check_gtirb.run_checks(
+                        module, cfg_checks or []
+                    )
 
                 if upload:
                     asm_db.upload(
