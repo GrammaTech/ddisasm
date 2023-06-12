@@ -1250,6 +1250,19 @@ block_points(TargetEA,"code",CodeSize,0,3,"arm: jump table target"):-
     Block <= DataEA, DataEA+Size <= Block+BlockSize,
     unresolved_block(TargetEA,"code",CodeSize).
 
+
+/**
+Minimum instruction size for each execution mode.
+
+Mode can be 0 (ARM) or 1 (Thumb)
+*/
+.decl mode_min_instruction_size(Mode:unsigned,Size:unsigned)
+
+// ARM
+mode_min_instruction_size(0,4).
+// Thumb
+mode_min_instruction_size(1,2).
+
 /**
 A computed PC-relative address that isn't a jump table.
 
@@ -1280,8 +1293,10 @@ In the above pattern, Label is supposed to be code rather than data
 
 branch_to_calculated_pc_rel_addr(EA,Dest):-
     arch.pc_relative_addr(EA,RegBase,RefAddr),
+    mode_min_instruction_size(EA band 1,MinInstructionWidth),
     straight_line_def_used(EA,RegBase,EA_calc,_),
-    arch.reg_reg_arithmetic_operation(EA_calc,RegJump,RegBase,_,16,0),
+    arch.reg_reg_arithmetic_operation(EA_calc,RegJump,RegBase,_,Mult,0),
+    Mult > as(MinInstructionWidth,number),
     straight_line_def_used(EA_calc,RegJump,EA_jump,JumpIndex),
     instruction_get_operation(EA_jump,JumpOperation),
     arch.jump_operation_op_index(JumpOperation,JumpIndex),
