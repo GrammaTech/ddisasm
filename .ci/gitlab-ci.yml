@@ -107,7 +107,7 @@ default:
       fi
     - >-
       /kaniko/executor
-      --snapshotMode=redo
+      --snapshot-mode=redo
       --cache=true
       --cache-repo=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}/${IMAGE_NAME}/cache
       --context=$CI_PROJECT_DIR
@@ -824,7 +824,7 @@ docker-image:
     # Push to Docker Hub
     - >-
       /kaniko/executor
-      --snapshotMode=redo
+      --snapshot-mode=redo
       --cache=true
       --cache-repo=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}/ddisasm/cache
       --context=$CI_PROJECT_DIR
