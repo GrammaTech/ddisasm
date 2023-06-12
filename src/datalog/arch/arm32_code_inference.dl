@@ -482,6 +482,7 @@ References to potential litpools with indeterminate sizes.
 // it may be a reference to data that is getting passed to a function.
 indefinite_litpool_ref(RefAddr,Size):-
     arch.pc_relative_addr(EA,Reg,RefAddr),
+    code_in_block_candidate(EA,_),
     !invalid(EA,_),
     !used_pc_relative_addr(EA,Reg,RefAddr),
     NextLimit = min Limit : {
