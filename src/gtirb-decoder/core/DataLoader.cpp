@@ -33,6 +33,7 @@ void DataLoader::operator()(const gtirb::Module& Module, souffle::SouffleProgram
 
     relations::insert(Program, "address_in_data", std::move(Facts.Addresses));
     relations::insert(Program, "ascii_string", std::move(Facts.Ascii));
+    relations::insert(Program, "repeated_byte", std::move(Facts.RepeatedByte));
 }
 
 void DataLoader::load(const gtirb::Module& Module, DataFacts& Facts)
@@ -83,6 +84,8 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
     auto Data = ByteInterval.rawBytes<const int8_t>();
 
     size_t Ascii = 0;
+    uint8_t LastByte = *Data;
+    uint64_t ByteCount = 0;
 
     while(Size > 0)
     {
@@ -131,6 +134,21 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
         else
         {
             Ascii = 0;
+        }
+
+        // Count repeated byte value.
+        if(Byte == LastByte)
+        {
+            ByteCount++;
+        }
+        else
+        {
+            if(ByteCount > 1)
+            {
+                Facts.RepeatedByte.push_back({Addr - ByteCount, LastByte, ByteCount});
+            }
+            LastByte = Byte;
+            ByteCount = 1;
         }
 
         ++Addr;

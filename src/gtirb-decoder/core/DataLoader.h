@@ -33,6 +33,7 @@ struct DataFacts
     gtirb::Addr Min, Max;
     std::vector<relations::Data<gtirb::Addr>> Addresses;
     std::vector<relations::Data<gtirb::Addr>> Ascii;
+    std::vector<relations::RepeatedByte> RepeatedByte;
 };
 
 // Load data sections.
