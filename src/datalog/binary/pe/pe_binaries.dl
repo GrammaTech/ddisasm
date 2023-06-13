@@ -177,6 +177,30 @@ is_padding(EA):-
     next(Prev,EA),
     npad(EA,_).
 
+/**
+Identify the 'First' and 'Last' jump trampolines prepended to the .text section
+of PE binaries built with "incremental linking".
+*/
+.decl incremental_linking(First:address,Last:address)
+.output incremental_linking
+
+incremental_linking(First,M) <= incremental_linking(First,N):-
+    N > M.
+
+incremental_linking(First,First):-
+    binary_format("PE"),
+    First = min EA: { instruction(EA,_,_,_,_,_,_,_,_,_), !is_padding(EA) },
+    direct_jump(First,_).
+
+incremental_linking(First,EA):-
+    incremental_linking(First,Last),
+    next(Last,EA),
+    direct_jump(EA,_).
+
+/**
+Locate data directory and debug data merged with the text section. Note that
+this is used to splice merged .rdata and .text sections.
+*/
 .decl merged_data_region(Start:address,End:address)
 
 merged_data_region(DataStart,DataStart+DataSize):-
@@ -186,15 +210,24 @@ merged_data_region(DataStart,DataStart+DataSize):-
         pe_data_directory(_,DataStart,DataSize), DataSize > 0;
         pe_debug_data(_,DataStart,DataSize), DataSize > 0
     ),
-    entry_point(Entry),
-    DataStart < Entry,
     loaded_section(SectionStart,SectionEnd,".text"),
     DataStart > SectionStart,
     DataStart < SectionEnd.
 
+// Infer prepended .rdata boundaries.
 data_region(Start,Size):-
-    Last = max End:{merged_data_region(_,End)},
-    loaded_section(Start,_,".text"),
+    Last = max End : { merged_data_region(_,End) },
+    (
+        // Merged .rdata begins after incremental linking trampolines.
+        incremental_linking(_,EA),
+        instruction(EA,N,_,_,_,_,_,_,_,_),
+        Start = EA+N
+        ;
+        // Code entry follows PE data directories or debug info.
+        entry_point(Entry),
+        Last < Entry,
+        loaded_section(Start,_,".text")
+    ),
     Size = Last - Start.
 
 /**
