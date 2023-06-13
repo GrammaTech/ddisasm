@@ -294,25 +294,25 @@ def check_edge_instruction_group(module: gtirb.Module) -> int:
     err_count = 0
     decoder = GtirbInstructionDecoder(module.isa)
 
+    # TODO: there is one more generic capstone group, X86_GRP_PRIVILEGE.
+    # does it belong in Syscall?
+    edge_type_groups = {
+        gtirb.Edge.Type.Branch: set(
+            (
+                capstone_gt.x86.X86_GRP_JUMP,
+                capstone_gt.x86.X86_GRP_BRANCH_RELATIVE,
+            )
+        ),
+        gtirb.Edge.Type.Call: set((capstone_gt.x86.X86_GRP_CALL,)),
+        gtirb.Edge.Type.Return: set((capstone_gt.x86.X86_GRP_RET,)),
+        gtirb.Edge.Type.Syscall: set((capstone_gt.x86.X86_GRP_INT,)),
+        gtirb.Edge.Type.Sysret: set((capstone_gt.x86.X86_GRP_IRET,)),
+    }
+
     for edge in module.ir.cfg:
         if edge.label.type == gtirb.Edge.Type.Fallthrough:
             # fallthrough edges do not map to a specified instruction group
             continue
-
-        # TODO: there is one more generic capstone group, X86_GRP_PRIVILEGE.
-        # does it belong in Syscall?
-        edge_type_groups = {
-            gtirb.Edge.Type.Branch: set(
-                (
-                    capstone_gt.x86.X86_GRP_JUMP,
-                    capstone_gt.x86.X86_GRP_BRANCH_RELATIVE,
-                )
-            ),
-            gtirb.Edge.Type.Call: set((capstone_gt.x86.X86_GRP_CALL,)),
-            gtirb.Edge.Type.Return: set((capstone_gt.x86.X86_GRP_RET,)),
-            gtirb.Edge.Type.Syscall: set((capstone_gt.x86.X86_GRP_INT,)),
-            gtirb.Edge.Type.Sysret: set((capstone_gt.x86.X86_GRP_IRET,)),
-        }
 
         block = edge.source
 
