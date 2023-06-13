@@ -177,6 +177,14 @@ is_padding(EA):-
         is_padding(Prev)
     ).
 
+// Discriminate against coincidental, valid addresses in non-destructive
+// padding bytes. We do not decode padding JMP instructions as code.
+data_object_point(EA,Size,Type,-5,"data object in padding"):-
+    data_object_candidate(EA,Size,Type),
+    npad(PaddingEA,PaddingSize),
+    is_padding(PaddingEA),
+    EA >= PaddingEA, EA < PaddingEA + PaddingSize.
+
 .decl merged_data_region(Start:address,End:address)
 
 merged_data_region(DataStart,DataStart+DataSize):-
