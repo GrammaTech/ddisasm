@@ -181,6 +181,7 @@ check-format:
 .conan-linux-build-template: &conan-linux-build-template
   stage: build
   needs: [check-format]
+  tags: [bigmem]
   artifacts:
     paths:
       - .conan
@@ -196,7 +197,7 @@ check-format:
     # Install gtirb python wheel
     - python3 -m pip install pip --upgrade && python3 -m pip install gtirb --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run build script
-    - CONAN_CPU_COUNT=2 CMAKE_CXX_COMPILER_LAUNCHER=ccache PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/run_conan.py build -s build_type=Release
+    - CONAN_CPU_COUNT=8 CMAKE_CXX_COMPILER_LAUNCHER=ccache PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/run_conan.py build -s build_type=Release
 
 build-conan-gcc9-release:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu20:$IMAGE_TAG
@@ -447,6 +448,7 @@ conan-windows-release-package:
       - build
   cache:
     paths: [ccache]
+  tags: [bigmem]
   script:
     - !reference [.setup-apt]
     - !reference [.install-deps]
@@ -456,7 +458,7 @@ conan-windows-release-package:
     - mkdir build
     - cd build
     - cmake -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCPACK_DEBIAN_PACKAGE_RELEASE="$(lsb_release -sc)" -DBUILD_FUNINFER=1 -DDDISASM_STRIP_DEBUG_SYMBOLS=ON -DDDISASM_GENERATE_MANY=ON ..
-    - make -j${BUILD_JOBS}
+    - make -j8
     # Report ccache stats.
     - ccache --show-stats
 
@@ -476,7 +478,6 @@ build-ubuntu20-gcc:
     OS: 'ubuntu20'
     CXX_COMPILER: 'g++'
     BUILD_TYPE: 'RelWithDebInfo'
-    BUILD_JOBS: 2
   <<: *build
 
 build-ubuntu20-gcc-debug:
@@ -486,7 +487,6 @@ build-ubuntu20-gcc-debug:
     OS: 'ubuntu20'
     CXX_COMPILER: 'g++'
     BUILD_TYPE: 'Debug'
-    BUILD_JOBS: 2
   rules:
     *run-only-main
   <<: *build
@@ -498,7 +498,6 @@ build-ubuntu20-clang-debug:
     OS: 'ubuntu20'
     CXX_COMPILER: 'clang++'
     BUILD_TYPE: 'Debug'
-    BUILD_JOBS: 4
   <<: *build
 
 build-static:
@@ -508,6 +507,7 @@ build-static:
     *run-only-main
   cache:
     paths: [ccache]
+  tags: [bigmem]
   script:
     # install capstone
     - !reference [.setup-apt]
@@ -535,7 +535,7 @@ build-static:
     - mkdir build
     - cd build
     - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DDDISASM_BUILD_SHARED_LIBS=OFF -DDDISASM_GENERATE_MANY=ON
-    - make -j2
+    - make -j8
     # Report ccache stats.
     - ccache --show-stats
     # Run the regression tests.
@@ -583,6 +583,7 @@ static-drivers:
       - build/bin
   cache:
     paths: [ccache]
+  tags: [bigmem]
   rules:
     *run-only-main
   script:
@@ -611,7 +612,7 @@ static-drivers:
     # build ddisasm
     - mkdir build && cd build
     - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Debug -DDDISASM_STATIC_DRIVERS=ON -DDDISASM_GENERATE_MANY=ON
-    - make -j2
+    - make -j8
     # Run the regression tests.
     - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
     # For verification purposes, print ldd of the driver here.
