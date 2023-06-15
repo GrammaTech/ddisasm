@@ -325,10 +325,6 @@ block_limit(as(EA,address)):-
         lsda_callsite_addresses(_,EA, _)
     ).
 
-.decl must_access_data(EA:address,Dest:address,Size:unsigned)
-
-must_access_data(0,0,0):- false.
-
 // The targets are computed incrementally now as we traverse the code
 // likely_ea and possible_target_from are mutually recursive
 
@@ -338,7 +334,7 @@ possible_target_from(Dest,Src):-
     code_in_block_candidate(Src,_),
     (
         may_have_symbolic_immediate(Src,Dest),
-        !must_access_data(Src,Dest,_)
+        !arch.simple_data_access(Src,Dest,_)
         ;
         direct_jump(Src,Dest);
         direct_call(Src,Dest);
@@ -346,7 +342,7 @@ possible_target_from(Dest,Src):-
         pc_relative_jump(Src,Dest);
         pc_relative_call(Src,Dest);
         pc_relative_operand(Src,_,Dest),
-        !must_access_data(Src,Dest,_)
+        !arch.simple_data_access(Src,Dest,_)
     ).
 
 .decl possible_target(Target:address)
@@ -511,6 +507,17 @@ code_in_block_candidate_refined(EA_next,Block):-
     !common_tail(EA_next).
 
 /**
+A pair of instructions form an access to data with a predetermined size and location
+*/
+.decl composite_data_access(EA:address,EA_load:address,Data:address,Size:unsigned)
+
+composite_data_access(EA,EA_load,Data,Size):-
+    arch.pc_relative_addr(EA,Reg,RefAddr),
+    straight_line_def_used(EA,Reg,EA_load,_),
+    arch.reg_relative_load(EA_load,Reg,Offset,Size),
+    Data = as(as(RefAddr,number) + Offset,address).
+
+/**
 A data block candidate in a code section.
 The candidate is located at address 'Block' and has 'Size' bytes.
 */
@@ -518,6 +525,15 @@ The candidate is located at address 'Block' and has 'Size' bytes.
 
 data_block_candidate(Block,Size):-
     relative_address(Block,Size,_,_,_,_).
+
+data_block_candidate(Block,Size):-
+    arch.simple_data_access(EA,Block,Size),
+    code_in_block_candidate(EA,_).
+
+data_block_candidate(Block,AccessSize):-
+    composite_data_access(EA,EA_load,Block,AccessSize),
+    code_in_block_candidate(EA,_),
+    code_in_block_candidate(EA_load,_).
 
 /**
 The block candidate defined by address 'Block' extends from 'BegAddr' to 'EndAddr'.
@@ -597,9 +613,27 @@ block_candidate_dependency_edge(BlockA,"code",EndAddrA-BegAddrA,BlockB,"code",En
     BlockA != BlockB.
 
 block_candidate_dependency_edge(BlockA,"code",EndAddrA-BegAddrA,BlockB,"data",SizeB):-
+    arch.simple_data_access(EA,BlockB,SizeB),
     code_in_block_candidate_refined(EA,BlockA),
-    must_access_data(EA,BlockB,SizeB),
     data_block_candidate(BlockB,SizeB),
+    block_candidate_boundaries(BlockA,"code",BegAddrA,EndAddrA).
+
+// composite data access in a single block
+block_candidate_dependency_edge(BlockA,"code",EndAddrA-BegAddrA,BlockB,"data",SizeB):-
+    composite_data_access(EA,EA_load,BlockB,SizeB),
+    code_in_block_candidate_refined(EA,BlockA),
+    code_in_block_candidate_refined(EA_load,BlockA),
+    data_block_candidate(BlockB,SizeB),
+    block_candidate_boundaries(BlockA,"code",BegAddrA,EndAddrA).
+
+// composite data access is split between blocks, but the first block implies the other.
+// thus, if the first block is selected, so must the data block.
+block_candidate_dependency_edge(BlockA,"code",EndAddrA-BegAddrA,BlockC,"data",SizeC):-
+    composite_data_access(EA,EA_load,BlockC,SizeC),
+    code_in_block_candidate_refined(EA,BlockA),
+    code_in_block_candidate_refined(EA_load,BlockB),
+    block_implies_block(BlockA,"code",_,BlockB,"code",_),
+    data_block_candidate(BlockC,SizeC),
     block_candidate_boundaries(BlockA,"code",BegAddrA,EndAddrA).
 
 /**
@@ -1339,37 +1373,43 @@ block_points(Block,"code",Size,0,5,"seh handler"):-
     unresolved_block(Block,"code",Size),
     seh_handler_entry(_,Block).
 
-/**
-Relative access to data from a single instruction
-*/
-.decl relative_data_access(EA:address,Data:address,Size:unsigned)
-
-relative_data_access(EA,Block,AccessSize):-
-    // Limit this to Intel for now since this can duplicate ARM's
-    // literal-pool handling.
-    // Eventually, we may want to make data-access handling ISA-generic.
-    (
-        binary_isa("X86");
-        binary_isa("X64")
-    ),
-    pc_relative_operand(EA,MemIndex,Block),
-    instruction_memory_access_size(EA,MemIndex,AccessSize),
-    AccessSize != 0.
-
 block_points(Block,"data",AccessSize,0,Points,"data access"):-
-    relative_data_access(EA,Block,AccessSize),
+    !binary_isa("ARM"), // ARM's litpool_ref system gives points
+    arch.simple_data_access(EA,Block,AccessSize),
+    unresolved_block(Block,"data",AccessSize),
     code_in_block_candidate_refined(EA,Block0),
     (
         !unresolved_block(Block0,"code",_), !impossible_block(Block0,"code",_,_), Points = 4;
         unresolved_block(Block0,"code",_), Points = 2
     ).
 
-must_access_data(EA,Block,Size):-
-    relative_data_access(EA,Block,Size).
-
-data_block_candidate(Block,Size):-
-    relative_data_access(EA,Block,Size),
-    code_in_block_candidate(EA,_).
+block_points(Block,"data",AccessSize,0,Points,"composite data access"):-
+    !binary_isa("ARM"), // ARM's litpool_ref system gives points
+    composite_data_access(EA,EA_load,Block,AccessSize),
+    unresolved_block(Block,"data",AccessSize),
+    code_in_block_candidate_refined(EA,CodeBlock1),
+    code_in_block_candidate_refined(EA_load,CodeBlock2),
+    (
+        !unresolved_block(CodeBlock1,"code",_),
+        !impossible_block(CodeBlock1,"code",_,_),
+        !unresolved_block(CodeBlock2,"code",_),
+        !impossible_block(CodeBlock2,"code",_,_),
+        Points = 4
+        ;
+        unresolved_block(CodeBlock1,"code",_),
+        !unresolved_block(CodeBlock2,"code",_),
+        !impossible_block(CodeBlock2,"code",_,_),
+        Points = 3
+        ;
+        !unresolved_block(CodeBlock1,"code",_),
+        !impossible_block(CodeBlock1,"code",_,_),
+        unresolved_block(CodeBlock2,"code",_),
+        Points = 3
+        ;
+        unresolved_block(CodeBlock1,"code",_),
+        unresolved_block(CodeBlock2,"code",_),
+        Points = 2
+    ).
 
 ////////////////////////////////////////////////////////////////////////////
 
