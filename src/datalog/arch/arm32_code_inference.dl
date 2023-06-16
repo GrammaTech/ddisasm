@@ -395,10 +395,10 @@ Data is loaded from a register-relative address.
 
 Used to construct litpool_ref
 */
-.decl reg_relative_load(LoadEA:address,Reg:register,Size:unsigned)
+.decl reg_relative_load(LoadEA:address,Reg:register,Offset:unsigned,Size:unsigned)
 
 // ldr Reg1, [BaseReg, Offset]  or ldrd Reg1, Reg2, [BaseReg, Offset]
-reg_relative_load(EA,BaseRegNN,Size):-
+reg_relative_load(EA,BaseRegNN,as(Offset,unsigned),Size):-
     arch.load(EA,_,_,Reg1,BaseReg,"NONE",_,Offset),
     reg_nonnull(BaseReg,BaseRegNN),
     instruction_memory_access_size(EA,_,Size),
@@ -409,7 +409,7 @@ reg_relative_load(EA,BaseRegNN,Size):-
     !arch.pc_reg(BaseReg).
 
 // ldm r1, {r2, r3}
-reg_relative_load(EA,RegNN,Size):-
+reg_relative_load(EA,RegNN,0,Size):-
     arch.load(EA,_,_,_,Reg,_,_,_),
     reg_nonnull(Reg,RegNN),
     instruction_get_operation(EA,Operation),
@@ -423,7 +423,7 @@ reg_relative_load(EA,RegNN,Size):-
     Size = RegCnt * Pt_size.
 
 // vldn.type {dn,...}, r1
-reg_relative_load(EA,RegNN,AccessSize):-
+reg_relative_load(EA,RegNN,0,AccessSize):-
     arch.memory_access_aggregated("LOAD",EA,Reg,_,_,_,AccessSize),
     reg_nonnull(Reg,RegNN),
     !invalid(EA,_),
@@ -448,12 +448,12 @@ PC-relative address is used
 */
 .decl used_pc_relative_addr(EA:address,Reg:register,RefAddr:address)
 
-litpool_ref(EA,EA_load,RefAddr,0,AccessSize,OpIndex),
+litpool_ref(EA,EA_load,RefAddr,Offset,AccessSize,OpIndex),
 used_pc_relative_addr(EA,Reg,RefAddr):-
     arch.pc_relative_addr(EA,Reg,RefAddr),
     !invalid(EA,_),
     straight_line_def_used(EA,Reg,EA_load,_),
-    reg_relative_load(EA_load,Reg,AccessSize),
+    reg_relative_load(EA_load,Reg,Offset,AccessSize),
     instruction_immediate_offset(EA,OpIndex,_,_).
 
 /**
