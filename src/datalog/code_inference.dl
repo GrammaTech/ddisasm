@@ -603,6 +603,29 @@ block_candidate_dependency_edge(BlockA,"code",EndAddrA-BegAddrA,BlockB,"data",Si
     block_candidate_boundaries(BlockA,"code",BegAddrA,EndAddrA).
 
 /**
+If BlockA exists, BlockB must also exist.
+*/
+.decl block_implies_block(BlockA:address,TypeA:block_type,SizeA:unsigned,BlockB:address,TypeB:block_type,SizeB:unsigned)
+
+block_implies_block(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB):-
+    block_candidate_dependency_edge(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
+    (
+        // No need for SizeA != SizeB; data blocks are the only blocks that
+        // can have different sizes for the same block ID, but they cannot
+        // currently imply other blocks.
+        BlockA != BlockB;
+        TypeA != TypeB
+    ).
+
+block_implies_block(BlockA,TypeA,SizeA,BlockC,TypeC,SizeC):-
+    block_implies_block(BlockB,TypeB,SizeB,BlockC,TypeC,SizeC),
+    block_candidate_dependency_edge(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
+    (
+        BlockA != BlockC;
+        TypeA != TypeC
+    ).
+
+/**
 Known blocks are blocks that must exist due to metadata.
 */
 .decl known_block(Block:address,Type:block_type,Size:unsigned,Reason:symbol)
@@ -670,6 +693,25 @@ impossible_block(BlockB,TypeB,SizeB,"overlaps known"):-
 impossible_block(BlockA,TypeA,SizeA,"propagated impossible"):-
     impossible_block(BlockB,TypeB,SizeB,_),
     block_candidate_dependency_edge(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB).
+
+impossible_block(BlockA,TypeA,SizeA,"implies self-overlapping block"):-
+    block_implies_block(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
+    block_overlap(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB).
+
+impossible_block(BlockA,TypeA,SizeA,"implies overlapping blocks"):-
+    block_implies_block(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
+    block_implies_block(BlockA,TypeA,SizeA,BlockC,TypeC,SizeC),
+    (
+        BlockB != BlockC,
+        // Implying overlapping data blocks is permissible; code might access
+        // data both as a series of bytes and as a word, resulting in
+        // different overlapping data blocks.
+        TypeB != "data",
+        TypeC != "data"
+        ;
+        TypeB != TypeC
+    ),
+    block_overlap(BlockB,TypeB,SizeB,BlockC,TypeC,SizeC).
 
 /**
 Blocks that are still overlapping after known_block and impossible_block are determined.
