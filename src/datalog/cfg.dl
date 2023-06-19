@@ -209,6 +209,13 @@ cfg_edge_to_symbol(Src,Symbol,"call"):-
     !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
     Symbol != "".
 
+// calls using the PE import table
+cfg_edge_to_symbol(Src,Symbol,"call"):-
+    binary_format("PE"),
+    refined_block_control_instruction(Src,EA),
+    pc_relative_call(EA,Dest),
+    pe_import_entry(Dest,_,Symbol,_).
+
 // pc relative jump with undefined destination
 cfg_edge_to_top(Src,Conditional,"branch"):-
     refined_block_control_instruction(Src,EA),
