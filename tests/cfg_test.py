@@ -579,6 +579,28 @@ class CfgTests(unittest.TestCase):
             for edges in edges_by_type[gtirb.Edge.Type.Branch]:
                 self.assertIsInstance(edge.target, gtirb.CodeBlock)
 
+    @unittest.skipUnless(
+        platform.system() == "Windows", "This test is windows test only."
+    )
+    def test_pe_api_call(self):
+        """
+        Test that we create CFG edges to external calls in PE binaries.
+        """
+        binary = "ex.exe"
+        with cd(ex_asm_dir / "ex_base_relative0"):
+            self.assertTrue(compile("cl", "cl", "", []))
+            self.assertTrue(disassemble(binary, format="--ir")[0])
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+
+            write_console_sym = list(m.symbols_named("WriteConsoleW"))[0]
+            self.assertIsInstance(write_console_sym.referent, gtirb.ProxyBlock)
+            incoming_edges = list(write_console_sym.referent.incoming_edges)
+            self.assertGreaterEqual(len(incoming_edges), 1)
+            for edge in incoming_edges:
+                self.assertEqual(edge.label.type, gtirb.EdgeType.Call)
+
 
 if __name__ == "__main__":
     unittest.main()
