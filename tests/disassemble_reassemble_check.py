@@ -128,13 +128,15 @@ def build_chroot_wrapper() -> List[str]:
     return wrapper
 
 
-def make(target=""):
+def make(target="") -> List[str]:
     target = [] if target == "" else [target]
 
     if platform.system() == "Linux":
         return build_chroot_wrapper() + ["make", "-e"] + target
     elif platform.system() == "Windows":
         return ["nmake", "/E", "/F", "Makefile.windows"] + target
+    else:
+        raise Exception(f"Unsupported platform {platform.system()}")
 
 
 def compile(
@@ -359,7 +361,7 @@ def disassemble_reassemble_test(
                         compiler,
                         "and",
                         optimization,
-                        *extra_compile_flags
+                        *extra_compile_flags,
                     )
                 )
                 if not compile(
