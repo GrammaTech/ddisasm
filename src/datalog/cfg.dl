@@ -24,14 +24,22 @@
 This module generates the control flow graph of the disassembled code
 */
 
+/**
+This predicate specifies a CFG edge between two locations in the binary.
+*/
 .decl cfg_edge(src:address,dest:address,conditional:symbol,indirect:symbol,type:symbol)
 .output cfg_edge
 
-// edges whose destination we do not know
+/**
+This predicate specifies CFG edges from `src` to a Top proxy block
+to model calls or jumps whose destination is unknown.
+*/
 .decl cfg_edge_to_top(src:address,conditional:symbol,type:symbol)
 .output cfg_edge_to_top
 
-// edges to external code
+/**
+ This predicate specifies CFG edges whose destination is an external symbol.
+ */
 .decl cfg_edge_to_symbol(src:address,Symbol:symbol,conditional:symbol,indirect:symbol,type:symbol)
 .output cfg_edge_to_symbol
 
@@ -80,7 +88,10 @@ jump_table(EA,Memory+Pt_size):-
         EA > Content_next
     ).
 
-// Resolve easy jumps that access a straightforward jump table
+/**
+ This predicate represents known targets of indirect jumps
+ inferred from jump tables.
+ */
 .decl resolved_jump(Src:address,Dest:address)
 
 resolved_jump(EA,Dest):-
