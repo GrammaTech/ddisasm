@@ -31,6 +31,7 @@ default: &default
       - decode_mode_matches_arch
       - outgoing_edges
       - edge_instruction_group
+      - cfg_completeness
 
 cpp: &default-cpp
   <<: *default
@@ -112,6 +113,19 @@ tests:
 
   - name: ex_emit_relocs
     <<: *default
+      # Test configuration.
+    test:
+      <<: *default-test
+      # no cfg_completeness for this test
+      cfg_checks:
+        - unreachable
+        - unresolved_branch
+        - cfg_empty
+        - main_is_code
+        - decode_mode_matches_arch
+        - outgoing_edges
+        - edge_instruction_group
+
 
   - name: ex_exceptions1
     <<: *default-cpp
@@ -577,3 +591,12 @@ tests:
     link:
       compiler: "g++"
       flags: ["-lpthread"]
+
+# Tests with special flags
+
+  - name: ex1
+    <<: *default
+    build:
+      <<: *default-build
+      # Test example without PLT
+      flags: ["-fno-plt"]

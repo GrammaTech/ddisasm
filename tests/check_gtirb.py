@@ -333,6 +333,56 @@ def check_edge_instruction_group(module: gtirb.Module) -> int:
     return err_count
 
 
+def is_direct_call(inst: capstone_gt.CsInsn) -> bool:
+    """
+    Check if a call instruction is direct
+    """
+    target = inst.operands[0]
+    return target.type == capstone_gt.CS_OP_IMM
+
+
+def is_pc_relative_call(inst: capstone_gt.CsInsn) -> bool:
+    """
+    Check if a call instruction is pc-relative
+    """
+    target = inst.operands[0]
+    return (
+        target.type == capstone_gt.CS_OP_MEM
+        and inst.reg_name(target.mem.base) == "rip"
+    )
+
+
+def check_cfg_completeness(module: gtirb.Module) -> int:
+    """
+    Check we have 1 call edge from all direct or pc-relative calls
+    """
+    # TODO: support non-x86 checks
+    if module.isa not in [gtirb.Module.ISA.X64, gtirb.Module.ISA.IA32]:
+        return 0
+
+    err_count = 0
+    decoder = GtirbInstructionDecoder(module.isa)
+
+    for block in module.code_blocks:
+        # get the last instruction
+        for instruction in decoder.get_instructions(block):
+            last_inst = instruction
+        if last_inst.group(capstone_gt.x86.X86_GRP_CALL):
+            call_edges = [
+                edge
+                for edge in block.outgoing_edges
+                if edge.label.type == gtirb.EdgeType.Call
+            ]
+            if is_direct_call(last_inst) or is_pc_relative_call(last_inst):
+                if len(call_edges) != 1:
+                    print(
+                        "ERROR: expected 1 call edge at "
+                        f"0x{last_inst.address:08x} and got {len(call_edges)}"
+                    )
+                    err_count += 1
+    return err_count
+
+
 CHECKS = {
     "unreachable": check_unreachable,
     "unresolved_branch": check_unresolved_branch,
@@ -341,6 +391,7 @@ CHECKS = {
     "decode_mode_matches_arch": check_decode_mode_matches_arch,
     "outgoing_edges": check_outgoing_edges,
     "edge_instruction_group": check_edge_instruction_group,
+    "cfg_completeness": check_cfg_completeness,
 }
 
 
