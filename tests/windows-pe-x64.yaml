@@ -24,6 +24,13 @@ default: &default
     strip_exe: "strip-dummy" # We do not apply strip for Windows binaries
     strip: false
     skip: false
+    cfg_checks:
+      - cfg_empty
+      - decode_mode_matches_arch
+      - outgoing_edges
+      - edge_instruction_group
+      - cfg_completeness
+
 
 assembly: &assembly
   <<: *default
