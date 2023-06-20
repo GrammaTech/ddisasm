@@ -172,8 +172,10 @@ cfg_edge_to_top(Src,Conditional,"branch"):-
 cfg_edge_to_top(Src,"false","call"):-
     refined_block_control_instruction(Src,EA),
     (
-        reg_call(EA,_);
-        indirect_call(EA)
+        reg_call(EA,_)
+        ;
+        indirect_call(EA),
+        !pc_relative_call(EA,_)
     ).
 
 // a return to top if no other return exists
@@ -209,12 +211,11 @@ cfg_edge_to_symbol(Src,Symbol,"call"):-
     !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
     Symbol != "".
 
-// calls using the PE import table
+// calls to external function using the GOT or PE import table
 cfg_edge_to_symbol(Src,Symbol,"call"):-
-    binary_format("PE"),
     refined_block_control_instruction(Src,EA),
     pc_relative_call(EA,Dest),
-    pe_import_entry(Dest,_,Symbol,_).
+    got_reference(Dest,Symbol).
 
 // pc relative jump with undefined destination
 cfg_edge_to_top(Src,Conditional,"branch"):-
