@@ -374,6 +374,17 @@ def check_cfg_completeness(module: gtirb.Module) -> int:
                 if edge.label.type == gtirb.EdgeType.Call
             ]
             if is_direct_call(last_inst) or is_pc_relative_call(last_inst):
+
+                # do not count if we are using the 'call next; next: pop'
+                # trick to get the PC value.
+                if (
+                    is_direct_call(last_inst)
+                    and module.isa == gtirb.Module.ISA.IA32
+                    and last_inst.operands[0].imm
+                    == last_inst.address + last_inst.size
+                ):
+                    continue
+
                 if len(call_edges) != 1:
                     print(
                         "ERROR: expected 1 call edge at "
