@@ -31,7 +31,8 @@ This module generates the control flow graph of the disassembled code
 .decl cfg_edge_to_top(src:address,conditional:symbol,type:symbol)
 .output cfg_edge_to_top
 
-.decl cfg_edge_to_symbol(Src:address,Symbol:symbol,Type:symbol)
+// edges to external code
+.decl cfg_edge_to_symbol(src:address,Symbol:symbol,conditional:symbol,indirect:symbol,type:symbol)
 .output cfg_edge_to_symbol
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +104,6 @@ cfg_edge(Src,Dest,Conditional,Indirect,EdgeType):-
     refined_block_control_instruction(Src,EA),
     (
         direct_jump(EA,Dest), Indirect = "false";
-        pc_relative_jump(EA,Dest), Indirect = "false";
         resolved_jump(EA,Dest), Indirect = "true"
     ),
     refined_block(Dest),
@@ -116,12 +116,31 @@ cfg_edge(Src,Dest,Conditional,Indirect,EdgeType):-
         arch.conditional(EA,_),Conditional = "true"
     ).
 
+// Rule for pc relative jumps and calls
+cfg_edge(Src,Dest,Conditional,"false",EdgeType):-
+    refined_block_control_instruction(Src,EA),
+    (
+        pc_relative_jump(EA,Pointer),
+        EdgeType="branch"
+        ;
+        pc_relative_call(EA,Pointer),
+        EdgeType="call"
+    ),
+    symbolic_expr(Pointer,_,Symbol,Offset),
+    // the symbol is defined or inferred
+    best_symexpr_symbol(SymbolEA,Symbol,_),
+    Dest = as(as(SymbolEA,number) + Offset, address),
+    refined_block(Dest),
+    (
+        !arch.conditional(EA,_),Conditional = "false";
+        arch.conditional(EA,_),Conditional = "true"
+    ).
+
 cfg_edge(Src,Dest,"false","false","call"):-
     refined_block_control_instruction(Src,EA),
     (
         direct_call(EA,Dest);
-        direct_call_resolved(EA,Dest);
-        pc_relative_call(EA,Dest)
+        direct_call_resolved(EA,Dest)
     ),
     !pc_load_call(EA,_),
     refined_block(Dest).
@@ -187,42 +206,40 @@ cfg_edge_to_top(Src,Conditional,"return"):-
     ),
     !cfg_edge(Src,_,_,_,"return").
 
-cfg_edge_to_symbol(Src,Symbol,"branch"):-
-    refined_block(Src),
-    plt_block(Src,Symbol),
+// direct calls or jumps to external functions
+cfg_edge_to_symbol(Src,Symbol,Conditional,"false",EdgeType):-
     refined_block_control_instruction(Src,EA),
-    arch.jump(EA),
-    !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
-    !inferred_special_symbol(_,Symbol,_,_,_,_).
-
-cfg_edge_to_symbol(Src,Symbol,"branch"):-
-    refined_block_control_instruction(Src,EA),
-    arch.jump(EA),
-    instruction_has_relocation(EA,Rel),
-    relocation(Rel,_,Symbol,_,_,_,_),
-    !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
-    Symbol != "".
-
-cfg_edge_to_symbol(Src,Symbol,"call"):-
-    refined_block_control_instruction(Src,EA),
-    arch.call(EA,_),
-    instruction_has_relocation(EA,Rel),
-    relocation(Rel,_,Symbol,_,_,_,_),
-    !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
-    Symbol != "".
-
-// calls to external function using the GOT or PE import table
-cfg_edge_to_symbol(Src,Symbol,"call"):-
-    refined_block_control_instruction(Src,EA),
-    pc_relative_call(EA,Dest),
-    got_reference(Dest,Symbol).
-
-// pc relative jump with undefined destination
-cfg_edge_to_top(Src,Conditional,"branch"):-
-    refined_block_control_instruction(Src,EA),
-    pc_relative_jump(EA,Dest),
-    !refined_block(Dest),
     (
-        unconditional_jump(EA), Conditional = "false";
-        !unconditional_jump(EA),Conditional = "true"
-    ).
+        direct_jump(EA,_),
+        EdgeType="branch"
+        ;
+        direct_call(EA,_),
+        EdgeType="call"
+    ),
+    (
+        !arch.conditional(EA,_),Conditional = "false";
+        arch.conditional(EA,_),Conditional = "true"
+    ),
+    instruction_has_relocation(EA,Rel),
+    symbolic_expr(Rel,_,Symbol,0),
+    !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
+    !inferred_symbol(_,Symbol,_,_,_).
+
+// calls or jumps to external functions
+// through indirect pointer (e.g. GOT)
+cfg_edge_to_symbol(Src,Symbol,Conditional,"false",EdgeType):-
+    refined_block_control_instruction(Src,EA),
+    (
+        pc_relative_jump(EA,Pointer),
+        EdgeType="branch"
+        ;
+        pc_relative_call(EA,Pointer),
+        EdgeType="call"
+    ),
+    (
+        !arch.conditional(EA,_),Conditional = "false";
+        arch.conditional(EA,_),Conditional = "true"
+    ),
+    symbolic_expr(Pointer,_,Symbol,0),
+    !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
+    !inferred_symbol(_,Symbol,_,_,_).

@@ -1058,50 +1058,50 @@ gtirb::EdgeType getEdgeType(const std::string &type)
     return gtirb::EdgeType::Fallthrough;
 }
 
-void buildCFG(gtirb::Context &context, gtirb::Module &module, souffle::SouffleProgram &Program)
+void buildCFG(gtirb::Context &Context, gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
-    auto &cfg = module.getIR()->getCFG();
-    for(auto &output : *Program.getRelation("cfg_edge"))
+    auto &Cfg = Module.getIR()->getCFG();
+    for(auto &Output : *Program.getRelation("cfg_edge"))
     {
-        gtirb::Addr srcAddr, destAddr;
-        std::string conditional, indirect, type;
-        output >> srcAddr >> destAddr >> conditional >> indirect >> type;
+        gtirb::Addr SrcAddr, DestAddr;
+        std::string Conditional, Indirect, Type;
+        Output >> SrcAddr >> DestAddr >> Conditional >> Indirect >> Type;
 
         // ddisasm guarantees that these blocks exist
-        const gtirb::CodeBlock *src = &*module.findCodeBlocksOn(srcAddr).begin();
-        const gtirb::CodeBlock *dest = &*module.findCodeBlocksOn(destAddr).begin();
+        const gtirb::CodeBlock *Src = &*Module.findCodeBlocksOn(SrcAddr).begin();
+        const gtirb::CodeBlock *Dest = &*Module.findCodeBlocksOn(DestAddr).begin();
 
-        auto isConditional = conditional == "true" ? gtirb::ConditionalEdge::OnTrue
+        auto IsConditional = Conditional == "true" ? gtirb::ConditionalEdge::OnTrue
                                                    : gtirb::ConditionalEdge::OnFalse;
-        auto isIndirect =
-            indirect == "true" ? gtirb::DirectEdge::IsIndirect : gtirb::DirectEdge::IsDirect;
-        gtirb::EdgeType edgeType = getEdgeType(type);
+        auto IsIndirect =
+            Indirect == "true" ? gtirb::DirectEdge::IsIndirect : gtirb::DirectEdge::IsDirect;
+        gtirb::EdgeType edgeType = getEdgeType(Type);
 
-        auto E = addEdge(src, dest, cfg);
-        cfg[*E] = std::make_tuple(isConditional, isIndirect, edgeType);
+        auto E = addEdge(Src, Dest, Cfg);
+        Cfg[*E] = std::make_tuple(IsConditional, IsIndirect, edgeType);
     }
-    auto *topBlock = module.addProxyBlock(context);
-    for(auto &output : *Program.getRelation("cfg_edge_to_top"))
+    auto *TopBlock = Module.addProxyBlock(Context);
+    for(auto &Output : *Program.getRelation("cfg_edge_to_top"))
     {
-        gtirb::Addr srcAddr;
-        std::string conditional, type;
-        output >> srcAddr >> conditional >> type;
-        const gtirb::CodeBlock *src = &*module.findCodeBlocksOn(srcAddr).begin();
-        auto isConditional = conditional == "true" ? gtirb::ConditionalEdge::OnTrue
+        gtirb::Addr SrcAddr;
+        std::string Conditional, Type;
+        Output >> SrcAddr >> Conditional >> Type;
+        const gtirb::CodeBlock *Src = &*Module.findCodeBlocksOn(SrcAddr).begin();
+        auto isConditional = Conditional == "true" ? gtirb::ConditionalEdge::OnTrue
                                                    : gtirb::ConditionalEdge::OnFalse;
-        gtirb::EdgeType edgeType = getEdgeType(type);
-        auto E = addEdge(src, topBlock, cfg);
-        cfg[*E] = std::make_tuple(isConditional, gtirb::DirectEdge::IsIndirect, edgeType);
+        gtirb::EdgeType EdgeType = getEdgeType(Type);
+        auto E = addEdge(Src, TopBlock, Cfg);
+        Cfg[*E] = std::make_tuple(isConditional, gtirb::DirectEdge::IsIndirect, EdgeType);
     }
     for(auto &T : *Program.getRelation("cfg_edge_to_symbol"))
     {
         gtirb::Addr EA;
         std::string Name;
-        std::string Type;
-        T >> EA >> Name >> Type;
+        std::string Conditional, Indirect, Type;
+        T >> EA >> Name >> Conditional >> Indirect >> Type;
 
-        const gtirb::CodeBlock *CodeBlock = &*module.findCodeBlocksOn(EA).begin();
-        auto It = module.findSymbols(Name);
+        const gtirb::CodeBlock *CodeBlock = &*Module.findCodeBlocksOn(EA).begin();
+        auto It = Module.findSymbols(Name);
         if(It.empty())
         {
             std::cerr << "WARNING: failed to find symbols for " << Name << " in cfg_edge_to_symbol("
@@ -1114,13 +1114,17 @@ void buildCFG(gtirb::Context &context, gtirb::Module &module, souffle::SoufflePr
         if(!ExternalBlock)
         {
             // Create a ProxyBlock if the symbol does not already reference one.
-            ExternalBlock = module.addProxyBlock(context);
+            ExternalBlock = Module.addProxyBlock(Context);
             Symbol.setReferent(ExternalBlock);
         }
 
+        auto IsConditional = Conditional == "true" ? gtirb::ConditionalEdge::OnTrue
+                                                   : gtirb::ConditionalEdge::OnFalse;
+        auto IsIndirect =
+            Indirect == "true" ? gtirb::DirectEdge::IsIndirect : gtirb::DirectEdge::IsDirect;
         gtirb::EdgeType EdgeType = getEdgeType(Type);
-        auto E = addEdge(CodeBlock, ExternalBlock, cfg);
-        cfg[*E] = {gtirb::ConditionalEdge::OnFalse, gtirb::DirectEdge::IsIndirect, EdgeType};
+        auto E = addEdge(CodeBlock, ExternalBlock, Cfg);
+        Cfg[*E] = {IsConditional, IsIndirect, EdgeType};
     }
 }
 
