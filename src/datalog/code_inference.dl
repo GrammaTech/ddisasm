@@ -716,6 +716,7 @@ Logically impossible blocks.
 impossible_block(BlockB,TypeB,SizeB,"overlaps known"):-
     known_block(BlockA,TypeA,SizeA,_),
     block_overlap(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
+    !known_block(BlockB,TypeB,SizeB,_),
     !overlapping_instruction(BlockA,BlockB),
     // overlapping data blocks are allowed
     (
@@ -726,11 +727,13 @@ impossible_block(BlockB,TypeB,SizeB,"overlaps known"):-
 // Propagate impossible blocks backward
 impossible_block(BlockA,TypeA,SizeA,"propagated impossible"):-
     impossible_block(BlockB,TypeB,SizeB,_),
-    block_candidate_dependency_edge(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB).
+    block_candidate_dependency_edge(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
+    !known_block(BlockA,TypeA,SizeA,_).
 
 impossible_block(BlockA,TypeA,SizeA,"implies self-overlapping block"):-
     block_implies_block(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
-    block_overlap(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB).
+    block_overlap(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
+    !known_block(BlockA,TypeA,SizeA,_).
 
 impossible_block(BlockA,TypeA,SizeA,"implies overlapping blocks"):-
     block_implies_block(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
@@ -745,7 +748,8 @@ impossible_block(BlockA,TypeA,SizeA,"implies overlapping blocks"):-
         ;
         TypeB != TypeC
     ),
-    block_overlap(BlockB,TypeB,SizeB,BlockC,TypeC,SizeC).
+    block_overlap(BlockB,TypeB,SizeB,BlockC,TypeC,SizeC),
+    !known_block(BlockA,TypeA,SizeA,_).
 
 /**
 Blocks that are still overlapping after known_block and impossible_block are determined.
@@ -1028,6 +1032,26 @@ discarded_block(Block,Type,Size,"interval discarded",0):-
     unresolved_interval_order(I,Start,End),
     Size = End - Start,
     !wis_schedule(I).
+
+// If both a code and data block are both known, and the data block is only
+// known by propagation, discard the data block.
+// Most likely the size of the data block is wrong. The code will be kept,
+// and any data that doesn't overlap with code will remain data.
+// One example, observed on ARM, where a known code block includes this
+// instruction:
+//    vld1.16        {d0, d1, d2, d3}, [ip:0x80]
+// which populates four floating point registers with the consecutive eight-byte
+// data blocks starting at the referenced address. However, the data block
+// started just before the code block, and its last eight bytes
+// overlapped with the beginning of the code block. Analysis of the code found
+// that d3 was actually unused; the "real" size of the data block was only 24
+// bytes and the first eight bytes of code is loaded as data into d3 as a
+// harmless side effect.
+discarded_block(Block2,Type2,Size2,"overlaps known code",Block1):-
+    block_overlap(Block1,Type1,Size1,Block2,Type2,Size2),
+    known_block(Block1,Type1,Size1,_),
+    known_block(Block2,Type2,Size2,"propagated"),
+    Type1 = "code", Type2 = "data".
 
 discarded_block(Block,Type,Size,"less points",0):-
     wis_schedule(I),
