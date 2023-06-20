@@ -4,6 +4,7 @@ from disassemble_reassemble_check import compile, cd, disassemble, make
 from pathlib import Path
 import gtirb
 import subprocess
+import os
 from gtirb.cfg import EdgeType
 
 
@@ -581,7 +582,11 @@ class CfgTests(unittest.TestCase):
                 self.assertIsInstance(edge.target, gtirb.CodeBlock)
 
     @unittest.skipUnless(
-        platform.system() == "Windows", "This test is windows test only."
+        (
+            platform.system() == "Windows"
+            and os.environ["VSCMD_ARG_TGT_ARCH"] == "x64"
+        ),
+        "This test is windows x64 only.",
     )
     def test_pe_api_call(self):
         """
@@ -589,6 +594,8 @@ class CfgTests(unittest.TestCase):
         """
         binary = "ex.exe"
         with cd(ex_asm_dir / "ex_base_relative0"):
+            proc = subprocess.run(make("clean"), stdout=subprocess.DEVNULL)
+            self.assertEqual(proc.returncode, 0)
             proc = subprocess.run(make("all"), stdout=subprocess.DEVNULL)
             self.assertEqual(proc.returncode, 0)
 
