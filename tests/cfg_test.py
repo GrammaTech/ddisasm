@@ -1,8 +1,9 @@
 import platform
 import unittest
-from disassemble_reassemble_check import compile, cd, disassemble
+from disassemble_reassemble_check import compile, cd, disassemble, make
 from pathlib import Path
 import gtirb
+import subprocess
 from gtirb.cfg import EdgeType
 
 
@@ -588,11 +589,13 @@ class CfgTests(unittest.TestCase):
         """
         binary = "ex.exe"
         with cd(ex_asm_dir / "ex_base_relative0"):
-            self.assertTrue(compile("cl", "cl", "", []))
+            proc = subprocess.run(make("all"), stdout=subprocess.DEVNULL)
+            self.assertEqual(proc.returncode, 0)
+
             self.assertTrue(disassemble(binary, format="--ir")[0])
 
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
-            m = ir_library.modules[0]
+            ir = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir.modules[0]
 
             write_console_sym = list(m.symbols_named("WriteConsoleW"))[0]
             self.assertIsInstance(write_console_sym.referent, gtirb.ProxyBlock)
