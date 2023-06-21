@@ -32,7 +32,7 @@ void ElfDynamicEntryLoader(const gtirb::Module &Module, souffle::SouffleProgram 
     std::vector<relations::DynamicEntry> DynamicEntries;
 
     // Load Dynamic entries from aux data.
-    if(auto *Table = Module.getAuxData<gtirb::schema::DynamicEntries>())
+    if(auto *Table = Module.getAuxData<gtirb::provisional_schema::DynamicEntries>())
     {
         for(auto [Name, Value] : *Table)
         {
