@@ -22,24 +22,31 @@
 //===----------------------------------------------------------------------===//
 /**
 This module computes the valid instructions organized in blocks of
-code.  It infers the facts `code_in_block`, `block`, and `code`. In
-addition it computes `block_still_overlap` for debugging purposes.
+code.  It infers the facts `code_in_block`, `block`, and `code`.
 
-The disassembly is done in two traversals:
+Potential code inference failures are recorded in the `block_still_overlap`
+and `interval_schedule_tie` relations.
 
-  - A "must" backward traversal that propagates invalid instructions
-  - A "may" forward traversal that tries to generate a
-    superset of all possible code blocks (with the predicates `possible_target`
-    and `code_in_block_candidate`). This traversal has a recursive component
-    and a linear-sweep component.
+The disassembly consists of several phases:
 
-Finally, we detect candidate blocks of code that overlap with each other (and
-therefore are in conflict) and give them points according to several
-heuristics. Then for each two conflicting blocks we keep the one with
-more points. For deciding code vs data, we consider code block
-candidates and data block candidates.
+  - Traverse backward from invalid instructions through "must" edges
+  - Traverse forward from "may" edges from all possible instructions to
+    generate a superset of all possible code blocks in
+    `code_in_block_candidate`. This traversal has a recursive component and a
+    linear-sweep component.
+  - Generate data block candidates using references from code block candidates
+  - Split common block tails to ensure code blocks are non-overlapping in
+    `code_in_block_candidate_refined`
+  - Populate `known_block` based on binary metadata and propagate forward
+    through "must" edges
+  - Populate `impossible_block` with blocks which overlap known_blocks, and
+    propagate backward through "must" edges
+  - Identify remaining overlapping blocks in `unresolved_block` and assign
+    points in `block_points` according to heuristics
+  - Resolve blocks with different boundaries using weighted interval
+    scheduling, which weights blocks according to points and binary coverage
+  - Resolve blocks with identical boundaries according to `block_points`
 */
-
 
 // The postprocess refines the blocks by merging contiguous blocks
 // that are always executed together
@@ -442,6 +449,7 @@ after_end(Next,End):-
     !relative_address(Next,_,_,_,_,_),
     is_padding(Next).
 
+// This is used to find code after literal pools in ARM.
 after_end(Next,End):-
     binary_isa("ARM"),
     after_end(Next0,End),
