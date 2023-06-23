@@ -61,6 +61,8 @@ extern "C"
 
     EXPORT uint64_t functor_aligned(uint64_t EA, size_t Size);
 
+    EXPORT uint64_t functor_choose_max(uint64_t Val1, uint64_t Val2, uint64_t Id1, uint64_t Id2);
+
     EXPORT int64_t functor_thumb32_branch_offset(uint32_t Instruction);
 
     /**

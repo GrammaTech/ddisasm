@@ -798,6 +798,11 @@ wis_prior(I,Prior):-
     wis_has_prior(I,Prior).
 
 /**
+If Val1 >= Val2, return Id1. Otherwise, return Id2.
+*/
+.functor functor_choose_max(Val1:unsigned,Val2:unsigned,Id1:unsigned,Id2:unsigned):unsigned
+
+/**
 Weighted interval schedule: memoized subproblems
 
 Value is the optimized total weight for intervals [1:I].
@@ -819,15 +824,10 @@ wis_memo(I,Value,Pred):-
     wis_prior(I,P),
     wis_memo(P,TakeWeight0,_),
     TakeWeight = TakeWeight0 + IWeight,
-    (
-        LeaveWeight > TakeWeight,
-        Value = LeaveWeight,
-        Pred = IPrev
-        ;
-        LeaveWeight <= TakeWeight,
-        Value = TakeWeight,
-        Pred = P
-    ).
+    Value = max(LeaveWeight,TakeWeight),
+    // functor_choose_max used for efficiency here instead of a disjunction
+    // for performance.
+    Pred = @functor_choose_max(LeaveWeight,TakeWeight,IPrev,P).
 
 // ensure @delta_wis_memo is evaluated first in both plans
 .plan 1: (4, 3, 2, 1)
