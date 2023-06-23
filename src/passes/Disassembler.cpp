@@ -1594,16 +1594,22 @@ void performSanityChecks(AnalysisPassResult &Result, souffle::SouffleProgram &Pr
     auto intervalScheduleTie = Program.getRelation("interval_schedule_tie");
     if(intervalScheduleTie->size() > 0)
     {
-        std::stringstream WarnMsg;
-        WarnMsg << "The following interval schedules have equal weights:";
         for(auto &output : *intervalScheduleTie)
         {
-            uint64_t IntervalA, SizeA, IntervalB, SizeB;
-            output >> IntervalA >> SizeA >> IntervalB >> SizeB;
-            WarnMsg << "\n"
-                    << IntervalA << "(" << SizeA << " bytes), " << IntervalB << " (" << SizeB
-                    << " bytes)";
+            std::stringstream WarnMsg;
+            uint64_t StartA, BlockA, SizeA, StartB, BlockB, SizeB;
+            std::string BlockKindA, BlockKindB;
+            output >> BlockA >> BlockKindA >> SizeA >> BlockB >> BlockKindB >> SizeB;
+            WarnMsg << "The following block intervals have equal weights (interval scheduling): \n"
+                    << "\t" << BlockKindA << " at 0x" << std::hex << BlockA << ", " << std::dec
+                    << SizeA << " bytes (selected)\n"
+                    << "\t" << BlockKindB << " at 0x" << std::hex << BlockB << ", " << std::dec
+                    << SizeB << " bytes (not selected)\n"
+                    << "\n\tTo select the other block, re-run ddisasm with hints, e.g.:\n"
+                    << "\t$ printf 'disassembly.known_block\\t0x" << std::hex << BlockB << "\\t"
+                    << BlockKindB << "\\t" << std::dec << SizeB << "\\thint\\n' >> hints.csv\n"
+                    << "\t$ ddisasm --hints ./hints.csv [...]\n";
+            Result.Warnings.push_back(WarnMsg.str());
         }
-        Result.Warnings.push_back(WarnMsg.str());
     }
 }

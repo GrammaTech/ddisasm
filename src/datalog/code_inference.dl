@@ -761,21 +761,35 @@ unresolved_interval_order(LastID+1,NextStart,NextEnd):-
         unresolved_interval(Start,NextEnd)
     }.
 
-/**
-Take the best scoring block that occupies an identical interval.
-*/
-.decl unresolved_interval_weight(ID:unsigned,Weight:unsigned)
+.decl block_type_priority(Type:block_type,Priority:unsigned)
 
-unresolved_interval_weight(ID,Weight):-
+block_type_priority("code",2).
+block_type_priority("data",1).
+block_type_priority("padding",0).
+
+/**
+Select best block in an unresolved interval and calculate weight
+*/
+.decl unresolved_interval_best_block(ID:unsigned,Block:address,Type:block_type,Size:unsigned,Weight:unsigned)
+
+unresolved_interval_best_block(ID,SelectedBlock,SelectedType,Size,Weight):-
     unresolved_interval_order(ID,Start,End),
     Size = End - Start,
-    MaxPoints = as(max Points : {
+    MaxPoints = max Points : {
         block_candidate_boundaries(Block,Type,Start,End),
         block_total_points(Block,Type,Size,Points),
         // Don't select intervals with negative score.
         Points >= 0
-    }, unsigned),
-    Weight = Size * 5 + MaxPoints.
+    },
+    MaxPriority = max Priority : {
+        block_candidate_boundaries(Block,Type,Start,End),
+        block_total_points(Block,Type,Size,MaxPoints),
+        block_type_priority(Type,Priority)
+    },
+    block_type_priority(SelectedType,MaxPriority),
+    block_total_points(SelectedBlock,SelectedType,Size,MaxPoints),
+    block_candidate_boundaries(SelectedBlock,SelectedType,Start,End),
+    Weight = Size * 5 + as(MaxPoints, unsigned).
 
 /**
 Weighted interval schedule: `Count` of intervals that end prior to the start of
@@ -831,7 +845,7 @@ wis_memo(I,Value,Pred):-
     // specifying this expression in both forms allows it to be indexed in both rule plans.
     I = IPrev + 1,
     IPrev = I - 1,
-    unresolved_interval_weight(I,IWeight),
+    unresolved_interval_best_block(I,_,_,_,IWeight),
     wis_prior(I,P),
     wis_memo(P,TakeWeight0,_),
     TakeWeight = TakeWeight0 + IWeight,
@@ -843,21 +857,22 @@ wis_memo(I,Value,Pred):-
 // ensure @delta_wis_memo is evaluated first in both plans
 .plan 1: (4, 3, 2, 1)
 
-.decl interval_schedule_tie(A:address,SizeA:unsigned,B:address,SizeB:unsigned)
+/**
+Blocks A and B had equal weights during interval scheduling, and Block A was
+selected.
+*/
+.decl interval_schedule_tie(BlockA:address,TypeA:block_type,SizeA:unsigned,BlockB:address,TypeB:block_type,SizeB:unsigned)
 .output interval_schedule_tie
 
-interval_schedule_tie(A,SizeA,B,SizeB):-
+interval_schedule_tie(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB):-
     wis_memo(IPrev,LeaveWeight,_),
     I = IPrev + 1,
-    unresolved_interval_weight(I,IWeight),
+    unresolved_interval_best_block(I,BlockA,TypeA,SizeA,IWeight),
     wis_prior(I,P),
     wis_memo(P,TakeWeight0,_),
     TakeWeight = TakeWeight0 + IWeight,
     LeaveWeight = TakeWeight,
-    unresolved_interval_order(I,A,EndA),
-    unresolved_interval_order(IPrev,B,EndB),
-    SizeA = EndA - A,
-    SizeB = EndB - B,
+    unresolved_interval_best_block(IPrev,BlockB,TypeB,SizeB,_),
     // We only care about ties if I is selected in the final schedule.
     // Otherwise, it had no impact on the output.
     // It's a non-issue if IPrev is selected. Because the wis_memo rule favors
@@ -913,31 +928,12 @@ discarded_block(Block,Type,Size,"interval discarded",0):-
     Size = End - Start,
     !wis_schedule(I).
 
-.decl block_type_priority(Type:block_type,Priority:unsigned)
-
-block_type_priority("code",2).
-block_type_priority("data",1).
-block_type_priority("padding",0).
-
-discarded_block(Block1,Type1,Size,"less points",0):-
+discarded_block(Block,Type,Size,"less points",0):-
     wis_schedule(I),
     unresolved_interval_order(I,Start,End),
     Size = End - Start,
-    block_candidate_boundaries(Block1,Type1,Start,End),
-    unresolved_block_overlap(Block1,Type1,Size,Block2,Type2,Size),
-    block_candidate_boundaries(Block2,Type2,Start,End),
-    // keep the block that has more points
-    block_total_points(Block1,Type1,Size,Points1),
-    block_total_points(Block2,Type2,Size,Points2),
-    (
-        Points1 < Points2
-        ;
-        // for equal number of points, respect block_type_priority
-        Points1 = Points2,
-        block_type_priority(Type1,Priority1),
-        block_type_priority(Type2,Priority2),
-        Type1 < Type2
-    ).
+    block_candidate_boundaries(Block,Type,Start,End),
+    !unresolved_interval_best_block(I,Block,Type,Size,_).
 
 discarded_block(Block,Type,Size,"impossible",0):-
     impossible_block(Block,Type,Size,_).
