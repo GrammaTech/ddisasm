@@ -660,7 +660,18 @@ unresolved_block(Block,Type,Size):-
     !impossible_block(Block,Type,Size,_),
     // Has a possible overlap
     block_overlap(Block,Type,Size,Other,OtherType,OtherSize),
-    !impossible_block(Other,OtherType,OtherSize,_).
+    !impossible_block(Other,OtherType,OtherSize,_),
+    (
+        Type != "data";
+        OtherType != "data"
+    ).
+
+// If an unresolved data block overlaps with another data block, make both
+// unresolved.
+unresolved_block(Other,"data",OtherSize):-
+    unresolved_block(Block,"data",Size),
+    block_overlap(Block,"data",Size,Other,"data",OtherSize),
+    !impossible_block(Other,"data",OtherSize,_).
 
 // If some rule assigns negative points, make sure positive point rules are considered.
 unresolved_block(Block,Type,Size):-
