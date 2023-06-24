@@ -161,24 +161,33 @@ value_reg(EA,Reg,EA,"NONE",0,as(Val,number),1):-
     arch.pc_relative_addr(EA,Reg,Val),
     track_register(Reg).
 
-// mov DWORD from memory (constant address)
+// mov QWORD or DWORD from memory (constant address)
 value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     def_used_for_address(EA,Reg,_),
-    arch.load(EA,_,_,Reg,"NONE","NONE",_,Offset),
+    arch.load(EA,SrcOp,_,Reg,"NONE","NONE",_,Offset),
     Offset >= 0,
     Offset_addr = as(Offset,address),
-    data_word(Offset_addr,4,Val),
+    instruction_get_op(EA,SrcOp,Op),
+    op_indirect(Op,_,_,_,_,_,NBits),
+    (
+        NBits = 32;
+        NBits = 64
+    ),
+    data_word(Offset_addr,NBits/8,Val),
     Val >= 0.
 
-// mov DWORD from memory (PC-relative address)
+// mov QWORD or DWORD from memory (PC-relative address)
 value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     def_used_for_address(EA,Reg,_),
-    arch.load(EA,_,_,_,_,_,_,_),
-    instruction(EA,_,_,_,Op1,Op2,0,0,_,_),
-    op_regdirect_contains_reg(Op2,Reg),
-    op_indirect(Op1,_,_,_,_,_,32),
-    pc_relative_operand(EA,1,Offset),
-    data_word(Offset,4,Val),
+    arch.load(EA,SrcOp,_,Reg,_,_,_,_),
+    pc_relative_operand(EA,SrcOp,Offset),
+    instruction_get_op(EA,SrcOp,Op),
+    op_indirect(Op,_,_,_,_,_,NBits),
+    (
+        NBits = 32;
+        NBits = 64
+    ),
+    data_word(Offset,NBits/8,Val),
     Val >= 0.
 
 /**
