@@ -65,7 +65,7 @@ function_entry(EA):-
     refined_block(EA).
 
 function_entry(EA):-
-    direct_call_resolved(EA_caller,EA),
+    resolved_transfer(EA_caller,EA,"call"),
     code(EA_caller),
     refined_block(EA).
 
