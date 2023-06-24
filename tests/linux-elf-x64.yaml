@@ -39,18 +39,34 @@ cpp: &default-cpp
     compiler: "g++"
     flags: ["-no-pie", "-nostartfiles"]
     skip: false
-
   test:
     <<: *default-test
-    cfg_checks: []
+    # some code is reachable only through exceptions
+    # virtual call are hard to resolve
+    cfg_checks:
+      #- unreachable
+      #- unresolved_branch
+      - cfg_empty
+      - main_is_code
+      - decode_mode_matches_arch
+      - outgoing_edges
+      - edge_instruction_group
+      - cfg_completeness
 
 test-strip-default: &test-strip-default
   test:
     strip_exe: "strip"
     strip: true
-    # We don't check the CFG for stripped binaries, as there are some false
-    # positives in startup code that are hard to filter out.
-    cfg_checks: []
+    # some startup code has register calls (e.g. through .init_array)
+    cfg_checks:
+      #- unreachable
+      #- unresolved_branch
+      - cfg_empty
+      - main_is_code
+      - decode_mode_matches_arch
+      - outgoing_edges
+      - edge_instruction_group
+      - cfg_completeness
 
 assembly: &assembly
   <<: *default
@@ -80,9 +96,7 @@ c-object: &c-object
     linker: "gcc"
     flags: []
 
-  test:
-    <<: *default-test
-    cfg_checks: []
+
 
 cpp-object: &cpp-object
   <<: *c-object
@@ -93,6 +107,21 @@ cpp-object: &cpp-object
 
   link:
     linker: "g++"
+
+  test:
+    <<: *default-test
+
+    # some code is reachable only through exceptions
+    # virtual call are hard to resolve
+    cfg_checks:
+    #  - unreachable
+    #  - unresolved_branch
+      - cfg_empty
+      - main_is_code
+      - decode_mode_matches_arch
+      - outgoing_edges
+      - edge_instruction_group
+      - cfg_completeness
 
 tests:
 
@@ -116,7 +145,8 @@ tests:
       # Test configuration.
     test:
       <<: *default-test
-      # no cfg_completeness for this test
+      # No cfg_completeness for this test
+      # This example has relocations that have already been resolved.
       cfg_checks:
         - unreachable
         - unresolved_branch
@@ -125,6 +155,7 @@ tests:
         - decode_mode_matches_arch
         - outgoing_edges
         - edge_instruction_group
+      # - cfg_completeness
 
 
   - name: ex_exceptions1
@@ -138,11 +169,6 @@ tests:
 
   - name: ex_false_pointer_array
     <<: *default
-    test:
-      <<: *default-test
-      # TODO: this example fails because function pointers are not resolved in the CFG
-      cfg_checks: []
-
 
   - name: ex_float
     <<: *default
@@ -168,7 +194,15 @@ tests:
     test:
       <<: *default-test
       # noreturn may result in unreachable code.
-      cfg_checks: []
+      cfg_checks:
+      # - unreachable
+        - unresolved_branch
+        - cfg_empty
+        - main_is_code
+        - decode_mode_matches_arch
+        - outgoing_edges
+        - edge_instruction_group
+        - cfg_completeness
 
   - name: ex_pointerReattribution
     <<: *default
@@ -228,8 +262,19 @@ tests:
       compiler: "gcc"
       flags: ["-shared", "-nostartfiles"]
       skip: false
+
     test:
-      cfg_checks: []
+      <<: *default-test
+      # TODO: Revise TLS-related cfg edges
+      cfg_checks:
+        # - unreachable
+        #- unresolved_branch
+        - cfg_empty
+        - main_is_code
+        - decode_mode_matches_arch
+        - outgoing_edges
+        - edge_instruction_group
+        #- cfg_completeness
 
   - name: ex_call_once
     <<: *default-cpp
@@ -540,6 +585,19 @@ tests:
 
   - name: ex_false_pointer_array
     <<: *c-object
+
+    test:
+      <<: *default-test
+      # function pointer are not well resolved in object files
+      cfg_checks:
+      # - unreachable
+      # - unresolved_branch
+        - cfg_empty
+        - main_is_code
+        - decode_mode_matches_arch
+        - outgoing_edges
+        - edge_instruction_group
+        - cfg_completeness
 
   - name: ex_float
     <<: *c-object
