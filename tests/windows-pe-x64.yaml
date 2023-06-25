@@ -25,12 +25,14 @@ default: &default
     strip: false
     skip: false
     cfg_checks:
+      # - unreachable
+      # - unresolved_branch
       - cfg_empty
+      #  - main_is_code
       - decode_mode_matches_arch
       - outgoing_edges
       - edge_instruction_group
       - cfg_completeness
-
 
 assembly: &assembly
   <<: *default
