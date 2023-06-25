@@ -102,8 +102,16 @@ resolved_transfer(EA,Dest,"branch"):-
     refined_block(Dest).
 
 // Symbol-Symbol jump tables
-resolved_transfer(EA,Dest,"branch"):-
+resolved_transfer(EA,Dest,EdgeType):-
     jump_table_start(EA,Size,TableStart,_,_),
+    // jump_table_start can refer to call instructions too
+    (
+        arch.jump(EA),
+        EdgeType="branch"
+        ;
+        arch.call(EA,_),
+        EdgeType="call"
+    ),
     relative_jump_table_entry(_,TableStart,Size,_,Dest,_,_).
 
 resolved_transfer(EA,Dest,"branch"):-
