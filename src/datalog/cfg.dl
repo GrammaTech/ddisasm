@@ -117,8 +117,8 @@ resolved_transfer(EA,Dest,EdgeType):-
 resolved_transfer(EA,Dest,"branch"):-
     jump_table_candidate_refined(EA,_,Dest).
 
-// easy-to-resolve jumps
 
+// Indirect jumps/calls where we know which data we are accessing
 resolved_transfer(EA,Dest,Type):-
     (
         pc_relative_jump(EA,Pointer), Type = "branch"
@@ -135,7 +135,7 @@ resolved_transfer(EA,Dest,Type):-
     ),
     symbolic_data(Pointer,_,Dest).
 
-
+// Register jumps/calls where we know the value of the register
 resolved_transfer(EA,DestAddr,Type):-
     (
         reg_jump(EA,Reg), Type = "branch"
@@ -150,7 +150,9 @@ resolved_transfer(EA,DestAddr,Type):-
 
 .decl resolved_transfer_to_symbol(EA:address,Symbol:symbol,Type:symbol)
 
-
+// Indirect jumps/calls where we know which data is accessed
+// and that data element has a symbolic expression pointing
+// to an external symbol
 resolved_transfer_to_symbol(EA,Symbol,Type):-
     (
         pc_relative_jump(EA,Pointer), Type = "branch"
@@ -175,6 +177,9 @@ resolved_transfer_to_symbol(EA,Symbol,Type):-
         pe_import_entry(Pointer,_,Symbol,_)
     ).
 
+// Register jump/call where the register is loaded
+// from a known data address and the data element
+// has a symbolic expression pointing to an external symbol
 resolved_transfer_to_symbol(EA,Symbol,Type):-
     (
         reg_jump(EA,Reg), Type = "branch"
@@ -182,12 +187,12 @@ resolved_transfer_to_symbol(EA,Symbol,Type):-
         reg_call(EA,Reg), Type = "call"
     ),
     reg_def_use.def_used(EA_def,Reg,EA,_),
-    arch.load(EA_def,SrcOp,_,Reg,_,_,_,_),
+    arch.load(EA_def,SrcOpIndex,_,Reg,_,_,_,_),
     (
-        pc_relative_operand(EA_def,SrcOp,Pointer)
+        pc_relative_operand(EA_def,SrcOpIndex,Pointer)
         ;
-        instruction_displacement_offset(EA_def,_,_,_),
-        instruction_has_relocation(EA_def,Pointer)
+        data_access(EA_def,_,"NONE","NONE","NONE",_,Offset,_),
+        Pointer = as(Offset,address)
     ),
     (
         symbolic_expr(Pointer,_,Symbol,0),
@@ -198,6 +203,7 @@ resolved_transfer_to_symbol(EA,Symbol,Type):-
         // so we have to consider these separately
         pe_import_entry(Pointer,_,Symbol,_)
     ).
+
 
 //////////////////////////////////////////////////////////////////////////////
 // edge creation
@@ -264,12 +270,12 @@ cfg_edge_to_symbol(Src,Symbol,Conditional,"false",EdgeType):-
         arch.call(EA,_),
         EdgeType="call"
     ),
+    instruction_immediate_offset(EA,_,Offset,_),
     (
         !arch.conditional(EA,_),Conditional = "false";
         arch.conditional(EA,_),Conditional = "true"
     ),
-    instruction_immediate_offset(EA,_,_,_),
-    instruction_has_relocation(EA,Rel),
+    Rel = EA+Offset,
     symbolic_expr(Rel,_,Symbol,0),
     !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
     !inferred_symbol(_,Symbol,_,_,_).
