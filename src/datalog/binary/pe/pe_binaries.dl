@@ -190,12 +190,12 @@ incremental_linking(First,M) <= incremental_linking(First,N):-
 incremental_linking(First,First):-
     binary_format("PE"),
     First = min EA: { instruction(EA,_,_,_,_,_,_,_,_,_), !is_padding(EA) },
-    direct_jump(First,_).
+    unconditional_jump(First).
 
 incremental_linking(First,EA):-
     incremental_linking(First,Last),
     next(Last,EA),
-    direct_jump(EA,_).
+    unconditional_jump(EA).
 
 /**
 Locate data directory and debug data merged with the text section. Note that
@@ -216,16 +216,17 @@ merged_data_region(DataStart,DataStart+DataSize):-
 
 // Infer prepended .rdata boundaries.
 data_region(Start,Size):-
+    binary_format("PE"),
     Last = max End : { merged_data_region(_,End) },
     (
         // Merged .rdata begins after incremental linking trampolines.
         incremental_linking(_,EA),
-        instruction(EA,N,_,_,_,_,_,_,_,_),
-        Start = EA+N
+        next(EA,Start)
         ;
         // Code entry follows PE data directories or debug info.
+        !incremental_linking(_,_),
         entry_point(Entry),
-        Last < Entry,
+        Last <= Entry,
         loaded_section(Start,_,".text")
     ),
     Size = Last - Start.
