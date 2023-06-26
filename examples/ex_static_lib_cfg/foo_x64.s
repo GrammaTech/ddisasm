@@ -20,6 +20,7 @@ foo:
 	movl	$1, %edi
 	xorl	%eax, %eax
 	call	__printf_chk@PLT
+jmp_block:
 	movl	%ebp, %edi
 	popq	%rbp
 	.cfi_def_cfa_offset 8

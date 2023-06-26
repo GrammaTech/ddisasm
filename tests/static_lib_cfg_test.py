@@ -58,17 +58,24 @@ class TestStaticLibCfg(unittest.TestCase):
                 )
 
                 ir_library = gtirb.IR.load_protobuf(gtirb_file)
-                blocks = None
+                module = None
                 for m in ir_library.modules:
                     if "foo_" in m.name:
-                        blocks = m.code_blocks
+                        module = m
 
-                self.assertIsNotNone(blocks)
+                self.assertIsNotNone(module)
 
-                block = None
-                for b in blocks:
-                    edge_types = {e.label.type for e in b.outgoing_edges}
-                    if edge_types == {gtirb.Edge.Type.Branch}:
-                        block = b
-
-                self.assertIsNotNone(block)
+                sym = next(module.symbols_named("jmp_block"))
+                block = sym.referent
+                self.assertEqual(
+                    {e.label.type for e in block.outgoing_edges},
+                    {gtirb.Edge.Type.Branch},
+                )
+                self.assertEqual(len(list(block.outgoing_edges)), 1)
+                last_sym_expr = None
+                for _, _, sym_expr in m.symbolic_expressions_at(
+                    range(block.address, block.address + block.size)
+                ):
+                    last_sym_expr = sym_expr
+                self.assertIsNotNone(last_sym_expr)
+                self.assertEqual(next(last_sym_expr.symbols).name, "bar")
