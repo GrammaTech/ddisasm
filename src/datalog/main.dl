@@ -521,7 +521,13 @@ direct_jump(EA,as(Dest,address)):-
     arch.jump_operation_op_index(Operation,Index),
     instruction_get_op(EA,Index,Op),
     op_immediate(Op,Dest),
-    !instruction_has_relocation(EA,_).
+    (
+        !instruction_has_relocation(EA,_)
+    ;
+        // Relocations in PEs don't override the destination by default,
+        // only if base_image is changed.
+        binary_format("PE")
+    ).
 
 direct_jump(EA,as(Dest,address)):-
     arch.jump(EA),
@@ -578,7 +584,13 @@ direct_call(EA,as(Dest,address)):-
     arch.call(EA,Index),
     instruction_get_op(EA,Index,Op),
     op_immediate(Op,Dest),
-    !instruction_has_relocation(EA,_).
+    (
+        !instruction_has_relocation(EA,_)
+    ;
+        // Relocations in PEs don't override the destination by default,
+        // only if base_image is changed.
+        binary_format("PE")
+    ).
 
 direct_call(EA,Dest):-
     !binary_isa("ARM"),
