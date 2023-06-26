@@ -31,11 +31,9 @@ moved_displacement_candidate(EA,Op_index,Dest,0x7FFE0000,Dest-0x7FFE0000):-
   symbolic_operand(EA,Op_index,Dest,"data"),
   Dest > 0x7FFE0000, Dest < 0x7FFE1000.
 
-symbolic_expr_from_relocation(Address,Ptr,Function,0,TargetEA),
+
 got_reference(Address,Function):-
-    arch.pointer_size(Ptr),
-    pe_import_entry(Address,_,Function,_),
-    symbol(TargetEA,_,_,_,_,_,_,_,Function).
+    pe_import_entry(Address,_,Function,_).
 
 //PE binaries have plt-like entries
 // These are no delimited to their own section

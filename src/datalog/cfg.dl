@@ -165,9 +165,15 @@ resolved_transfer_to_symbol(EA,Symbol,Type):-
         data_access(EA,_,"NONE","NONE","NONE",_,Offset,_),
         Pointer = as(Offset,address)
     ),
-    symbolic_expr(Pointer,_,Symbol,0),
-    !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
-    !inferred_symbol(_,Symbol,_,_,_).
+    (
+        symbolic_expr(Pointer,_,Symbol,0),
+        !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
+        !inferred_symbol(_,Symbol,_,_,_)
+        ;
+        // We don't generate symbolic_expr for entries in the IAT
+        // so we have to consider these separately
+        pe_import_entry(Pointer,_,Symbol,_)
+    ).
 
 resolved_transfer_to_symbol(EA,Symbol,Type):-
     (
@@ -183,9 +189,15 @@ resolved_transfer_to_symbol(EA,Symbol,Type):-
         instruction_displacement_offset(EA_def,_,_,_),
         instruction_has_relocation(EA_def,Pointer)
     ),
-    symbolic_expr(Pointer,_,Symbol,0),
-    !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
-    !inferred_symbol(_,Symbol,_,_,_).
+    (
+        symbolic_expr(Pointer,_,Symbol,0),
+        !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
+        !inferred_symbol(_,Symbol,_,_,_)
+        ;
+        // We don't generate symbolic_expr for entries in the IAT
+        // so we have to consider these separately
+        pe_import_entry(Pointer,_,Symbol,_)
+    ).
 
 //////////////////////////////////////////////////////////////////////////////
 // edge creation
