@@ -687,5 +687,42 @@ class OutputTests(unittest.TestCase):
                     self.assertIn(b"Error: failed to open file", proc.stderr)
 
 
+class NpadTests(unittest.TestCase):
+    @unittest.skipUnless(
+        platform.system() == "Windows"
+        and os.environ.get("VSCMD_ARG_TGT_ARCH") == "x86",
+        "This test is Windows (x86) only.",
+    )
+    def test_npad_data_in_code(self):
+        with cd(ex_asm_dir / "ex_npad"):
+            subprocess.run(make("clean"), stdout=subprocess.DEVNULL)
+
+            # # Build assembly test case for all legacy npad macros.
+            subprocess.run(make("all"), stdout=subprocess.DEVNULL)
+
+            # Disassemble to GTIRB file.
+            self.assertTrue(disassemble("ex.exe", format="--ir")[0])
+
+            # Reassemble test case.
+            proc = subprocess.run(
+                ["gtirb-pprinter", "-b", "ex.exe", "ex.exe.gtirb"]
+            )
+            self.assertEqual(proc.returncode, 0)
+
+            # Check reassembled outputs.
+            self.assertTrue(test())
+
+            # Load the GTIRB file and check padding.
+            ir = gtirb.IR.load_protobuf("ex.exe.gtirb")
+            module = ir.modules[0]
+            table = module.aux_data["padding"].data
+            padding = sorted(
+                (k.element_id.address + k.displacement, v)
+                for k, v in table.items()
+            )
+            sizes = [n for _, n in padding]
+            self.assertEqual(sizes, list(range(1, 16)))
+
+
 if __name__ == "__main__":
     unittest.main()
