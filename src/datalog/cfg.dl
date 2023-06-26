@@ -282,7 +282,7 @@ cfg_edge_to_symbol(Src,Symbol,Conditional,"false",EdgeType):-
 
 // calls or jumps to external functions
 // through indirect pointer (e.g. GOT)
-cfg_edge_to_symbol(Src,Symbol,Conditional,"false",EdgeType):-
+cfg_edge_to_symbol(Src,Symbol,Conditional,"true",EdgeType):-
     refined_block_control_instruction(Src,EA),
     resolved_transfer_to_symbol(EA,Symbol,EdgeType),
     (
