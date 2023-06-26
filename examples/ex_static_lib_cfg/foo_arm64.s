@@ -26,6 +26,7 @@ foo:
 	mov	w19, w0
 	mov	w0, 1
 	bl	__printf_chk
+jmp_block:
 	mov	w0, w19
 	ldr	x19, [sp, 16]
 	ldp	x29, x30, [sp], 32

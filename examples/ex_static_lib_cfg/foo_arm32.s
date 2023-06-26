@@ -36,6 +36,7 @@ foo:
 	add	r1, pc
 	movs	r0, #1
 	bl	__printf_chk(PLT)
+jmp_block:
 	mov	r0, r4
 	pop	{r4, lr}
 	b	bar(PLT)
