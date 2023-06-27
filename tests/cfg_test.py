@@ -161,11 +161,25 @@ class CfgTests(unittest.TestCase):
 
             # check that the 'add' block has two incoming edges and
             # two outgoing edges.
-            add_symbol = [s for s in m.symbols if s.name == "add"][0]
+            add_symbol = list(m.symbols_named("add"))[0]
             assert isinstance(add_symbol.referent, gtirb.CodeBlock)
             add_block = add_symbol.referent
             self.assertEqual(len(list(add_block.outgoing_edges)), 2)
             self.assertEqual(len(list(add_block.incoming_edges)), 2)
+
+            # After the second call we have a call to an external function
+            # which appear as a call to the stub in .MIPS.stubs
+            return_blocks = [e.target for e in add_block.outgoing_edges]
+            next_block = max(return_blocks, key=lambda b: b.address)
+            next_block_edges = list(next_block.outgoing_edges)
+            self.assertEqual(len(next_block_edges), 2)
+            call_edge = [
+                edge
+                for edge in next_block_edges
+                if edge.label.type == EdgeType.Call
+            ][0]
+            self.assertIsInstance(call_edge.target, gtirb.CodeBlock)
+            self.assertEqual(call_edge.target.section.name, ".MIPS.stubs")
 
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
