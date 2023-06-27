@@ -99,6 +99,7 @@ resolved_transfer(EA,Dest,"branch"):-
     jump_table(EA,Memory),
     code(EA),
     symbolic_data(Memory,_,Dest),
+    !symbolic_expr_from_relocation(Memory,_,_,_,_),
     refined_block(Dest).
 
 // Symbol-Symbol jump tables
@@ -120,20 +121,15 @@ resolved_transfer(EA,Dest,"branch"):-
 
 // Indirect jumps/calls where we know which data we are accessing
 resolved_transfer(EA,Dest,Type):-
+    arch.pointer_size(PtrSize),
     (
-        pc_relative_jump(EA,Pointer), Type = "branch"
+        indirect_jump(EA), Type = "branch"
         ;
-        pc_relative_call(EA,Pointer), Type = "call"
-        ;
-        indirect_jump(EA), Type = "branch",
-        data_access(EA,_,"NONE","NONE","NONE",_,Offset,_),
-        Pointer = as(Offset,address)
-        ;
-        indirect_call(EA), Type = "call",
-        data_access(EA,_,"NONE","NONE","NONE",_,Offset,_),
-        Pointer = as(Offset,address)
+        indirect_call(EA), Type = "call"
     ),
-    symbolic_data(Pointer,_,Dest).
+    data_access_pattern_candidate_refined(Pointer,PtrSize,0,EA),
+    symbolic_data(Pointer,_,Dest),
+    !symbolic_expr_from_relocation(Pointer,_,_,_,_).
 
 // Register jumps/calls where we know the value of the register
 resolved_transfer(EA,DestAddr,Type):-
@@ -154,23 +150,24 @@ resolved_transfer(EA,DestAddr,Type):-
 // and that data element has a symbolic expression pointing
 // to an external symbol
 resolved_transfer_to_symbol(EA,Symbol,Type):-
+    arch.pointer_size(PtrSize),
     (
-        pc_relative_jump(EA,Pointer), Type = "branch"
-        ;
-        pc_relative_call(EA,Pointer), Type = "call"
-        ;
         indirect_jump(EA), Type = "branch",
-        data_access(EA,_,"NONE","NONE","NONE",_,Offset,_),
-        Pointer = as(Offset,address)
+        data_access_pattern_candidate(Pointer,PtrSize,0,EA)
         ;
         indirect_call(EA), Type = "call",
-        data_access(EA,_,"NONE","NONE","NONE",_,Offset,_),
-        Pointer = as(Offset,address)
+        data_access_pattern_candidate(Pointer,PtrSize,0,EA)
     ),
     (
         symbolic_expr(Pointer,_,Symbol,0),
-        !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
-        !inferred_symbol(_,Symbol,_,_,_)
+        !inferred_symbol(_,Symbol,_,_,_),
+        (
+            !defined_symbol(_,_,_,_,_,_,_,_,Symbol)
+        ;
+            // External symbol attached to its PLT entry
+            defined_symbol(SymbolAddr,_,_,_,_,_,_,_,Symbol),
+            plt_block(SymbolAddr,Symbol)
+        )
         ;
         // We don't generate symbolic_expr for entries in the IAT
         // so we have to consider these separately
@@ -187,17 +184,19 @@ resolved_transfer_to_symbol(EA,Symbol,Type):-
         reg_call(EA,Reg), Type = "call"
     ),
     reg_def_use.def_used(EA_def,Reg,EA,_),
-    arch.load(EA_def,SrcOpIndex,_,Reg,_,_,_,_),
-    (
-        pc_relative_operand(EA_def,SrcOpIndex,Pointer)
-        ;
-        data_access(EA_def,_,"NONE","NONE","NONE",_,Offset,_),
-        Pointer = as(Offset,address)
-    ),
+    arch.load(EA_def,_,_,Reg,_,_,_,_),
+    arch.pointer_size(PtrSize),
+    data_access_pattern_candidate_refined(Pointer,PtrSize,0,EA_def),
     (
         symbolic_expr(Pointer,_,Symbol,0),
-        !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
-        !inferred_symbol(_,Symbol,_,_,_)
+        !inferred_symbol(_,Symbol,_,_,_),
+        (
+            !defined_symbol(_,_,_,_,_,_,_,_,Symbol)
+        ;
+            // External symbol attached to its PLT entry
+            defined_symbol(SymbolAddr,_,_,_,_,_,_,_,Symbol),
+            plt_block(SymbolAddr,Symbol)
+        )
         ;
         // We don't generate symbolic_expr for entries in the IAT
         // so we have to consider these separately
@@ -208,7 +207,7 @@ resolved_transfer_to_symbol(EA,Symbol,Type):-
 //////////////////////////////////////////////////////////////////////////////
 // edge creation
 
-cfg_edge(Src,Dest,"false","false","fallthrough"):-
+cfg_edge(Src,Dest,Conditional,"false","fallthrough"):-
     refined_block_control_instruction(Src,EA),
     may_fallthrough(EA,Dest),
     !no_return_call_propagated(EA),
@@ -216,17 +215,24 @@ cfg_edge(Src,Dest,"false","false","fallthrough"):-
     code_in_refined_block(Dest,Dest),
     next_refined_block_in_section(Src,Dest),
     // Assume no fallthrough edge from one plt block to another.
-    !plt_block(Src,_).
+    !plt_block(Src,_),
+    (
+        !arch.conditional(EA,_),
+        Conditional = "false"
+        ;
+        arch.conditional(EA,_),
+        !arch.jump(EA),
+        Conditional = "false"
+        ;
+        arch.jump(EA),
+        arch.conditional(EA,_),
+        Conditional = "true"
+    ).
 
 cfg_edge(Src,Dest,"false","false","fallthrough"):-
     cfg_edge(_,Src,_,_,_),
     nop_block(Src),
     next_refined_block_in_section(Src,Dest).
-
-cfg_edge(Src,Dest,"false","false","fallthrough"):-
-     nop_block(Src),
-     cfg_edge(_,Src,_,_,_),
-     next_refined_block_in_section(Src,Dest).
 
 
 cfg_edge(Src,Dest,Conditional,Indirect,Type):-
@@ -308,8 +314,7 @@ cfg_edge_to_top(Src,Conditional,"branch"):-
 cfg_edge_to_top(Src,"false","call"):-
     refined_block_control_instruction(Src,EA),
     (
-        reg_call(EA,_)
-        ;
+        reg_call(EA,_);
         indirect_call(EA)
     ),
     !resolved_transfer(EA,_,"call"),
