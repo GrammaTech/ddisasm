@@ -374,7 +374,8 @@ def check_edge_instruction_group(module: gtirb.Module) -> int:
 
 def check_cfg_completeness(module: gtirb.Module) -> int:
     """
-    Check we have 1 call edge from all direct or pc-relative calls
+    Check we have 1 call/branch edge from all direct or
+    pc-relative calls/jumps.
     """
     # TODO: support non-x86 checks
     if module.isa not in [gtirb.Module.ISA.X64, gtirb.Module.ISA.IA32]:
@@ -415,7 +416,7 @@ def check_cfg_completeness(module: gtirb.Module) -> int:
 
             # The first block of plt sections looks like:
             #    pushq .got.plt+8(%rip)
-            #    jmpq *.got.plt+16(%rip)
+            #    jmpq *.got.plt+16(%rip)  <----
             # And the first 3 entries of .got.plt (or .got) are:
             #    .quad link-time address of _DYNAMIC  # set by linker
             #    .quad Obj_Entry  # set by ld.so
