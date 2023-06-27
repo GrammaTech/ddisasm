@@ -88,6 +88,10 @@ jobs:
     needs: [docker, build]
     container: ${{ needs.docker.outputs.image_path }}${{ matrix.os }}:${{ needs.docker.outputs.image_tag }}
     steps:
+      # Checkout
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      # Install deps
       - name: Install capstone, gtirb, gtirb-pprinter
         run: |
           curl https://download.grammatech.com/gtirb/files/apt-repo/conf/apt.gpg.key | apt-key add -
@@ -95,9 +99,7 @@ jobs:
           apt-get update
           apt-get -y install libcapstone-dev=1:5.0.0-gtdev libgtirb libgtirb-dev libgtirb-pprinter libgtirb-pprinter-dev gtirb-pprinter
           pip3 install https://download.grammatech.com/gtirb/files/python/gtirb-unstable-py3-none-any.whl
-      # Checkout
-      - name: Checkout repository
-        uses: actions/checkout@v3
+          pip3 install -r requirements-dev.txt
       # Download artifacts
       - name: Download build artifacts
         uses: actions/download-artifact@v3
