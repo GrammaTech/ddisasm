@@ -572,8 +572,7 @@ indirect_jump(EA):-
     instruction_get_operation(EA,Operation),
     arch.jump_operation_op_index(Operation,TargetOpIndex),
     instruction_get_op(EA,TargetOpIndex,TargetOp),
-    op_indirect(TargetOp,_,_,_, _,_,_),
-    !pc_relative_jump(EA,_).
+    op_indirect(TargetOp,_,_,_, _,_,_).
 
 // CALLS
 // direct calls
