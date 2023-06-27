@@ -872,6 +872,11 @@ data_segment(Begin,End):-
 
 ////////////////////////////////////////////////////////////////////////////
 // detect references  to libraries (calls to plt)
+
+/**
+The basic block 'Block' implements a PLT thunk
+that refers to function 'Function'.
+*/
 .decl plt_block(block:address,function:symbol)
 .output plt_block
 

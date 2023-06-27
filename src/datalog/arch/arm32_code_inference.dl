@@ -1064,7 +1064,7 @@ data_block_candidate(Block,Size):-
     (
         symbol(TargetEA,_,_,_,_,_,_,_,Func)
         ;
-        plt_entry(TargetEA,Func)
+        plt_entry_arm_candidate(TargetEA,_,Func,_)
     ),
     arch.library_string_arg(Func,Reg).
 

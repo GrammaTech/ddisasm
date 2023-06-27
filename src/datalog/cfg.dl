@@ -219,6 +219,8 @@ resolved_transfer_to_symbol(EA,Symbol,Type):-
     data_access_pattern_candidate_refined(DataPointer,PtrSize,0,EA_def),
     pointer_to_external_symbol(DataPointer,Symbol).
 
+resolved_transfer_to_symbol(EA,Function, "branch"):-
+    plt_entry(EA,Function).
 
 //////////////////////////////////////////////////////////////////////////////
 // edge creation

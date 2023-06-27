@@ -78,7 +78,6 @@ symbolic_operand_attribute(EA,Index,"GOT"):-
     !tls_index(Dest,_),
     !tls_descriptor(Dest,_).
 
-resolved_transfer_to_symbol(EA,Function, "branch"),
 plt_entry(EA,Function):-
     plt_section(SecName),
     loaded_section(Beg,End,SecName),
