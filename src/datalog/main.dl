@@ -512,7 +512,13 @@ conditional_jump(EA):-
     arch.jump(EA),
     arch.conditional(EA,_).
 
-// direct jumps
+/**
+This predicate represents a direct jump from address
+`src` to destination `dest`. It captures only
+direct jump whose destination is known.
+E.g. a direct jump that depends on a relocation will
+not produce a direct_jump term.
+*/
 .decl direct_jump(src:address, dest:address)
 
 direct_jump(EA,as(Dest,address)):-
@@ -545,16 +551,24 @@ direct_jump(EA,EA):-
 impossible_jump_target(0):-
     false.
 
-// Special kinds of indirect jumps
-// PC relative jumps
-.decl pc_relative_jump(src:address, dest:address)
+/** This predicate represents a indirect jump
+from address 'Src' to a destination contained in
+the data pointer located at address 'DataPointer'.
+The location of the pointer can be easily inferred because
+it only depends on the program counter.
+*/
+.decl pc_relative_jump(Src:address, DataPointer:address)
 
-pc_relative_jump(EA,Dest):-
+pc_relative_jump(EA,DataPointer):-
     arch.jump(EA),
-    pc_relative_operand(EA,1,Dest).
+    pc_relative_operand(EA,1,DataPointer).
 
-// jump to the address of a register
-.decl reg_jump(src:address,Reg:register)
+/**
+ The instruction at address 'Src' has a jump using
+ register 'Reg'. The destination of the jump will
+ be the value of the register.
+*/
+.decl reg_jump(Src:address,Reg:register)
 
 reg_jump(EA,Reg):-
     arch.jump(EA),
@@ -564,8 +578,11 @@ reg_jump(EA,Reg):-
     op_regdirect_contains_reg(TargetOp,Reg),
     !arch.pc_reg(Reg).
 
-// indirect jump
-.decl indirect_jump(src:address)
+/**
+The instruction at address 'Src' has an indirect jump.
+I.e. a jump that reads its destination from memory.
+*/
+.decl indirect_jump(Src:address)
 
 indirect_jump(EA):-
     arch.jump(EA),
@@ -574,8 +591,13 @@ indirect_jump(EA):-
     instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_indirect(TargetOp,_,_,_, _,_,_).
 
-// CALLS
-// direct calls
+/**
+This predicate represents a direct call from address
+'EA' to destination `Dest`. It captures only
+direct calls whose destination is known.
+E.g. a direct call that depends on a relocation will
+not produce a direct_call term.
+*/
 .decl direct_call(EA:address,Dest:address)
 
 direct_call(EA,as(Dest,address)):-
@@ -600,22 +622,35 @@ direct_call(EA,Dest):-
     relocation_active_symbol_table(SymbolTable),
     defined_symbol(Dest,_,_,_,_,_,SymbolTable,SymbolIndex,_).
 
+/** This predicate represents a indirect call
+from address 'Src' to a destination contained in
+the data pointer located at address 'DataPointer'.
+The location of the pointer can be easily inferred because
+it only depends on the program counter.
+*/
+.decl pc_relative_call(Src:address,DataPointer:address)
 
-.decl pc_relative_call(src:address,dest:address)
-
-pc_relative_call(Src,Dest):-
+pc_relative_call(Src,DataPointer):-
     arch.call(Src,_),
-    pc_relative_operand(Src,1,Dest).
+    pc_relative_operand(Src,1,DataPointer).
 
-// for now we do not compute anything about these
-.decl reg_call(src:address,reg:register)
+/**
+ The instruction at address 'Src' has a call using
+ register 'Reg'. The destination of the call will
+ be the value of the register.
+*/
+.decl reg_call(Src:address,Reg:register)
 
 reg_call(EA,Reg):-
     arch.call(EA,TargetOpIndex),
     instruction_get_op(EA,TargetOpIndex,TargetOp),
     op_regdirect_contains_reg(TargetOp,Reg).
 
-.decl indirect_call(src:address)
+/**
+The instruction at address 'Src' has an indirect call.
+I.e. a call that reads its destination from memory.
+*/
+.decl indirect_call(Src:address)
 
 indirect_call(EA):-
     arch.call(EA,TargetOpIndex),

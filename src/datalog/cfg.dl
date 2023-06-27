@@ -33,6 +33,8 @@ This predicate specifies a CFG edge between two locations in the binary.
 /**
 This predicate specifies CFG edges from `src` to a Top proxy block
 to model calls or jumps whose destination is unknown.
+This is optimistic, if at least one target of a jump/call is known,
+the edge to the proxy block will not be generated.
 */
 .decl cfg_edge_to_top(src:address,conditional:symbol,type:symbol)
 .output cfg_edge_to_top
@@ -44,8 +46,11 @@ to model calls or jumps whose destination is unknown.
 .output cfg_edge_to_symbol
 
 /////////////////////////////////////////////////////////////////////////////////
-// jump table identification
-.decl jump_table(Src:address,Data:address)
+/**
+The jump at address `Src` might access the jump table
+entry at address `Memory`.
+*/
+.decl jump_table(Src:address,Memory:address)
 
 //use the data access pattern
 jump_table(EA,Initial_memory):-
@@ -60,8 +65,18 @@ jump_table(EA,Initial_memory):-
 jump_table(EA,Initial_memory):-
     code(EA),
     indirect_jump(EA),
-    arch.pointer_size(Pt_size),
     symbolic_operand(EA,1,Initial_memory,"data"),
+    data_access(EA,1,_,RegBase,RegIndex,_,_,_),
+    (
+        RegBase != "NONE",
+        !arch.pc_reg(RegBase),
+        UNUSED(RegIndex)
+        ;
+        RegIndex != "NONE",
+        !arch.pc_reg(RegIndex),
+        UNUSED(RegBase)
+    ),
+    arch.pointer_size(Pt_size),
     symbolic_data(Initial_memory,Pt_size,Dest_block),
     refined_block(Dest_block).
 
@@ -127,9 +142,9 @@ resolved_transfer(EA,Dest,Type):-
         ;
         indirect_call(EA), Type = "call"
     ),
-    data_access_pattern_candidate_refined(Pointer,PtrSize,0,EA),
-    symbolic_data(Pointer,_,Dest),
-    !symbolic_expr_from_relocation(Pointer,_,_,_,_).
+    data_access_pattern_candidate_refined(DataPointer,PtrSize,0,EA),
+    symbolic_data(DataPointer,_,Dest),
+    !symbolic_expr_from_relocation(DataPointer,_,_,_,_).
 
 // Register jumps/calls where we know the value of the register
 resolved_transfer(EA,DestAddr,Type):-
@@ -143,8 +158,37 @@ resolved_transfer(EA,DestAddr,Type):-
     DestAddr = as(Dest,address),
     code(DestAddr).
 
-
+/**
+This predicates represent known targets of indirect jumps or calls
+that refer to external symbols. It is similar to `resolved_transfer`
+but its target is not an address but a symbol.
+'Type' can be "branch" or "call".
+*/
 .decl resolved_transfer_to_symbol(EA:address,Symbol:symbol,Type:symbol)
+
+/**
+Auxiliary predicate of `resolved_trasnfer_to_symbol` that captures
+a pointer at address `DataPointer` that refers to the external symbol
+`Symbol`.
+*/
+.decl pointer_to_external_symbol(DataPointer:address,Symbol:symbol) inline
+
+pointer_to_external_symbol(DataPointer,Symbol):-
+    symbolic_expr(DataPointer,_,Symbol,0),
+    !inferred_symbol(_,Symbol,_,_,_),
+    (
+        !defined_symbol(_,_,_,_,_,_,_,_,Symbol)
+        ;
+        // External symbol attached to its PLT entry
+        defined_symbol(SymbolAddr,_,_,_,_,_,_,_,Symbol),
+        plt_block(SymbolAddr,Symbol)
+    ).
+
+// We don't generate `symbolic_expr` for entries in the IAT
+// so we have to consider these separately
+pointer_to_external_symbol(DataPointer,Symbol):-
+    pe_import_entry(DataPointer,_,Symbol,_).
+
 
 // Indirect jumps/calls where we know which data is accessed
 // and that data element has a symbolic expression pointing
@@ -152,27 +196,13 @@ resolved_transfer(EA,DestAddr,Type):-
 resolved_transfer_to_symbol(EA,Symbol,Type):-
     arch.pointer_size(PtrSize),
     (
-        indirect_jump(EA), Type = "branch",
-        data_access_pattern_candidate(Pointer,PtrSize,0,EA)
+        indirect_jump(EA), Type = "branch"
         ;
-        indirect_call(EA), Type = "call",
-        data_access_pattern_candidate(Pointer,PtrSize,0,EA)
+        indirect_call(EA), Type = "call"
     ),
-    (
-        symbolic_expr(Pointer,_,Symbol,0),
-        !inferred_symbol(_,Symbol,_,_,_),
-        (
-            !defined_symbol(_,_,_,_,_,_,_,_,Symbol)
-        ;
-            // External symbol attached to its PLT entry
-            defined_symbol(SymbolAddr,_,_,_,_,_,_,_,Symbol),
-            plt_block(SymbolAddr,Symbol)
-        )
-        ;
-        // We don't generate symbolic_expr for entries in the IAT
-        // so we have to consider these separately
-        pe_import_entry(Pointer,_,Symbol,_)
-    ).
+    data_access_pattern_candidate(DataPointer,PtrSize,0,EA),
+    pointer_to_external_symbol(DataPointer,Symbol).
+
 
 // Register jump/call where the register is loaded
 // from a known data address and the data element
@@ -186,22 +216,8 @@ resolved_transfer_to_symbol(EA,Symbol,Type):-
     reg_def_use.def_used(EA_def,Reg,EA,_),
     arch.load(EA_def,_,_,Reg,_,_,_,_),
     arch.pointer_size(PtrSize),
-    data_access_pattern_candidate_refined(Pointer,PtrSize,0,EA_def),
-    (
-        symbolic_expr(Pointer,_,Symbol,0),
-        !inferred_symbol(_,Symbol,_,_,_),
-        (
-            !defined_symbol(_,_,_,_,_,_,_,_,Symbol)
-        ;
-            // External symbol attached to its PLT entry
-            defined_symbol(SymbolAddr,_,_,_,_,_,_,_,Symbol),
-            plt_block(SymbolAddr,Symbol)
-        )
-        ;
-        // We don't generate symbolic_expr for entries in the IAT
-        // so we have to consider these separately
-        pe_import_entry(Pointer,_,Symbol,_)
-    ).
+    data_access_pattern_candidate_refined(DataPointer,PtrSize,0,EA_def),
+    pointer_to_external_symbol(DataPointer,Symbol).
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -266,7 +282,7 @@ cfg_edge(ReturnBlock,NextBlock,Conditional,"false","return"):-
         conditional_return(Insn), Conditional = "true"
     ).
 
-// direct calls or jumps to external functions
+// Direct calls or jumps to external functions
 cfg_edge_to_symbol(Src,Symbol,Conditional,"false",EdgeType):-
     refined_block_control_instruction(Src,EA),
     (
@@ -286,8 +302,8 @@ cfg_edge_to_symbol(Src,Symbol,Conditional,"false",EdgeType):-
     !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
     !inferred_symbol(_,Symbol,_,_,_).
 
-// calls or jumps to external functions
-// through indirect pointer (e.g. GOT)
+// Calls or jumps to external functions
+// through indirect pointer
 cfg_edge_to_symbol(Src,Symbol,Conditional,"true",EdgeType):-
     refined_block_control_instruction(Src,EA),
     resolved_transfer_to_symbol(EA,Symbol,EdgeType),

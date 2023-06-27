@@ -31,7 +31,6 @@ moved_displacement_candidate(EA,Op_index,Dest,0x7FFE0000,Dest-0x7FFE0000):-
   symbolic_operand(EA,Op_index,Dest,"data"),
   Dest > 0x7FFE0000, Dest < 0x7FFE1000.
 
-
 got_reference(Address,Function):-
     pe_import_entry(Address,_,Function,_).
 
