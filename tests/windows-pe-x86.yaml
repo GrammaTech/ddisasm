@@ -138,6 +138,12 @@ tests:
         <<: *default-build
         flags: ["/link", "/merge:.rdata=.text"]
 
+    - name: ex1
+      <<: *default
+      build:
+        <<: *default-build
+        flags: ["/link", "/merge:.rdata=.text", "/incremental"]
+
     - name: ex_seh
       <<: *default
       build:
