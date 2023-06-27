@@ -5,7 +5,7 @@ from pathlib import Path
 import gtirb
 import subprocess
 import os
-from gtirb.cfg import EdgeType
+from gtirb.cfg import EdgeType, EdgeLabel
 
 
 ex_dir = Path("./examples/")
@@ -580,6 +580,172 @@ class CfgTests(unittest.TestCase):
 
             for edges in edges_by_type[gtirb.Edge.Type.Branch]:
                 self.assertIsInstance(edge.target, gtirb.CodeBlock)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_jump_and_calls(self):
+        """
+        Test different kinds of jumps and calls.
+        """
+        binary = "ex"
+        adder_dir = ex_asm_dir / "ex_cfg"
+        with cd(adder_dir):
+            self.assertTrue(
+                compile(
+                    "gcc",
+                    "g++",
+                    "-O0",
+                    [],
+                )
+            )
+            self.assertTrue(disassemble(binary, format="--ir")[0])
+            ir = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir.modules[0]
+
+            # Check outgoing edges for each block.
+            # src and target blocks are identified with through their symbols.
+            expected_cfg = {
+                "call_local_direct": [
+                    ("fun", EdgeLabel(EdgeType.Call, False, True)),
+                    (
+                        "call_local_indirect",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_local_indirect": [
+                    ("fun", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_local_indirect_pc",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_local_indirect_pc": [
+                    ("fun", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_local_reg",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_local_reg": [
+                    ("fun", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_local_reg_pc",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_local_reg_pc": [
+                    ("fun", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_local_reg_offset",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_local_reg_offset": [
+                    ("fun", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_local_reg_offset_pc",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_local_reg_offset_pc": [
+                    ("fun", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "je_local_direct",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "je_local_direct": [
+                    ("jump_target", EdgeLabel(EdgeType.Branch, True, True)),
+                    (
+                        "jmp_local_direct",
+                        EdgeLabel(EdgeType.Fallthrough, True, True),
+                    ),
+                ],
+                "jmp_local_direct": [
+                    ("jump_target", EdgeLabel(EdgeType.Branch, False, True))
+                ],
+                "jmp_local_indirect": [
+                    ("jump_target", EdgeLabel(EdgeType.Branch, False, False))
+                ],
+                "jmp_local_reg": [
+                    ("jump_target", EdgeLabel(EdgeType.Branch, False, False))
+                ],
+                "jmp_local_reg_offset": [
+                    ("jump_target", EdgeLabel(EdgeType.Branch, False, False))
+                ],
+                "call_ext_reg": [
+                    ("puts", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_ext_indirect",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_ext_indirect": [
+                    ("puts", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_ext_plt",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+            }
+            for src, edges in expected_cfg.items():
+                src_block = next(m.symbols_named(src)).referent
+
+                expected_edges = set()
+                for tgt, label in edges:
+                    tgt_block = next(m.symbols_named(tgt)).referent
+                    expected_edges.add(gtirb.Edge(src_block, tgt_block, label))
+                self.assertSetEqual(
+                    set(src_block.outgoing_edges),
+                    expected_edges,
+                    f"unexpected edges from {src}",
+                )
+
+            # For PLT calls, check that we can traverse a list of edges
+            # (passing through the PLT block) and end up in the right block
+            # (with the right symbol)
+            plt_calls = {
+                "call_ext_plt": (
+                    EdgeLabel(EdgeType.Call, False, True),
+                    EdgeLabel(EdgeType.Branch, False, False),
+                    "puts",
+                ),
+                "call_ext_plt_printf": (
+                    EdgeLabel(EdgeType.Call, False, True),
+                    EdgeLabel(EdgeType.Branch, False, False),
+                    "printf",
+                ),
+            }
+
+            for src, path in plt_calls.items():
+                edge_label1, edge_label2, tgt = path
+                src_block = next(m.symbols_named(src)).referent
+                edges = [
+                    edge
+                    for edge in src_block.outgoing_edges
+                    if edge.label == edge_label1
+                ]
+                self.assertEqual(
+                    len(edges),
+                    1,
+                    f"Expected one edge with label {edge_label1} from {src}",
+                )
+                plt_block = edges[0].target
+                self.assertEqual(plt_block.section.name, ".plt")
+                edges_plt = [
+                    edge
+                    for edge in plt_block.outgoing_edges
+                    if edge.label == edge_label2
+                ]
+                self.assertEqual(
+                    len(edges_plt),
+                    1,
+                    f"Expected one edge with label {edge_label2} "
+                    f"from block at {plt_block.address:0x} called from {src}",
+                )
+                tgt_block = edges_plt[0].target
+                self.assertIn(tgt, [s.name for s in tgt_block.references])
 
     @unittest.skipUnless(
         (
