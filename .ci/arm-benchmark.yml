@@ -31,7 +31,7 @@ trigger:
   variables:
     ARTIFACT_URL: ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/jobs/${JOB_ID_DEBIAN_INSTALLER_UBUNTU20}/artifacts
   trigger:
-    project: rewriting/ddisasm-arm-benchmark
+    project: rewriting/disasm-benchmark
     branch: master
     strategy: depend
 
@@ -43,7 +43,7 @@ results:
   rules:
     *trigger-arm-benchmark-rules
   script:
-    - curl --location --output artifacts.zip "${CI_API_V4_URL}/projects/rewriting%2Fddisasm-arm-benchmark/jobs/artifacts/master/download?job=merge-metrics&job_token=$CI_JOB_TOKEN"
+    - curl --location --output artifacts.zip "${CI_API_V4_URL}/projects/rewriting%2Fdisasm-benchmark/jobs/artifacts/master/download?job=merge-metrics&job_token=$CI_JOB_TOKEN"
     - unzip artifacts.zip
   artifacts:
     reports:
