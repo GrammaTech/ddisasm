@@ -83,6 +83,11 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
     uint64_t Size = ByteInterval.getInitializedSize();
     auto Data = ByteInterval.rawBytes<const int8_t>();
 
+    if(Size == 0)
+    {
+        return;
+    }
+
     size_t Ascii = 0;
     uint8_t LastByte = *Data;
     // Note that ByteCount is initialized to zero to eliminate check in loop -
