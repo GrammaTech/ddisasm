@@ -233,7 +233,7 @@ reg_used_for(EA,Reg,"InferredMain"):-
 main_function(Main_location):-
     inferred_main_function(Main_location).
 
-inferred_special_symbol(EA,"_start","GLOBAL","FUNC","Beg"):-
+inferred_special_symbol(EA,"_start","LOCAL","FUNC","Beg"):-
     !binary_type("REL"),
     !symbol(EA,_,"FUNC",_,_,_,_,_,_),
     start_function(EA).
