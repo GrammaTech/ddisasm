@@ -197,6 +197,7 @@ data_region(Start,Size):-
     Size = Last - Start.
 
 data_region(EA,Size):-
+    binary_format("PE"),
     code_section(Name),
     loaded_section(Start,End,Name),
     repeated_byte(EA,0,Size),
