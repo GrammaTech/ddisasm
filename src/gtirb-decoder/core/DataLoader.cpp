@@ -85,6 +85,8 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
 
     size_t Ascii = 0;
     uint8_t LastByte = *Data;
+    // Note that ByteCount is initialized to zero to eliminate check in loop -
+    // uses first iteration increment to count first byte.
     uint64_t ByteCount = 0;
 
     while(Size > 0)
@@ -146,9 +148,9 @@ void DataLoader::load(const gtirb::ByteInterval& ByteInterval, DataFacts& Facts)
             if(ByteCount > 1)
             {
                 Facts.RepeatedByte.push_back({Addr - ByteCount, LastByte, ByteCount});
+                ByteCount = 1;
             }
             LastByte = Byte;
-            ByteCount = 1;
         }
 
         ++Addr;
