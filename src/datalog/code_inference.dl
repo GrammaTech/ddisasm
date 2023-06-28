@@ -253,6 +253,14 @@ invalid(EA,"arm64-udf"):-
     binary_isa("ARM64"),
     instruction_get_operation(EA,"UDF").
 
+invalid(EA,"INT3"):-
+    binary_format("PE"),
+    (
+        binary_isa("X86");
+        binary_isa("X64")
+    ),
+    instruction_get_operation(EA,"INT3").
+
 .decl possible_ea(EA:address) inline
 
 possible_ea(EA):-
@@ -968,20 +976,6 @@ discarded_block(Block2,"code",Block2Size,"first instruction overlap",Block):-
     instruction(Block2,Size2,"",OpCode,Op1,Op2,Op3,Op4,_,_),
     Block2 - Block = Size - Size2.
 
-// Make INT3 blocks in PEs data as long as
-// they are not connected to other blocks.
-// Otherwise each
-// individual INT3 instruction is its own block.
-// Using the point system is too expensive.
-discarded_block(EA,"code",End-Start,"PE padding considered data",0):-
-    binary_format("PE"),
-    code_in_block_candidate_refined(EA,EA),
-    block_candidate_boundaries(EA,"code",Start,End),
-    instruction_get_operation(EA,"INT3"),
-    !direct_jump(_,EA),
-    !direct_call(_,EA),
-    !must_fallthrough(_,EA).
-
 // Auxiliary predicates to detect candidate blocks that are padding
 .decl candidate_block_is_not_padding(Block:address)
 
@@ -1119,20 +1113,6 @@ block_points(Block,"code",Size,0,2,"unresovled-may-fallthrough"):-
     unresolved_block(BlockPred,"code",_).
 
 /**
-Edges that are unlikely to be real, and should be avoided for propagating
-resolved_reaches.
-*/
-.decl excluded_reach_edge(From:address,To:address)
-
-// call; int3 is likely a no-return call in PE, so propagating reachability
-// points through it can cause false positives.
-excluded_reach_edge(EA,Next):-
-    binary_isa("PE"),
-    direct_call(EA,_),
-    next(EA,Next),
-    instruction_get_operation(Next,"INT3").
-
-/**
 Points for reachability
 
 These start at 7 if reachable directly from a non-overlapping block, and are
@@ -1153,7 +1133,6 @@ resolved_reaches(Block,Size,7):-
     code_in_block_candidate_refined(EA,BlockPred),
     // No fallthrough from padding blocks
     !candidate_block_is_padding(BlockPred),
-    !excluded_reach_edge(EA,Block),
     !unresolved_block(BlockPred,"code",_),
     !impossible_block(BlockPred,"code",_,_).
 
@@ -1166,7 +1145,6 @@ resolved_reaches(Block,Size,Points):-
         may_fallthrough(EA,Block), Adjust = 1;
         jump_table_candidate(EA,_,_,Block), Adjust = 1
     ),
-    !excluded_reach_edge(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     resolved_reaches(BlockPred,_,Points0),
     Points = Points0 - Adjust,
