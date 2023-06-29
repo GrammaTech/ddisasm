@@ -1575,41 +1575,40 @@ void performSanityChecks(AnalysisPassResult &Result, souffle::SouffleProgram &Pr
         }
     }
     auto blockOverlap = Program.getRelation("block_still_overlap");
-    if(blockOverlap->size() > 0)
+    for(auto &output : *blockOverlap)
     {
         std::stringstream ErrMsg;
-        ErrMsg << "The conflicts between the following code blocks could not be resolved:\n";
-        for(auto &output : *blockOverlap)
-        {
-            uint64_t Block1, Block2, Size1, Size2;
-            std::string BlockKind1, BlockKind2;
-            output >> Block1 >> BlockKind1 >> Size1 >> Block2 >> BlockKind2 >> Size2;
-            ErrMsg << std::hex << Block1 << " (" << BlockKind1 << ", " << Size1 << " bytes) - "
-                   << Block2 << " (" << BlockKind2 << ", " << Size2 << " bytes)" << std::dec
-                   << "\n";
-        }
+        uint64_t Block1, Block2, Size1, Size2;
+        std::string BlockKind1, BlockKind2;
+        output >> Block1 >> BlockKind1 >> Size1 >> Block2 >> BlockKind2 >> Size2;
+        ErrMsg << "The following code blocks have equal points and remain overlapping: \n"
+               << "\t" << BlockKind1 << " at 0x" << std::hex << Block1 << ", " << std::dec << Size1
+               << " bytes\n"
+               << "\t" << BlockKind2 << " at 0x" << std::hex << Block2 << ", " << std::dec << Size2
+               << " bytes\n"
+               << "\n\tTo select one of the blocks, re-run ddisasm with hints, e.g.:\n"
+               << "\t$ printf 'disassembly.known_block\\t0x" << std::hex << Block1 << "\\t"
+               << BlockKind1 << "\\t" << std::dec << Size1 << "\\thint\\n' >> hints.csv\n"
+               << "\t$ ddisasm --hints ./hints.csv [...]\n";
         Messages.push_back(ErrMsg.str());
     }
 
     auto intervalScheduleTie = Program.getRelation("interval_schedule_tie");
-    if(intervalScheduleTie->size() > 0)
+    for(auto &output : *intervalScheduleTie)
     {
-        for(auto &output : *intervalScheduleTie)
-        {
-            std::stringstream WarnMsg;
-            uint64_t StartA, BlockA, SizeA, StartB, BlockB, SizeB;
-            std::string BlockKindA, BlockKindB;
-            output >> BlockA >> BlockKindA >> SizeA >> BlockB >> BlockKindB >> SizeB;
-            WarnMsg << "The following block intervals have equal weights (interval scheduling): \n"
-                    << "\t" << BlockKindA << " at 0x" << std::hex << BlockA << ", " << std::dec
-                    << SizeA << " bytes (selected)\n"
-                    << "\t" << BlockKindB << " at 0x" << std::hex << BlockB << ", " << std::dec
-                    << SizeB << " bytes (not selected)\n"
-                    << "\n\tTo select the other block, re-run ddisasm with hints, e.g.:\n"
-                    << "\t$ printf 'disassembly.known_block\\t0x" << std::hex << BlockB << "\\t"
-                    << BlockKindB << "\\t" << std::dec << SizeB << "\\thint\\n' >> hints.csv\n"
-                    << "\t$ ddisasm --hints ./hints.csv [...]\n";
-            Result.Warnings.push_back(WarnMsg.str());
-        }
+        std::stringstream WarnMsg;
+        uint64_t StartA, BlockA, SizeA, StartB, BlockB, SizeB;
+        std::string BlockKindA, BlockKindB;
+        output >> BlockA >> BlockKindA >> SizeA >> BlockB >> BlockKindB >> SizeB;
+        WarnMsg << "The following block intervals have equal weights (interval scheduling): \n"
+                << "\t" << BlockKindA << " at 0x" << std::hex << BlockA << ", " << std::dec << SizeA
+                << " bytes (selected)\n"
+                << "\t" << BlockKindB << " at 0x" << std::hex << BlockB << ", " << std::dec << SizeB
+                << " bytes (not selected)\n"
+                << "\n\tTo select the other block, re-run ddisasm with hints, e.g.:\n"
+                << "\t$ printf 'disassembly.known_block\\t0x" << std::hex << BlockB << "\\t"
+                << BlockKindB << "\\t" << std::dec << SizeB << "\\thint\\n' >> hints.csv\n"
+                << "\t$ ddisasm --hints ./hints.csv [...]\n";
+        Result.Warnings.push_back(WarnMsg.str());
     }
 }

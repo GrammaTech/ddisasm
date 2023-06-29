@@ -1342,8 +1342,20 @@ block_still_overlap(Block1,Type1,Size1,Block2,Type2,Size2):-
     !discarded_block(Block2,Type2,Size2,_,_),
     // We only care about code-code or code-data conflicts
     // but not about data-data conflicts.
-    (Type1 = "code"; Type2 = "code").
-
+    (Type1 = "code"; Type2 = "code"),
+    // Enforce ordering to prevent duplicate overlaps
+    (
+        Block1 < Block2
+        ;
+        Block1 = Block2,
+        Size1 < Size2
+        ;
+        Block1 = Block2,
+        Size1 = Size2,
+        block_type_priority(Type1,Priority1),
+        block_type_priority(Type2,Priority2),
+        Priority1 < Priority2
+    ).
 
 .decl data_in_code_propagate(Current:address,Initial:address,SectionLimit:address)
 
