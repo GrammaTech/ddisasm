@@ -23,13 +23,18 @@
 #include "DatalogIO.h"
 
 #include <souffle/RamTypes.h>
-#if defined(DDISASM_SOUFFLE_PROFILING)
-#include <souffle/profile/ProfileEvent.h>
-#endif
 
 #include <fstream>
 #include <list>
 #include <map>
+
+#if defined(DDISASM_SOUFFLE_PROFILING)
+#include <souffle/profile/ProfileEvent.h>
+
+#include <boost/filesystem.hpp>
+
+namespace fs = boost::filesystem;
+#endif
 
 /**
 Create a record from a string and return the record ID.

@@ -1,5 +1,6 @@
 import os
 import platform
+import subprocess
 import tempfile
 import unittest
 from disassemble_reassemble_check import (
@@ -132,6 +133,52 @@ class ExtraArgsTest(unittest.TestCase):
                     upload=False,
                 )
             )
+
+    def test_builtin_profiling(self):
+        """
+        Test ddisasm compiled with DDISASM_SOUFFLE_PROFILING
+        """
+        p = subprocess.run(["ddisasm", "--version"], capture_output=True)
+        if "profiling enabled" not in p.stdout.decode():
+            self.skipTest("Profiling not enabled")
+
+        with tempfile.TemporaryDirectory() as tmpdir, cd(ex_dir / "ex1"):
+            profile_dir_path = Path(tmpdir, "profiles")
+
+            # build
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+
+            # disassemble
+            self.assertTrue(
+                disassemble(
+                    "ex",
+                    format="--ir",
+                    extra_args=["--profile", profile_dir_path],
+                )[0]
+            )
+
+            profiles = [
+                profile_dir_path / filename
+                for filename in (
+                    "disassembly.prof",
+                    # TODO: profile information from the other passes is broken
+                    # "function-inference.prof",
+                    # "no-return-analysis.prof",
+                )
+            ]
+
+            for profile_path in profiles:
+                self.assertTrue(profile_path.exists())
+                print(profile_path)
+                p = subprocess.run(
+                    ["souffleprof", "-c", "top", profile_path],
+                    capture_output=True,
+                )
+
+                # Verify souffleprof includes some reasonable output
+                self.assertIn(
+                    "Slowest relations to fully evaluate", p.stdout.decode()
+                )
 
 
 if __name__ == "__main__":
