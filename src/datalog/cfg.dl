@@ -167,7 +167,7 @@ but its target is not an address but a symbol.
 .decl resolved_transfer_to_symbol(EA:address,Symbol:symbol,Type:symbol)
 
 /**
-Auxiliary predicate of `resolved_trasnfer_to_symbol` that captures
+Auxiliary predicate of `resolved_transfer_to_symbol` that captures
 a pointer at address `DataPointer` that refers to the external symbol
 `Symbol`.
 */

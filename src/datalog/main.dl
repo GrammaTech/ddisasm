@@ -564,9 +564,9 @@ pc_relative_jump(EA,DataPointer):-
     pc_relative_operand(EA,1,DataPointer).
 
 /**
- The instruction at address 'Src' has a jump using
- register 'Reg'. The destination of the jump will
- be the value of the register.
+The instruction at address 'Src' has a jump using
+register 'Reg'. The destination of the jump will
+be the value of the register.
 */
 .decl reg_jump(Src:address,Reg:register)
 

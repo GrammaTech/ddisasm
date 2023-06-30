@@ -161,7 +161,7 @@ class CfgTests(unittest.TestCase):
 
             # check that the 'add' block has two incoming edges and
             # two outgoing edges.
-            add_symbol = list(m.symbols_named("add"))[0]
+            add_symbol = next(m.symbols_named("add"))
             assert isinstance(add_symbol.referent, gtirb.CodeBlock)
             add_block = add_symbol.referent
             self.assertEqual(len(list(add_block.outgoing_edges)), 2)
