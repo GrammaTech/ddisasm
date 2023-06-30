@@ -543,7 +543,7 @@ class CfgTests(unittest.TestCase):
                     strip_exe="arm-linux-gnueabihf-strip",
                     strip=True,
                     format="--ir",
-                )
+                )[0]
             )
 
             # ldrls pc, [pc, r0, LSL2]

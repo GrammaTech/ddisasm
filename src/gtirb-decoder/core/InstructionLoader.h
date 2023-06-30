@@ -328,4 +328,10 @@ protected:
 
 std::string uppercase(std::string S);
 
+/**
+Translate a 1-indexed operand index with the original operand ordering to the
+rotated operand ordering used in datalog facts.
+*/
+uint8_t rotated_op_index(uint8_t Index, uint8_t OpCount);
+
 #endif // SRC_GTIRB_DECODER_CORE_INSTRUCTIONLOADER_H_

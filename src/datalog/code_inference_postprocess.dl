@@ -113,7 +113,8 @@ block_needs_merging(Block):-
     !instruction_has_loop_prefix(Block),
     !fde_addresses(Block,_),
     !fde_addresses(_,Block),
-    !block_needs_splitting_at(Block).
+    !block_needs_splitting_at(Block),
+    !loaded_section(_,Block,_).
 
 refined_block(Block):-
     split_block(Block),

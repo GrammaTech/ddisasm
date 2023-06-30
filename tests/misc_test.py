@@ -98,6 +98,50 @@ class IFuncSymbolsTests(unittest.TestCase):
 
 
 class OverlappingInstructionTests(unittest.TestCase):
+    def subtest_lock_cmpxchg(self, example: str):
+        """
+        Subtest body for test_lock_cmpxchg
+        """
+        binary = "ex"
+        self.assertTrue(compile("gcc", "g++", "-O0", []))
+        gtirb_file = "ex.gtirb"
+        self.assertTrue(disassemble(binary, gtirb_file, format="--ir")[0])
+
+        ir_library = gtirb.IR.load_protobuf(gtirb_file)
+        m = ir_library.modules[0]
+
+        main_sym = next(m.symbols_named("main"))
+        main_block = main_sym.referent
+
+        self.assertIsInstance(main_block, gtirb.CodeBlock)
+
+        # find the lock cmpxchg instruction - ensure it exists and is
+        # reachable from main
+        block = main_block
+        inst_prefix_op = b"\xf0\x48\x0f\xb1"
+        fallthru_count = 0
+        fallthru_max = 5
+        blocks = [main_block]
+        while block.contents[: len(inst_prefix_op)] != inst_prefix_op:
+            if fallthru_count == fallthru_max:
+                trace = " -> ".join([hex(b.address) for b in blocks])
+                msg = "exceeded max fallthru searching for lock cmpxchg: {}"
+                self.fail(msg.format(trace))
+            try:
+                block = next(
+                    e
+                    for e in block.outgoing_edges
+                    if e.label.type == gtirb.Edge.Type.Fallthrough
+                ).target
+            except StopIteration:
+                self.fail("lock cmpxchg is not a code block")
+
+            self.assertIsInstance(block, gtirb.CodeBlock)
+            blocks.append(block)
+            fallthru_count += 1
+
+        self.assertEqual(len(list(block.incoming_edges)), 1)
+
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
@@ -108,21 +152,14 @@ class OverlappingInstructionTests(unittest.TestCase):
         At 0x0, lock cmpxchg
         At 0x1,      cmpxchg
         """
+        examples = (
+            "ex_overlapping_instruction",
+            "ex_overlapping_instruction_2",
+        )
 
-        binary = "ex"
-        with cd(ex_asm_dir / "ex_overlapping_instruction"):
-
-            self.assertTrue(compile("gcc", "g++", "-O0", []))
-            gtirb_file = "ex.gtirb"
-            self.assertTrue(disassemble(binary, gtirb_file, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(gtirb_file)
-            m = ir_library.modules[0]
-
-            main_sym = next(m.symbols_named("main"))
-            main_block = main_sym.referent
-            self.assertIsInstance(main_block, gtirb.CodeBlock)
-            self.assertEqual(len(list(main_block.outgoing_edges)), 1)
+        for example in examples:
+            with self.subTest(example=example), cd(ex_asm_dir / example):
+                self.subtest_lock_cmpxchg(example)
 
 
 class AuxDataTests(unittest.TestCase):

@@ -7,7 +7,7 @@ import gtirb
 ex_arm_asm_dir = Path("./examples/arm_asm_examples")
 
 
-class ArmMiscTests(unittest.TestCase):
+class ArmMiscTest(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
@@ -48,7 +48,7 @@ class ArmMiscTests(unittest.TestCase):
                     strip=True,
                     format="--ir",
                     extra_strip_flags=extra_strip_flags,
-                )
+                )[0]
             )
 
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
@@ -147,6 +147,58 @@ class ArmMiscTests(unittest.TestCase):
             self.assertIn("Profile", archInfo)
             self.assertEqual(archInfo["Arch"], "v7")
             self.assertEqual(archInfo["Profile"], "Application")
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_arm_dead_code_after_literal_pool(self):
+        """
+        Test that unreferenced ARM32 code after a literal pool is code.
+
+        This is important in cases where there could be an indirect jump to the
+        code that we did not detect.
+        """
+
+        binary = "ex"
+        dir = ex_arm_asm_dir / "ex_code_after_literal_pool"
+        with cd(dir):
+            self.assertTrue(
+                compile(
+                    "arm-linux-gnueabihf-gcc",
+                    "arm-linux-gnueabihf-g++",
+                    "",
+                    [],
+                    "qemu-arm -L /usr/arm-linux-gnueabihf",
+                )
+            )
+
+            self.assertTrue(
+                disassemble(
+                    binary,
+                    format="--ir",
+                    strip_exe="arm-linux-gnueabihf-strip",
+                    strip=True,
+                )[0]
+            )
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            module = ir_library.modules[0]
+
+            # ensure we have a block with the dead code:
+            #   mov r1, r0          00 10 a0 e1
+            #   ldr r0, [r1, #10]   0a 00 91 e5
+            #   bx lr               1e ff 2f e1
+            for block in module.code_blocks:
+                block_contents = block.byte_interval.contents[
+                    block.offset : block.offset + block.size
+                ]
+                if (
+                    block_contents
+                    == b"\x00\x10\xa0\xe1\x0a\x00\x91\xe5\x1e\xff\x2f\xe1"
+                ):
+                    break
+            else:
+                self.fail("Expected block not found")
 
 
 if __name__ == "__main__":
