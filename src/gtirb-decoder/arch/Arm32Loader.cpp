@@ -403,13 +403,13 @@ bool Arm32Loader::collectOpndFacts(OpndFactsT& OpndFacts, const cs_insn& CsInst)
                 if(IsRegShift)
                 {
                     OpndFacts.ShiftedWithRegOp =
-                        relations::ShiftedWithRegOp{Addr, static_cast<uint8_t>(i + 1),
+                        relations::ShiftedWithRegOp{Addr, rotated_op_index(i + 1, OpCount),
                                                     registerName(CsOp.shift.value), ShiftType};
                 }
                 else
                 {
                     OpndFacts.ShiftedOp =
-                        relations::ShiftedOp{Addr, static_cast<uint8_t>(i + 1),
+                        relations::ShiftedOp{Addr, rotated_op_index(i + 1, OpCount),
                                              static_cast<uint8_t>(CsOp.shift.value), ShiftType};
                 }
             }

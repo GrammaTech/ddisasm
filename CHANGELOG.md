@@ -1,4 +1,7 @@
 # 1.6.1 (Unreleased)
+* Update code inference to use weighted interval scheduling to resolve blocks;
+  this improves code inference results, especially on ARM.
+* ARM: Discover unreferenced code blocks occurring after literal pools.
 
 # 1.6.0
 * ARM: Improve code inference using unwind information from .ARM.exidx section

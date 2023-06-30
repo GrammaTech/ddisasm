@@ -391,9 +391,47 @@ known_block(Block,"code",Size,"arm: THM_CALL relocation"):-
 // literal pools
 
 /**
-(A) LDR or LDRD
-ldr Reg, [pc, off]   or   ldrd Reg1, Reg2, [pc, off]
+Data is loaded from a register-relative address.
+
+Used to construct litpool_ref
 */
+.decl reg_relative_load(LoadEA:address,Reg:register,Offset:unsigned,Size:unsigned)
+
+// ldr Reg1, [BaseReg, Offset]  or ldrd Reg1, Reg2, [BaseReg, Offset]
+reg_relative_load(EA,BaseRegNN,as(Offset,unsigned),Size):-
+    arch.load(EA,_,_,Reg1,BaseReg,"NONE",_,Offset),
+    reg_nonnull(BaseReg,BaseRegNN),
+    instruction_memory_access_size(EA,_,Size),
+    !invalid(EA,_),
+    Offset >= 0,
+    !arch.memory_access("LOAD",EA,_,_,_,_,_,_,Offset-4),
+    !arch.pc_reg(Reg1),
+    !arch.pc_reg(BaseReg).
+
+// ldm r1, {r2, r3}
+reg_relative_load(EA,RegNN,0,Size):-
+    arch.load(EA,_,_,_,Reg,_,_,_),
+    reg_nonnull(Reg,RegNN),
+    instruction_get_operation(EA,Operation),
+    !invalid(EA,_),
+    contains("LDM",Operation),
+    instruction_get_dest_op(EA,_,RegBitFieldOp),
+    op_register_bitfield(RegBitFieldOp,MaxIndex,_),
+    !op_register_bitfield(RegBitFieldOp,MaxIndex+1,_),
+    RegCnt = MaxIndex + 1,
+    arch.pointer_size(Pt_size),
+    Size = RegCnt * Pt_size.
+
+// vldn.type {dn,...}, r1
+reg_relative_load(EA,RegNN,0,AccessSize):-
+    arch.memory_access_aggregated("LOAD",EA,Reg,_,_,_,AccessSize),
+    reg_nonnull(Reg,RegNN),
+    !invalid(EA,_),
+    instruction_get_operation(EA,Operation),
+    match("VLD[1-4].*",Operation).
+
+// LDR or LDRD, e.g.:
+// ldr Reg, [pc, off]   or   ldrd Reg1, Reg2, [pc, off]
 litpool_ref(EA,EA,RefAddr,0,Size,OpIndex):-
     !invalid(EA,_),
     arch.pc_reg(PC),
@@ -406,58 +444,55 @@ litpool_ref(EA,EA,RefAddr,0,Size,OpIndex):-
     !arch.pc_reg(Reg).
 
 /**
-(B) ADR/LDR or ADR/LDRD
-adr BaseReg, Label    or   add/sub BaseReg, pc, off
-ldr Reg1, [BaseReg, Offset]  or ldrd Reg1, Reg2, [BaseReg, Offset]
+PC-relative address is used
 */
-litpool_ref(EA,EA_ldr,RefAddr,as(Offset,unsigned),Size,OpIndex):-
-    !invalid(EA,_),
-    !invalid(EA_ldr,_),
-    arch.pc_relative_addr(EA,BaseReg,RefAddr),
-    instruction_immediate_offset(EA,OpIndex,_,_),
-    straight_line_def_used(EA,BaseReg,EA_ldr,_),
-    arch.load(EA_ldr,_,_,Reg1,BaseReg,"NONE",_,Offset),
-    Offset >= 0,
-    !arch.memory_access("LOAD",EA_ldr,_,_,_,_,_,_,Offset-4),
-    instruction_memory_access_size(EA_ldr,_,Size),
-    !arch.pc_reg(Reg1),
-    !arch.pc_reg(BaseReg).
+.decl used_pc_relative_addr(EA:address,Reg:register,RefAddr:address)
 
-/**
-(C) ADR/LDM
-adr r1, Label    or   add/sub r1, pc, offset
-ldm r1, {r2, r3}
-*/
-litpool_ref(EA,EA_ldm,RefAddr,0,Size,OpIndex):-
-    !invalid(EA,_),
-    !invalid(EA_ldm,_),
+litpool_ref(EA,EA_load,RefAddr,Offset,AccessSize,OpIndex),
+used_pc_relative_addr(EA,Reg,RefAddr):-
     arch.pc_relative_addr(EA,Reg,RefAddr),
-    straight_line_def_used(EA,Reg,EA_ldm,_),
-    instruction_get_operation(EA_ldm,Operation),
-    contains("LDM",Operation),
-    arch.memory_access(_,EA_ldm,_,_,_,Reg,_,_,_),
-    instruction_get_dest_op(EA_ldm,_,RegBitFieldOp),
-    op_register_bitfield(RegBitFieldOp,MaxIndex,_),
-    !op_register_bitfield(RegBitFieldOp,MaxIndex+1,_),
-    RegCnt = MaxIndex + 1,
-    arch.pointer_size(Pt_size),
-    Size = RegCnt * Pt_size,
+    !invalid(EA,_),
+    straight_line_def_used(EA,Reg,EA_load,_),
+    reg_relative_load(EA_load,Reg,Offset,AccessSize),
     instruction_immediate_offset(EA,OpIndex,_,_).
 
 /**
-(D) ADR/VLDn
-adr r1, Label    or   add/sub r1, pc, offset
-vldn.type {dn,...}, r1
+Addresses where the propagation of indefinite data blocks should be limited.
+
+Similar to (and a superset of) block_limit for code blocks.
 */
-litpool_ref(EA,EA_vld,RefAddr,0,AccessSize,OpIndex):-
-    !invalid(EA,_),
-    !invalid(EA_vld,_),
-    arch.memory_access_aggregated("LOAD",EA_vld,Reg,_,_,_,AccessSize),
-    instruction_get_operation(EA_vld,Operation),
-    match("VLD[1-4].*",Operation),
-    straight_line_def_used(EA,Reg,EA_vld,_),
+.decl data_block_limit(Limit:address)
+
+data_block_limit(Limit):-
+    block_limit(Inst),
+    // Block limit gives in instruction identifier; convert to the aligned
+    // instruction start address.
+    arch.instruction_at(Limit,Inst).
+
+data_block_limit(Limit):-
+    litpool_ref(_,_,RefAddr,Offset,_,_),
+    Limit = RefAddr + Offset.
+
+/**
+References to potential litpools with indeterminate sizes.
+*/
+.decl indefinite_litpool_ref(Start:address,Size:unsigned)
+
+// If there's no known use of a pc-relative register,
+// it may be a reference to data that is getting passed to a function.
+indefinite_litpool_ref(RefAddr,Size):-
     arch.pc_relative_addr(EA,Reg,RefAddr),
-    instruction_immediate_offset(EA,OpIndex,_,_).
+    code_in_block_candidate(EA,_),
+    !invalid(EA,_),
+    !used_pc_relative_addr(EA,Reg,RefAddr),
+    NextLimit = min Limit : {
+        data_block_limit(Limit),
+        Limit > RefAddr
+    },
+    Size = NextLimit - RefAddr.
+
+data_block_candidate(RefAddr,Size):-
+    indefinite_litpool_ref(RefAddr,Size).
 
 /*
 Collect all literal pool addresses computed from `litpool_ref`s.
@@ -477,7 +512,7 @@ Create data block candidate for each valid literal pool.
 data_block_candidate(LitPoolAddr,Size):-
     litpool_ref(EA,_,RefAddr,LitPoolOffset,Size,_),
     LitPoolAddr = RefAddr + LitPoolOffset,
-    code_in_block_candidate_refined(EA,_).
+    code_in_block_candidate(EA,_).
 
 data_block_candidate(LitPoolAddr,Pt_size*2):-
     arch.pc_relative_addr(EA,Reg,LitPoolAddr),
@@ -813,20 +848,6 @@ block_points(Block,"code",Size,0,1,"arm: plt call"):-
     unresolved_block(Block,"code",Size).
 
 /**
-Prefer blocks that have a well-defined boundary with a prior literal pool.
-*/
-block_points(Block,"code",Size,0,1,"arm: better fit after literal pool"):-
-    unresolved_block(Block,"code",Size),
-    block_candidate_boundaries(Block,"code",Beg,_),
-    (
-        !block_candidate_boundaries(_,"code",_,Beg)
-        ;
-        block_candidate_boundaries(BlockPred,"code",_,Beg),
-        (Block band 1) != (BlockPred band 1)
-    ),
-    litpool_boundaries(_,Beg).
-
-/**
 Similarly to the above rule, if the enclosed Thumb instruction does not have
 any predecessor and the outer instruction has one, give penalty to the dangling
 Thumb block.
@@ -1107,39 +1128,46 @@ negative_block_points(Block,"code",Size,0,-7,"arm: ldmdaeq"):-
     op_regdirect_contains_reg(DestOp2,Reg).
 
 /**
-0x00000000 is unlikely a real instruction.
+00 00 00 00 (ARM: andeq r0, r0, r0) or 00 00 (Thumb: mov r0, r0) is unlikely a real instruction.
 */
 negative_block_points(Block,"code",Size,0,-2,"arm: contains unplausible instr"):-
-    code_in_block_candidate_refined(EA,Block),
+    code_in_block_candidate_refined(Inst,Block),
+    arch.instruction_at(EA,Inst),
+    instruction(Inst,InstSize,_,_,_,_,_,_,_,_),
+    data_word(EA,InstSize,0),
     block_candidate_boundaries(Block,"code",Start,End),
-    Size = End-Start,
-    (EA band 1) = 0,
-    data_word(EA,4,0).
+    Size = End-Start.
 
-/**
-A code block that must fall through to a function symbol, and overlaps with a
-literal pool is highly likely false.
-*/
-negative_block_points(Block,"code",Size,0,-9,"arm: possibly a litpool followed by a function symbol"):-
-    code_in_block_candidate_refined(EA,Block),
-    unresolved_block_overlap(Block,"code",Size,BlockLitPool,"data",_),
-    litpool_boundaries(BlockLitPool,_),
+// A code block that must fall through to a function start is highly likely false.
+negative_block_points(Block,"code",Size,0,-10,"arm: must-fallthrough to function symbol"):-
+    function_symbol(BlockSucc,_),
     must_fallthrough(EA,BlockSucc),
-    Block != BlockSucc,
-    function_symbol(BlockSucc,_).
-
-/**
-This is similar to the one above, but weaker.
-In some cases, the data bytes prior to a function symbol may not be explicitly
-referenced as a literal pool.
-*/
-negative_block_points(Block,"code",Size,0,-1,"arm: must-fallthrough to a function symbol is not likely code"):-
     code_in_block_candidate_refined(EA,Block),
+    Block != BlockSucc,
     block_candidate_boundaries(Block,"code",Start,End),
-    Size = End-Start,
+    Size = End-Start.
+
+// Same as above, but with an exidx boundary
+negative_block_points(Block,"code",Size,0,-10,"arm: must-fallthrough to exidx boundary"):-
+    arm_exidx_entry(EASucc,0),
+    arch.instruction_at(EASucc,BlockSucc),
     must_fallthrough(EA,BlockSucc),
+    code_in_block_candidate_refined(EA,Block),
     Block != BlockSucc,
-    function_symbol(BlockSucc,_).
+    block_candidate_boundaries(Block,"code",Start,End),
+    Size = End-Start.
+
+// Same as above, but without an explicit function symbol
+negative_block_points(Block,"code",Size,0,-8,"arm: must-fallthrough to known function start"):-
+    direct_call(CallFrom,BlockSucc),
+    code_in_block_candidate_refined(CallFrom,CallFromBlock),
+    known_block(CallFromBlock,"code",_,_),
+    !function_symbol(BlockSucc,_),
+    must_fallthrough(EA,BlockSucc),
+    code_in_block_candidate_refined(EA,Block),
+    Block != BlockSucc,
+    block_candidate_boundaries(Block,"code",Start,End),
+    Size = End-Start.
 
 data_block_candidate(Block,Pt_size):-
     aligned_address_in_data(Block,Addr),
@@ -1173,49 +1201,46 @@ block_points(TableStart,"data",Size,0,Points,"arm: jump table"):-
     arm_jump_table_data_block(_,TableStart,TableStart,Size),
     unresolved_block(TableStart,"data",Size),
     (
-        !defined_symbol(TableStart,_,_,_,_,_,_,_,"$d"), Points = 15
+        !defined_symbol(TableStart,_,_,_,_,_,_,_,"$d"), Mult = 15
         ;
         // If it's a defined symbol, the points 10 are already given.
-        defined_symbol(TableStart,_,_,_,_,_,_,_,"$d"), Points = 5
-    ).
+        defined_symbol(TableStart,_,_,_,_,_,_,_,"$d"), Mult = 5
+    ),
+    Points = Mult * as(Size,number).
 
 // Subsequent data blocks compete with code blocks.
 // Give a few points to encourage selection unless there's a compelling reason
 // to select the code.
-block_points(Block,"data",Size,0,2,"arm: jump table"):-
+block_points(Block,"data",Size,0,2 * as(Size,number),"arm: jump table"):-
     arm_jump_table_data_block(_,TableStart,Block,Size),
     unresolved_block(Block,"data",Size),
     Block != TableStart.
 
-// Give points to a jump table entry block if its end corresponds with the
-// first target code block of the jump table.
-block_points(Block,"data",BlockSize,0,10,"arm: jump table fits target"):-
-    arm_jump_table_data_block(EA_jump,TableStart,Block,BlockSize),
-    unresolved_block(Block,"data",BlockSize),
-    arm_jump_table_candidate(EA_jump,_,TableStart,Block,Size,_,_,_,_),
-    FirstTargetAddr = min TargetAddr : {
-        arm_jump_table_candidate(EA_jump,_,TableStart,EA,_,TargetAddr,_,_,_),
-        // Only consider targets that would exist if Block were the last block
-        // of entries.
-        EA < Block + BlockSize,
-        // Only find Targets *after* the jump table (can be before in signed or
-        // absolute jump tables)
-        TargetAddr > TableStart
-    },
-    AlignedFirstTargetAddr = FirstTargetAddr - (FirstTargetAddr band 1),
+// Give points to a jump table data block and all prior blocks if its end
+// aligns with the jump table's limit (derived from targets).
+block_points(Block,"data",BlockSize,0,10 * as(Size,number),"arm: jump table fits target"):-
+    // Find LastBlock where the active limit aligns with the end of the block.
+    arm_jump_table_data_block(EA_jump,TableStart,LastBlock,LastBlockSize),
+    arm_jump_table_candidate_start(_,EA_jump,_,_,TableStart,Size,_,_,_),
+    TableEnd = LastBlock + LastBlockSize,
     (
         // Perfect alignment.
-        Block + BlockSize = AlignedFirstTargetAddr,
-        UNUSED(Size)
+        TableLimit = TableEnd
         ;
         // Aligns, but there's an extra byte at the end of a tbb jumptable,
         // because there were an odd number of real targets.
         // Compilers may insert a zero byte to fill it.
         Size = 1,
-        (Block + BlockSize) band 1 = 1,
-        Block + BlockSize + 1 = AlignedFirstTargetAddr,
-        data_byte(Block + BlockSize,0)
+        (TableEnd) band 1 = 1,
+        TableLimit = TableEnd + 1,
+        data_byte(TableEnd,0)
     ),
+    LastEntryAddr = TableEnd - Size,
+    arm_jump_table_candidate(EA_jump,_,TableStart,LastEntryAddr,Size,_,TableLimit,_,_),
+    // Apply points to LastBlock and preceding blocks
+    arm_jump_table_data_block(EA_jump,TableStart,Block,BlockSize),
+    unresolved_block(Block,"data",BlockSize),
+    Block <= LastBlock,
     // Don't apply this rule to first block of entries - it already gets 15 points.
     Block != TableStart.
 
@@ -1224,3 +1249,72 @@ block_points(TargetEA,"code",CodeSize,0,3,"arm: jump table target"):-
     arm_jump_table_candidate(EA_jmp,_,TableStart,DataEA,Size,TargetEA,_,_,_),
     Block <= DataEA, DataEA+Size <= Block+BlockSize,
     unresolved_block(TargetEA,"code",CodeSize).
+
+
+/**
+Minimum instruction size for each execution mode.
+
+Mode can be 0 (ARM) or 1 (Thumb)
+*/
+.decl mode_min_instruction_size(Mode:unsigned,Size:unsigned)
+
+// ARM
+mode_min_instruction_size(0,4).
+// Thumb
+mode_min_instruction_size(1,2).
+
+/**
+A computed PC-relative address that isn't a jump table.
+
+This example was generated in zlib with gcc 9.4. -Os:
+
+    adr r1, Label
+    add r2, r1, r2, lsl #4
+    mov pc, r2
+.Label:
+    cmp r3, r1, lsl #31
+    nop
+    adc r0, r0, r0
+    it hs
+    subhs r3, r3, r1, lsl #31
+.Label+16:
+    cmp r3, r1, lsl #30
+    nop
+    adc r0, r0, r0
+    it hs
+    subhs r3, r3, r1, lsl #30
+.Label+32:
+    ...
+
+In the above pattern, Label is supposed to be code rather than data
+(literal pools).
+*/
+.decl branch_to_calculated_pc_rel_addr(EA:address,Dest:address)
+
+branch_to_calculated_pc_rel_addr(EA,Dest):-
+    arch.pc_relative_addr(EA,RegBase,RefAddr),
+    mode_min_instruction_size(EA band 1,MinInstructionWidth),
+    straight_line_def_used(EA,RegBase,EA_calc,_),
+    arch.reg_reg_arithmetic_operation(EA_calc,RegJump,RegBase,_,Mult,0),
+    Mult > as(MinInstructionWidth,number),
+    straight_line_def_used(EA_calc,RegJump,EA_jump,JumpIndex),
+    instruction_get_operation(EA_jump,JumpOperation),
+    arch.jump_operation_op_index(JumpOperation,JumpIndex),
+    instruction_get_op(EA_jump,JumpIndex,DestOp),
+    op_regdirect_contains_reg(DestOp,RegJump),
+    arch.instruction_at(RefAddr,Dest),
+    code_in_block_candidate(Dest,_),
+    EA band 1 = Dest band 1.
+
+block_points(Block,"code",Size,0,Points,"arm: calculated dest"):-
+    branch_to_calculated_pc_rel_addr(EA,Block),
+    unresolved_block(Block,"code",Size),
+    code_in_block_candidate_refined(EA,BlockPred),
+    (
+        !unresolved_block(BlockPred,"code",_),
+        !impossible_block(BlockPred,"code",_,_),
+        Points = 6
+        ;
+        unresolved_block(BlockPred,"code",_),
+        Points = 2
+    ).
