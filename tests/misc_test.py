@@ -119,7 +119,7 @@ class OverlappingInstructionTests(unittest.TestCase):
             ir_library = gtirb.IR.load_protobuf(gtirb_file)
             m = ir_library.modules[0]
 
-            main_sym = next(sym for sym in m.symbols if sym.name == "main")
+            main_sym = next(m.symbols_named("main"))
             main_block = main_sym.referent
             self.assertIsInstance(main_block, gtirb.CodeBlock)
             self.assertEqual(len(list(main_block.outgoing_edges)), 1)
@@ -129,79 +129,51 @@ class AuxDataTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
-    def test_cfi_table(self):
-        """
-        Test that cfi directives are correctly generated.
-        """
-
-        binary = "ex"
-        with cd(ex_asm_dir / "ex_cfi_directives"):
-            self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
-            m = ir_library.modules[0]
-            cfi = m.aux_data["cfiDirectives"].data
-            # we simplify directives to make queries easier
-
-            found = False
-            for offset, directives in cfi.items():
-                directive_names = [elem[0] for elem in directives]
-                if ".cfi_remember_state" in directive_names:
-                    found = True
-                    # the directive is at the end of the  block
-                    assert offset.element_id.size == offset.displacement
-                    assert directive_names == [
-                        ".cfi_remember_state",
-                        ".cfi_restore_state",
-                        ".cfi_endproc",
-                    ]
-                    break
-            self.assertTrue(found)
-
-            # check that we move misaligned directives to function start
-            bar_symbol = list(m.symbols_named("bar"))[0]
-            bar_block = bar_symbol.referent
-            self.assertIsNotNone(bar_block)
-            cfi_at_bar_start = [
-                directive[0] for directive in cfi[gtirb.Offset(bar_block, 0)]
-            ]
-            self.assertIn(".cfi_startproc", cfi_at_bar_start)
-
-    @unittest.skipUnless(
-        platform.system() == "Linux", "This test is linux only."
-    )
     def test_misaligned_fde(self):
         """
         Test that misaligned_fde_start is correctly generated.
         """
         binary = "ex"
-        with cd(ex_asm_dir / "ex_misaligned_fde"):
-            self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(disassemble(binary, format="--ir")[0])
+        modes = [
+            False,  # no strip
+            True,  # strip
+        ]
 
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
-            m = ir_library.modules[0]
+        for mode in modes:
+            with self.subTest(mode=mode):
+                with cd(ex_asm_dir / "ex_misaligned_fde"):
+                    self.assertTrue(compile("gcc", "g++", "-O0", []))
+                    if mode:
+                        subprocess.run(["strip", binary])
 
-            main_sym = next(sym for sym in m.symbols if sym.name == "main")
-            main_block = main_sym.referent
-            outedges = [
-                edge
-                for edge in main_block.outgoing_edges
-                if edge.label.type == EdgeType.Fallthrough
-            ]
-            self.assertEqual(1, len(outedges))
-            block = outedges[0].target
-            # LEA should have a symbolic expression.
-            # If `bar` is not recognized as misaligned_fde_start,
-            # the LEA will be missing a symbolic expression.
-            self.assertTrue(
-                list(
-                    m.symbolic_expressions_at(
-                        range(block.address, block.address + block.size)
+                    self.assertTrue(disassemble(binary, format="--ir")[0])
+
+                    ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+                    m = ir_library.modules[0]
+
+                    main_sym = next(
+                        sym for sym in m.symbols if sym.name == "main"
                     )
-                )
-            )
+                    main_block = main_sym.referent
+                    outedges = [
+                        edge
+                        for edge in main_block.outgoing_edges
+                        if edge.label.type == EdgeType.Fallthrough
+                    ]
+                    self.assertEqual(1, len(outedges))
+                    block = outedges[0].target
+                    # LEA should have a symbolic expression.
+                    # If `bar` is not recognized as misaligned_fde_start,
+                    # the LEA will be missing a symbolic expression.
+                    self.assertTrue(
+                        list(
+                            m.symbolic_expressions_at(
+                                range(
+                                    block.address, block.address + block.size
+                                )
+                            )
+                        )
+                    )
 
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."

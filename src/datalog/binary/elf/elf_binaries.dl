@@ -304,17 +304,6 @@ __restore_rt:
 .decl misaligned_fde_start(start:address,start_adjusted:address)
 .output misaligned_fde_start
 
-misaligned_fde_start(Start,StartAligned):-
-    fde_addresses(Start,End),
-    (
-        StartAligned = @functor_aligned(Start,8)
-        ;
-        StartAligned = @functor_aligned(Start,16)
-    ),
-    StartAligned > Start,
-    function_symbol(StartAligned,_),
-    StartAligned < End.
-
 // Detect intentionally misaligned fde_address in libc.
 // see sysdeps/unix/sysv/linux/x86_64/sigaction.c
 misaligned_fde_start(Start,EA):-
