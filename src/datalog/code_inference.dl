@@ -461,7 +461,7 @@ after_end(Next,End):-
 after_end(Next,End):-
     binary_isa("ARM"),
     after_end(Next0,End),
-    arch.instruction_at(EA,Next0),
+    EA = Next0 - (Next0 band 1),
     data_block_candidate(EA,Size),
     Next = Next0 + Size.
 
