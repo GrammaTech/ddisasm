@@ -176,10 +176,9 @@ class AuxDataTests(unittest.TestCase):
             with self.subTest(mode=mode):
                 with cd(ex_asm_dir / "ex_misaligned_fde"):
                     self.assertTrue(compile("gcc", "g++", "-O0", []))
-                    if mode:
-                        subprocess.run(["strip", binary])
-
-                    self.assertTrue(disassemble(binary, format="--ir")[0])
+                    self.assertTrue(
+                        disassemble(binary, format="--ir", strip=mode)[0]
+                    )
 
                     ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
                     m = ir_library.modules[0]
