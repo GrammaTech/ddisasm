@@ -261,7 +261,10 @@ data_access_pattern_candidate_refined(Address,Size,Multiplier,From):-
     Operation != "LEA",
     (
         // if it is an indirect call or jump, the destination should be a potential address
-        address_in_data(Address,_);
+        address_in_data(Address,_)
+        ;
+        relocation(Address,_,_,_,_,_,_)
+        ;
         !indirect_jump(From),
         !indirect_call(From)
     ).
