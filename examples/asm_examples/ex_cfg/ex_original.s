@@ -75,6 +75,10 @@ call_ext_plt_printf:
     mov rsi, 0
     mov rax, 0
     call printf@plt
+call_ext_indirect_fputs:
+    lea rdi, qword ptr [rip+message]
+    mov rsi, qword ptr [rip+stdout]
+    call [fputs_ptr]
 last:
     mov eax, 0
     ret
@@ -106,3 +110,5 @@ fun_ptr:
     .quad fun
 jump_target_ptr:
     .quad jump_target
+fputs_ptr:
+    .quad fputs
