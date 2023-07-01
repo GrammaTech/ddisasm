@@ -173,7 +173,13 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
         NBits = 32;
         NBits = 64
     ),
-    data_word(Offset_addr,NBits/8,Val),
+    (
+        data_word(Offset_addr,NBits/8,Val)
+        ;
+        symbolic_expr_from_relocation(Offset_addr,NBits/8, Symbol, _, TargetAddr),
+        defined_symbol(_,_,_,_,_,_,_,_,Symbol),
+        Val = as(TargetAddr,number)
+    ),
     Val >= 0.
 
 // mov QWORD or DWORD from memory (PC-relative address)
@@ -187,7 +193,13 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
         NBits = 32;
         NBits = 64
     ),
-    data_word(Offset,NBits/8,Val),
+    (
+        data_word(Offset,NBits/8,Val)
+        ;
+        symbolic_expr_from_relocation(Offset, NBits/8,Symbol,_,TargetAddr),
+        defined_symbol(_,_,_,_,_,_,_,_,Symbol),
+        Val = as(TargetAddr,number)
+    ),
     Val >= 0.
 
 /**
