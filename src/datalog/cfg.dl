@@ -143,8 +143,14 @@ resolved_transfer(EA,Dest,Type):-
         indirect_call(EA), Type = "call"
     ),
     data_access_pattern_candidate_refined(DataPointer,PtrSize,0,EA),
-    symbolic_data(DataPointer,_,Dest),
-    !symbolic_expr_from_relocation(DataPointer,_,_,_,_).
+    (
+        symbolic_data(DataPointer,_,Dest),
+        !symbolic_expr_from_relocation(DataPointer,_,_,_,_)
+        ;
+        symbolic_expr_from_relocation(DataPointer, _, Symbol, _, Dest),
+        defined_symbol(_,_,_,_,_,_,_,_,Symbol)
+    ),
+    code(Dest).
 
 // Register jumps/calls where we know the value of the register
 resolved_transfer(EA,DestAddr,Type):-
@@ -168,21 +174,15 @@ but its target is not an address but a symbol.
 
 /**
 Auxiliary predicate of `resolved_transfer_to_symbol` that captures
-a pointer at address `DataPointer` that refers to the external symbol
-`Symbol`.
+a pointer at address 'DataPointer' that refers to the external symbol
+'Symbol'.
 */
-.decl pointer_to_external_symbol(DataPointer:address,Symbol:symbol) inline
+.decl pointer_to_external_symbol(DataPointer:address,Symbol:symbol)
 
 pointer_to_external_symbol(DataPointer,Symbol):-
     symbolic_expr(DataPointer,_,Symbol,0),
     !inferred_symbol(_,Symbol,_,_,_),
-    (
-        !defined_symbol(_,_,_,_,_,_,_,_,Symbol)
-        ;
-        // External symbol attached to its PLT entry
-        defined_symbol(SymbolAddr,_,_,_,_,_,_,_,Symbol),
-        plt_block(SymbolAddr,Symbol)
-    ).
+    !defined_symbol(_,_,_,_,_,_,_,_,Symbol).
 
 // We don't generate `symbolic_expr` for entries in the IAT
 // so we have to consider these separately
@@ -200,7 +200,7 @@ resolved_transfer_to_symbol(EA,Symbol,Type):-
         ;
         indirect_call(EA), Type = "call"
     ),
-    data_access_pattern_candidate(DataPointer,PtrSize,0,EA),
+    data_access_pattern_candidate_refined(DataPointer,PtrSize,0,EA),
     pointer_to_external_symbol(DataPointer,Symbol).
 
 
@@ -283,6 +283,7 @@ cfg_edge(ReturnBlock,NextBlock,Conditional,"false","return"):-
     ).
 
 // Direct calls or jumps to external functions
+// This will typically happen in object files.
 cfg_edge_to_symbol(Src,Symbol,Conditional,"false",EdgeType):-
     refined_block_control_instruction(Src,EA),
     (
@@ -298,9 +299,8 @@ cfg_edge_to_symbol(Src,Symbol,Conditional,"false",EdgeType):-
         arch.conditional(EA,_),Conditional = "true"
     ),
     Rel = EA+Offset,
-    symbolic_expr(Rel,_,Symbol,0),
-    !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
-    !inferred_symbol(_,Symbol,_,_,_).
+    // Note: This pointer is part of the instruction.
+    pointer_to_external_symbol(Rel,Symbol).
 
 // Calls or jumps to external functions
 // through indirect pointer
