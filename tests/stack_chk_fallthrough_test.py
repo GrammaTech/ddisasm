@@ -18,8 +18,8 @@ class TestStackChkFallthrough(unittest.TestCase):
         self.configs = [
             test_dir / "linux-elf-x86.yaml",
             test_dir / "linux-elf-x64.yaml",
+            test_dir / "qemu-elf-arm.yaml",
             # TODO: rework plt_entry definition for arm and mips
-            # test_dir / "qemu-elf-arm.yaml",
             # test_dir / "qemu-elf-arm64.yaml",
             # test_dir / 'qemu-elf-mips32.yaml',
         ]
