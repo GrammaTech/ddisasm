@@ -341,6 +341,9 @@ reloc_type_nameless("R32").
 reloc_type_nameless("R64").
 reloc_type_nameless("R32S").
 
+// This relocation can have a named symbol or not
+reloc_type_nameless("PC32").
+
 // Relocation indirectly references a named symbol with an offset from a SECTION symbol.
 symbolic_expr_from_relocation(EA,Size/8,Symbol,0,TargetEA):-
     binary_type("REL"),
