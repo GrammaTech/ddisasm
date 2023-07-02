@@ -298,6 +298,14 @@ def is_direct(inst: capstone_gt.CsInsn) -> bool:
     """
     Check if a call or jump instruction is direct
     """
+    assert any(
+        inst.group(grp)
+        for grp in (
+            capstone_gt.x86.X86_GRP_CALL,
+            capstone_gt.x86.X86_GRP_JUMP,
+            capstone_gt.x86.X86_GRP_BRANCH_RELATIVE,
+        )
+    )
     target = inst.operands[0]
     return target.type == capstone_gt.CS_OP_IMM
 
@@ -306,6 +314,14 @@ def is_pc_relative(inst: capstone_gt.CsInsn) -> bool:
     """
     Check if a call or jump instruction is pc-relative
     """
+    assert any(
+        inst.group(grp)
+        for grp in (
+            capstone_gt.x86.X86_GRP_CALL,
+            capstone_gt.x86.X86_GRP_JUMP,
+            capstone_gt.x86.X86_GRP_BRANCH_RELATIVE,
+        )
+    )
     target = inst.operands[0]
     return (
         target.type == capstone_gt.CS_OP_MEM
