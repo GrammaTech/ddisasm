@@ -63,7 +63,7 @@ class IFuncSymbolsTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
-    def test_symbols_through_plt(self):
+    def test_gnu_indirect_function(self):
         """
         Test a binary that calls a local method defined as
         gnu_indirect_function through plt and check if the local symbol is
