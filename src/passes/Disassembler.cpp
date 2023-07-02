@@ -1110,12 +1110,25 @@ void buildCFG(gtirb::Context &Context, gtirb::Module &Module, souffle::SoufflePr
         }
 
         gtirb::Symbol &Symbol = *It.begin();
-        gtirb::ProxyBlock *ExternalBlock = Symbol.getReferent<gtirb::ProxyBlock>();
+        gtirb::CfgNode *ExternalBlock = Symbol.getReferent<gtirb::ProxyBlock>();
         if(!ExternalBlock)
         {
-            // Create a ProxyBlock if the symbol does not already reference one.
-            ExternalBlock = Module.addProxyBlock(Context);
-            Symbol.setReferent(ExternalBlock);
+            gtirb::CodeBlock *TgtCodeBlock = Symbol.getReferent<gtirb::CodeBlock>();
+            if(TgtCodeBlock)
+            {
+                std::cerr
+                    << "WARNING: symbol " << Name
+                    << " expected to be undefined, but it is attached to code block at address"
+                    << TgtCodeBlock->getAddress() << std::endl;
+                ExternalBlock = TgtCodeBlock;
+            }
+            else
+            {
+                // Create a ProxyBlock if the symbol does not already reference one.
+                gtirb::ProxyBlock *NewProxyBlock = Module.addProxyBlock(Context);
+                Symbol.setReferent(NewProxyBlock);
+                ExternalBlock = NewProxyBlock;
+            }
         }
 
         auto IsConditional = Conditional == "true" ? gtirb::ConditionalEdge::OnTrue
