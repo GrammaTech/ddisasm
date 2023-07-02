@@ -6,6 +6,7 @@ import gtirb
 import subprocess
 import os
 from gtirb.cfg import EdgeType, EdgeLabel
+from typing import List, Dict, Tuple
 
 
 ex_dir = Path("./examples/")
@@ -595,16 +596,42 @@ class CfgTests(unittest.TestCase):
             for edges in edges_by_type[gtirb.Edge.Type.Branch]:
                 self.assertIsInstance(edge.target, gtirb.CodeBlock)
 
+    def check_edges(
+        self,
+        module: gtirb.Module,
+        expected_cfg: Dict[str, List[Tuple[str, gtirb.EdgeLabel]]],
+    ) -> None:
+        """
+        Check that the given gtirb `module` has the expected
+        CFG edges captured in `expected_cfg`.
+
+        Each entry in `expected_cfg` is represent a block
+        and its outgoing edges. Blocks are identified by their
+        associated symbol names. An edge is a tuple with a
+        block symbol name and an EdgLabel.
+        """
+        for src, edges in expected_cfg.items():
+            src_block = next(module.symbols_named(src)).referent
+            expected_edges = set()
+            for tgt, label in edges:
+                tgt_block = next(module.symbols_named(tgt)).referent
+                expected_edges.add(gtirb.Edge(src_block, tgt_block, label))
+            self.assertSetEqual(
+                set(src_block.outgoing_edges),
+                expected_edges,
+                f"unexpected edges from {src}",
+            )
+
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
-    def test_jump_and_calls(self):
+    def test_jump_and_calls_bin(self):
         """
         Test different kinds of jumps and calls.
         """
         binary = "ex"
-        adder_dir = ex_asm_dir / "ex_cfg"
-        with cd(adder_dir):
+        ex_cfg_dir = ex_asm_dir / "ex_cfg"
+        with cd(ex_cfg_dir):
             self.assertTrue(
                 compile(
                     "gcc",
@@ -688,47 +715,42 @@ class CfgTests(unittest.TestCase):
                 "jmp_local_reg_offset": [
                     ("jump_target", EdgeLabel(EdgeType.Branch, False, False))
                 ],
-                "call_ext_reg": [
-                    ("puts", EdgeLabel(EdgeType.Call, False, False)),
+                # printf does not have a plt entry
+                "call_ext_reg_printf": [
+                    ("printf", EdgeLabel(EdgeType.Call, False, False)),
                     (
-                        "call_ext_indirect",
+                        "call_ext_indirect_printf",
                         EdgeLabel(EdgeType.Fallthrough, False, True),
                     ),
                 ],
-                "call_ext_indirect": [
-                    ("puts", EdgeLabel(EdgeType.Call, False, False)),
+                "call_ext_indirect_printf": [
+                    ("printf", EdgeLabel(EdgeType.Call, False, False)),
                     (
-                        "call_ext_plt",
+                        "call_ext_reg",
                         EdgeLabel(EdgeType.Fallthrough, False, True),
                     ),
                 ],
             }
-            for src, edges in expected_cfg.items():
-                src_block = next(m.symbols_named(src)).referent
-
-                expected_edges = set()
-                for tgt, label in edges:
-                    tgt_block = next(m.symbols_named(tgt)).referent
-                    expected_edges.add(gtirb.Edge(src_block, tgt_block, label))
-                self.assertSetEqual(
-                    set(src_block.outgoing_edges),
-                    expected_edges,
-                    f"unexpected edges from {src}",
-                )
+            self.check_edges(m, expected_cfg)
 
             # For PLT calls, check that we can traverse a list of edges
             # (passing through the PLT block) and end up in the right block
             # (with the right symbol)
             plt_calls = {
+                "call_ext_reg": (
+                    EdgeLabel(EdgeType.Call, False, False),
+                    EdgeLabel(EdgeType.Branch, False, False),
+                    "puts",
+                ),
+                "call_ext_indirect": (
+                    EdgeLabel(EdgeType.Call, False, False),
+                    EdgeLabel(EdgeType.Branch, False, False),
+                    "puts",
+                ),
                 "call_ext_plt": (
                     EdgeLabel(EdgeType.Call, False, True),
                     EdgeLabel(EdgeType.Branch, False, False),
                     "puts",
-                ),
-                "call_ext_plt_printf": (
-                    EdgeLabel(EdgeType.Call, False, True),
-                    EdgeLabel(EdgeType.Branch, False, False),
-                    "printf",
                 ),
             }
 
@@ -760,6 +782,137 @@ class CfgTests(unittest.TestCase):
                 )
                 tgt_block = edges_plt[0].target
                 self.assertIn(tgt, [s.name for s in tgt_block.references])
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_jump_and_calls_object(self):
+        """
+        Test different kinds of jumps and calls in an object file.
+        """
+        binary = "ex_original.o"
+        ex_cfg_dir = ex_asm_dir / "ex_cfg"
+        with cd(ex_cfg_dir):
+            self.assertTrue(
+                compile(
+                    "gcc",
+                    "g++",
+                    "-O0",
+                    extra_flags=["--save-temps"],
+                )
+            )
+            self.assertTrue(disassemble(binary, format="--ir")[0])
+            ir = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir.modules[0]
+
+            # Check outgoing edges for each block.
+            # src and target blocks are identified with through their symbols.
+            expected_cfg = {
+                "call_local_direct": [
+                    ("fun", EdgeLabel(EdgeType.Call, False, True)),
+                    (
+                        "call_local_indirect",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_local_indirect": [
+                    ("fun", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_local_indirect_pc",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_local_indirect_pc": [
+                    ("fun", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_local_reg",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_local_reg": [
+                    ("fun", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_local_reg_pc",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_local_reg_pc": [
+                    ("fun", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_local_reg_offset",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_local_reg_offset": [
+                    ("fun", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_local_reg_offset_pc",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_local_reg_offset_pc": [
+                    ("fun", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "je_local_direct",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "je_local_direct": [
+                    ("jump_target", EdgeLabel(EdgeType.Branch, True, True)),
+                    (
+                        "jmp_local_direct",
+                        EdgeLabel(EdgeType.Fallthrough, True, True),
+                    ),
+                ],
+                "jmp_local_direct": [
+                    ("jump_target", EdgeLabel(EdgeType.Branch, False, True))
+                ],
+                "jmp_local_indirect": [
+                    ("jump_target", EdgeLabel(EdgeType.Branch, False, False))
+                ],
+                "jmp_local_reg": [
+                    ("jump_target", EdgeLabel(EdgeType.Branch, False, False))
+                ],
+                "jmp_local_reg_offset": [
+                    ("jump_target", EdgeLabel(EdgeType.Branch, False, False))
+                ],
+                "call_ext_reg_printf": [
+                    ("printf", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_ext_indirect_printf",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_ext_indirect_printf": [
+                    ("printf", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_ext_reg",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_ext_reg": [
+                    ("puts", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_ext_indirect",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_ext_indirect": [
+                    ("puts", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_ext_plt",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_ext_plt": [
+                    ("puts", EdgeLabel(EdgeType.Call, False, True)),
+                    (
+                        "last",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+            }
+            self.check_edges(m, expected_cfg)
 
     @unittest.skipUnless(
         (

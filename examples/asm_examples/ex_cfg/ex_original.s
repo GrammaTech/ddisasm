@@ -58,6 +58,26 @@ jmp_local_reg_offset:
     add rax, 8
     jmp [rax]
 
+# 'printf' does NOT have a plt entry so the register
+# and indirect calls get resolved to the external
+# address directly
+
+call_ext_reg_printf:
+    lea rdi, qword ptr [rip+print_msg]
+    mov rsi, 0
+    mov rax, 0
+    mov rbx, qword ptr [printf_ptr]
+    call rbx
+
+call_ext_indirect_printf:
+    lea rdi, qword ptr [rip+message]
+    mov rsi, 0
+    mov rax, 0
+    call [printf_ptr]
+
+# Since 'puts' has a plt entry, indirect and reg calls
+# will point to the PLT entry
+
 call_ext_reg:
     mov rax, qword ptr [puts_ptr]
     lea rdi, qword ptr [rip+message]
@@ -70,15 +90,7 @@ call_ext_indirect:
 call_ext_plt:
     lea rdi, qword ptr [rip+message]
     call puts@plt
-call_ext_plt_printf:
-    lea rdi, qword ptr [rip+print_msg]
-    mov rsi, 0
-    mov rax, 0
-    call printf@plt
-call_ext_indirect_fputs:
-    lea rdi, qword ptr [rip+message]
-    mov rsi, qword ptr [rip+stdout]
-    call [fputs_ptr]
+
 last:
     mov eax, 0
     ret
@@ -86,6 +98,13 @@ last:
 
 .global fun
 fun:
+    lea rdi, qword ptr [rip+message_fun]
+    call puts@plt
+    mov rax, 0
+    ret
+
+.global foo
+foo:
     lea rdi, qword ptr [rip+message_fun]
     call puts@plt
     mov rax, 0
@@ -110,5 +129,5 @@ fun_ptr:
     .quad fun
 jump_target_ptr:
     .quad jump_target
-fputs_ptr:
-    .quad fputs
+printf_ptr:
+    .quad printf
