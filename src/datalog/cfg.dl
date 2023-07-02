@@ -142,6 +142,7 @@ resolved_transfer(EA,Dest,Type):-
         ;
         indirect_call(EA), Type = "call"
     ),
+    !plt_entry(EA,_),
     data_access_pattern_candidate_refined(DataPointer,PtrSize,0,EA),
     (
         symbolic_data(DataPointer,_,Dest),
@@ -159,10 +160,16 @@ resolved_transfer(EA,DestAddr,Type):-
         ;
         reg_call(EA,Reg), Type = "call"
     ),
+    !plt_entry(EA,_),
     reg_def_use.def_used(EA_def,Reg,EA,_),
     value_reg(EA_def,Reg,_,"NONE",_,Dest,_),
     DestAddr = as(Dest,address),
     code(DestAddr).
+
+resolved_transfer(EA,DestAddr, "branch"):-
+    plt_entry(EA,Function),
+    defined_symbol(DestAddr,_,_,_,_,SectIndex,_,_,Function),
+    SectIndex != 0.
 
 /**
 This predicates represent known targets of indirect jumps or calls
@@ -220,7 +227,9 @@ resolved_transfer_to_symbol(EA,Symbol,Type):-
     pointer_to_external_symbol(DataPointer,Symbol).
 
 resolved_transfer_to_symbol(EA,Function, "branch"):-
-    plt_entry(EA,Function).
+    plt_entry(EA,Function),
+    symbol(_,_,_,_,_,SectIndex,_,_,Function),
+    SectIndex = 0.
 
 //////////////////////////////////////////////////////////////////////////////
 // edge creation
