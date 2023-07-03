@@ -363,6 +363,12 @@ cmp_reg_to_reg(EA,Reg1,Reg2):-
     instruction_get_op(EA,_,Op2), Op2!=Op1,
     op_regdirect_contains_reg(Op2,Reg2).
 
+/**
+The register 'Reg' at address 'EA' is iterating over data in a section
+at address [OldBeg,OndEnd). Based on the multiplier of the loop, we compute
+and extended area [Beg,End). If we find pointers to that extended area
+related to the same loop, we will move them to the `NewDest`.
+*/
 .decl dest_enlarged_data_section(EA:address,Reg:register,NewDest:address,
             Beg:address,End:address,OldBeg:address,OldEnd:address)
 
@@ -416,15 +422,24 @@ moved_immediate_candidate(EA_from,Imm_index,ImmediateAddr,NewDest):-
     Type != "incomplete",
     (
         binary_type("EXEC"),
-        arch.move_reg_imm(EA_from,Reg,Immediate,Imm_index), code(EA_from), Immediate >= 0
+        arch.move_reg_imm(EA_from,Reg,Immediate,Imm_index),
+        code(EA_from),
+        Immediate >= 0
         ;
-        mov_pc_relative_immediate_to_reg(EA_from,Reg,Imm_index,Immediate), Immediate >= 0
+        mov_pc_relative_immediate_to_reg(EA_from,Reg,Imm_index,Immediate),
+        Immediate >= 0
     ),
     ImmediateAddr = as(Immediate,address),
-    as(Beg,number)-Mult <= Immediate,
-    Immediate <= as(End,number)+Mult,
-    //only move if the original does not fall in the original section
-    (ImmediateAddr < Beg ; ImmediateAddr > End).
+    MultAbs = as(max(Mult,-Mult),unsigned),
+    // Only move if the original does not fall in the original section
+    // but it is 1 or less multipliers away
+    (
+        ImmediateAddr < Beg,
+        ImmediateAddr >= Beg - MultAbs
+        ;
+        ImmediateAddr > End,
+        ImmediateAddr <= End + MultAbs
+    ).
 
 moved_label_class(EA,Imm_index,"immediate loop bound"),
 moved_immediate_candidate(EA,Imm_index,ImmediateAddr,NewDest):-
@@ -433,7 +448,8 @@ moved_immediate_candidate(EA,Imm_index,ImmediateAddr,NewDest):-
     ImmediateAddr = as(Immediate,address),
     reg_def_use.def_used(EA_def,Reg,EA,_),
     dest_enlarged_data_section(EA_def,Reg,NewDest,Beg,End,OldBeg,OldEnd),
-    Beg <= ImmediateAddr, ImmediateAddr <= End,
+    Beg <= ImmediateAddr,
+    ImmediateAddr <= End,
     (
         OldBeg > ImmediateAddr,
         UNUSED(OldEnd)
@@ -451,13 +467,17 @@ moved_immediate_candidate(EA_def2,Imm_index,ImmediateAddr,NewDest):-
     reg_def_use.def_used(EA_def2,Reg2,EA,_),
     (
         binary_type("EXEC"),
-        arch.move_reg_imm(EA_def2,Reg2,Immediate,Imm_index), code(EA_def2), Immediate >= 0
+        arch.move_reg_imm(EA_def2,Reg2,Immediate,Imm_index),
+        code(EA_def2),
+        Immediate >= 0
         ;
-        mov_pc_relative_immediate_to_reg(EA_def2,Reg2,Imm_index,Immediate), Immediate >= 0
+        mov_pc_relative_immediate_to_reg(EA_def2,Reg2,Imm_index,Immediate),
+        Immediate >= 0
     ),
     ImmediateAddr = as(Immediate,address),
 
-    Beg <= ImmediateAddr,ImmediateAddr <= End,
+    Beg <= ImmediateAddr,
+    ImmediateAddr <= End,
     (
         OldBeg > ImmediateAddr,
         UNUSED(OldEnd)
@@ -466,21 +486,9 @@ moved_immediate_candidate(EA_def2,Imm_index,ImmediateAddr,NewDest):-
         UNUSED(OldBeg)
     ).
 
-moved_label_class(EA,Op_index,"pie relocation"),
-moved_immediate_candidate(EA,Op_index,DestAddr,SymbolAddr):-
-    !binary_type("EXEC"),
-    !binary_type("REL"),
-    code(EA),
-    instruction_immediate_offset(EA,Op_index,ImmediateOffset,_),
-    instruction_get_src_op(EA,Op_index,Op),
-    op_immediate(Op,Dest), Dest >= 0,
-    DestAddr = as(Dest,address),
-    relocation(EA+ImmediateOffset,_,Symbol,_,_,_,_),
-    symbol(SymbolAddr,_,_,_,_,_,_,_,Symbol),
-    SymbolAddr != DestAddr.
-
 moved_label(EA,Op_index,Dest,NewDest):-
-    moved_immediate_candidate(EA,Op_index,Dest,NewDest).
+    moved_immediate_candidate(EA,Op_index,Dest,NewDest),
+    NewDest = min N: { moved_immediate_candidate(EA,Op_index,Dest,N)}.
 
 // If the destination is in the middle of a known symbol
 moved_label_class(EA,Op_index,"middle of symbol"),
@@ -525,11 +533,16 @@ moved_label(EA,Op_index,Dest,ImageBase):-
 // Symbolic expressions that should be pointing at the end of sections
 
 
+// The immediate is the start of a loop counting down
 boundary_sym_expr(EA+InstrOffset,Dest):-
     symbolic_operand(EA,Index,Dest,"data"),
-    instruction_immediate_offset(EA,Index,InstrOffset,_),
-    // The immediate is the start of a loop counting down
-    arch.move_reg_imm(EA,_,as(Dest,number),Index),
+    (
+        arch.move_reg_imm(EA,_,as(Dest,number),Index),
+        instruction_immediate_offset(EA,Index,InstrOffset,_)
+        ;
+        mov_pc_relative_immediate_to_reg(EA,_,Index,_),
+        instruction_displacement_offset(EA,Index,InstrOffset,_)
+    ),
     code(EA),
     value_reg(_,_,EA,"Unknown",Mult,_,_), Mult < 0,
     //  At the boundary between two sections
@@ -539,10 +552,10 @@ boundary_sym_expr(EA+InstrOffset,Dest):-
 /**
 E.g., libc.so (v2.36)
 leaq __elf_set___libc_atexit_element__IO_cleanup__(%rip),%rbx
-leaq __start___libc_IO_vtables(%rip),%rax
+leaq __start___libc_IO_vtables(%rip),%rax (or mov __start___libc_IO_vtables, %rax)
 cmpq %rax,%rbx
 */
-boundary_sym_expr(EA+DisplacementOffset,Dest):-
+boundary_sym_expr(EA+InstrOffset,Dest):-
     symbolic_operand(EA,Index,Dest,"data"),
     //  At the boundary between two sections
     loaded_section(Dest,_,_),
@@ -554,7 +567,21 @@ boundary_sym_expr(EA+DisplacementOffset,Dest):-
     symbolic_operand(EA_beg,_,Dest2,"data"),
     Dest2 >= Beg,
     Dest2 < Dest,
-    instruction_displacement_offset(EA,Index,DisplacementOffset,_).
+    (
+        instruction_displacement_offset(EA,Index,InstrOffset,_)
+        ;
+        instruction_immediate_offset(EA,Index,InstrOffset,_)
+    ).
+
+// Immediate comparison to loop counter
+boundary_sym_expr(EA+InstrOffset,ImmediateAddr):-
+    binary_type("EXEC"),
+    symbolic_operand(EA,Index,ImmediateAddr,"data"),
+    cmp_immediate_to_reg(EA,Reg,Index,_),
+    instruction_immediate_offset(EA,Index,InstrOffset,_),
+    reg_def_use.def_used(EA_def,Reg,EA,_),
+    dest_enlarged_data_section(EA_def,Reg,_,_,_,_,EndSection),
+    ImmediateAddr = EndSection.
 
 // symbolic expression that points to the
 // end of a section, which is not the beginning of another.
@@ -569,30 +596,3 @@ boundary_sym_expr(EA+InstrOffset,Dest):-
         ;
         instruction_displacement_offset(EA,Index,InstrOffset,_)
     ).
-
-// Immediate loop bound
-boundary_sym_expr(EA+InstrOffset,ImmediateAddr):-
-    binary_type("EXEC"),
-    cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate), Immediate >= 0,
-    instruction_immediate_offset(EA,Imm_index,InstrOffset,_),
-    ImmediateAddr = as(Immediate,address),
-    reg_def_use.def_used(EA_def,Reg,EA,_),
-    dest_enlarged_data_section(EA_def,Reg,_,_,_,_,EndSection),
-    ImmediateAddr = EndSection.
-
-// Loaded immediate loop bound
-boundary_sym_expr(EA_def2+InstrOffset,ImmediateAddr):-
-    cmp_reg_to_reg(EA,Reg1,Reg2),
-    reg_def_use.def_used(EA_def1,Reg1,EA,_),
-    dest_enlarged_data_section(EA_def1,Reg1,_,_,_,_,EndSection),
-    ImmediateAddr = EndSection,
-    Immediate  = as(ImmediateAddr,number),
-    reg_def_use.def_used(EA_def2,Reg2,EA,_),
-    (
-        binary_type("EXEC"),
-        arch.move_reg_imm(EA_def2,Reg2,Immediate,Imm_index),
-        code(EA_def2)
-        ;
-        mov_pc_relative_immediate_to_reg(EA_def2,Reg2,Imm_index,Immediate)
-    ),
-    instruction_immediate_offset(EA_def2,Imm_index,InstrOffset,_).
