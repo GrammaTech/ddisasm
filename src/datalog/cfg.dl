@@ -191,7 +191,7 @@ cfg_edge_to_symbol(Src,Symbol,"branch"):-
     refined_block_control_instruction(Src,EA),
     arch.jump(EA),
     !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
-    !inferred_special_symbol(_,Symbol,_,_,_).
+    !inferred_special_symbol(_,Symbol,_,_,_,_).
 
 cfg_edge_to_symbol(Src,Symbol,"branch"):-
     refined_block_control_instruction(Src,EA),

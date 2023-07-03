@@ -31,7 +31,7 @@ abi_intrinsic(EA,Name):-
 abi_intrinsic(EA,"_GLOBAL_OFFSET_TABLE_"):-
     (
         symbol(EA,_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_");
-        inferred_special_symbol(EA,"_GLOBAL_OFFSET_TABLE_",_,_,_)
+        inferred_special_symbol(EA,"_GLOBAL_OFFSET_TABLE_",_,_,_,_)
     ).
 
 // GCC GOT-relative offset variant:
