@@ -47,7 +47,7 @@ Format an unsigned integer as a string in its hex representation
 /**
 A new symbol 'SymbolName' at address 'EA' should be created.
 */
-.decl inferred_symbol(EA:address,SymbolName:symbol,Scope:symbol,Type:symbol,Pos:symbol_position)
+.decl inferred_symbol(EA:address,SymbolName:symbol,Scope:symbol,Visibility:symbol,Type:symbol,Pos:symbol_position)
 .output inferred_symbol
 
 /**
@@ -55,15 +55,15 @@ A special symbol 'SymbolName' at address 'EA' has been inferred.
 Special inferred symbols have higher priority than regular
 inferred symbols.
 */
-.decl inferred_special_symbol(EA:address,SymbolName:symbol,Scope:symbol,Type:symbol,Pos:symbol_position)
+.decl inferred_special_symbol(EA:address,SymbolName:symbol,Scope:symbol,Visibility:symbol,Type:symbol,Pos:symbol_position)
 
-inferred_special_symbol(EA,"main","GLOBAL","FUNC","Beg"):-
+inferred_special_symbol(EA,"main","GLOBAL","DEFAULT","FUNC","Beg"):-
     binary_format("ELF"),
     main_function(EA).
 
-inferred_symbol(EA,SymbolName,Scope,Type,Pos),
+inferred_symbol(EA,SymbolName,Scope,Visibility,Type,Pos),
 symbol_score(EA,SymbolName,Type,Pos,1):-
-    inferred_special_symbol(EA,SymbolName,Scope,Type,Pos).
+    inferred_special_symbol(EA,SymbolName,Scope,Visibility,Type,Pos).
 
 /**
 Best symbol at address 'EA' to be used for symbolic expressions. There
@@ -192,7 +192,7 @@ best_func_symbol(EA,SymbolName):-
    symbol_score(EA,SymbolName,"FUNC","Beg",Score),
    Score = max S: {symbol_score(EA,_,"FUNC","Beg",S)}.
 
-inferred_symbol(EA,SymbolName,Scope,"FUNC","Beg"),
+inferred_symbol(EA,SymbolName,Scope,"DEFAULT","FUNC","Beg"),
 best_func_symbol(EA,SymbolName):-
     function_inference.function_entry(EA),
     !symbol_score(EA,_,"FUNC","Beg",_),
@@ -216,14 +216,14 @@ best_symexpr_symbol(EA,SymbolName,"Beg"):-
     !symbol_score(EA,_,_,"Beg",_),
     best_func_symbol(EA,SymbolName).
 
-inferred_symbol(EA,SymbolName,"LOCAL","NONE","Beg"),
+inferred_symbol(EA,SymbolName,"LOCAL","DEFAULT","NONE","Beg"),
 best_symexpr_symbol(EA,SymbolName,"Beg"):-
     labeled_ea(EA),
     !symbol_score(EA,_,_,"Beg",_),
     !best_func_symbol(EA,_),
     SymbolName = cat(".L_",@to_string_hex(EA)).
 
-inferred_symbol(EA,SymbolName,"LOCAL","NONE","End"),
+inferred_symbol(EA,SymbolName,"LOCAL","DEFAULT","NONE","End"),
 best_symexpr_symbol(EA,SymbolName,"End"):-
     labeled_ea(EA),
     boundary_sym_expr(_,EA),
@@ -250,7 +250,7 @@ symbol_at_section_end(EA,SymbolName):-
     EA = Beg + Size.
 
 symbol_at_end(EA,SymbolName):-
-    inferred_symbol(EA,SymbolName,_,_,"End").
+    inferred_symbol(EA,SymbolName,_,_,_,"End").
 
 /**
 The symbol at address 'EA' with name 'SymbolName' is pointing

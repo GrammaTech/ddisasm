@@ -645,7 +645,7 @@ value_reg(EA,Reg,EA,"NONE",0,Value,1):-
 // TODO: Adapt symbolization to prefer base symbol in expressions,
 //      e.g. .quad foo-_TLS_MODULE_BASE_
 //       not .quad foo-foo
-inferred_symbol(EA,"_TLS_MODULE_BASE_","LOCAL","NONE","Beg"):-
+inferred_symbol(EA,"_TLS_MODULE_BASE_","LOCAL","DEFAULT","NONE","Beg"):-
     tls_segment(EA,_,_).
 
 // Symbolize tls_index.ti_offset value in GOT (i.e. DTPOFF relocation).
