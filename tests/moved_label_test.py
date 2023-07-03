@@ -70,7 +70,9 @@ class MovedLabelTests(unittest.TestCase):
                 ("loop_back_above", 0, ".data", True),
                 ("loop_back_below", 0, ".data2", True),
                 ("print_above_mov", 0, ".data", True),
+                ("print_above_loaded_pc", 0, ".data", True),
                 ("print_below_ascending", 0, ".data2", True),
+                ("print_below_ascending_pc", 0, ".data2", True),
                 ("print_above_descending", 0, ".data", True),
             ]
             for (

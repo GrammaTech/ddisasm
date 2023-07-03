@@ -1,4 +1,7 @@
-// moved_label
+// moved_label immediate
+// Each print* function has a different kind of loop
+// that requires immediate moved labels or boundary_sym_expr.
+
 
     .intel_syntax noprefix
     .globl	main
@@ -8,31 +11,26 @@ main:
             push RAX
             lea RDI,QWORD PTR [RIP+msg1]
             call puts@PLT
-
             xor EAX,EAX
             call print
 
             lea RDI,QWORD PTR [RIP+msg2]
             call puts@PLT
-
             xor EAX,EAX
             call print_descending
 
             lea RDI,QWORD PTR [RIP+msg2]
             call puts@PLT
-
             xor EAX,EAX
             call print_descending_mov
 
             lea RDI,QWORD PTR [RIP+msg1]
             call puts@PLT
-
             xor EAX,EAX
             call print_above
 
             lea RDI,QWORD PTR [RIP+msg2]
             call puts@PLT
-
             xor EAX,EAX
             call print_below
 
@@ -41,7 +39,12 @@ main:
             xor EAX,EAX
             call print_above_mov
 
-	    lea RDI,QWORD PTR [RIP+msg1]
+            lea RDI,QWORD PTR [RIP+msg1]
+            call puts@PLT
+            xor EAX,EAX
+            call print_above_loaded_pc
+
+            lea RDI,QWORD PTR [RIP+msg1]
             call puts@PLT
             xor EAX,EAX
             call print_below_ascending
@@ -49,9 +52,12 @@ main:
             lea RDI,QWORD PTR [RIP+msg1]
             call puts@PLT
             xor EAX,EAX
+            call print_below_ascending_pc
+
+            lea RDI,QWORD PTR [RIP+msg1]
+            call puts@PLT
+            xor EAX,EAX
             call print_above_descending
-
-
 
             xor EAX,EAX
             pop RDX
@@ -217,6 +223,33 @@ end_loop_above_mov:
             pop RBX
         ret
 
+#-----------------------------------
+.globl print_above_loaded_pc
+.type print_above_loaded_pc, @function
+#-----------------------------------
+print_above_loaded_pc:
+            push RBX
+            push RBP
+
+# The loop boundary is loaded into a register
+# with a pc-relative operand and it is above the end of the section
+
+            lea RBP, QWORD PTR [RIP+array_end+2]
+            mov RBX, offset array
+loop_back_above_loaded_pc:
+            add RBX,2
+            cmp RBX, RBP
+            jae end_loop_above_loaded_pc
+            movsx EDX,WORD PTR [RBX-2]
+            lea RSI,QWORD PTR [RIP+format]
+            xor EAX,EAX
+            mov EDI,1
+            call __printf_chk@PLT
+            jmp loop_back_above_loaded_pc
+end_loop_above_loaded_pc:
+            pop RBP
+            pop RBX
+        ret
 
 #-----------------------------------
 .globl print_below_ascending
@@ -240,6 +273,32 @@ loop_back_below_ascending:
             call __printf_chk@PLT
             jmp loop_back_below_ascending
 end_loop_below_ascending:
+            pop RBX
+        ret
+
+#-----------------------------------
+.globl print_below_ascending_pc
+.type print_below_ascending_pc, @function
+#-----------------------------------
+print_below_ascending_pc:
+            push RBX
+
+# The loop counter starts below the beginning
+# of the section. The counter is loaded with
+# a pc-relative operand.
+
+            lea RBX, QWORD PTR [RIP+array_data2-2]
+loop_back_below_ascending_pc:
+            add RBX,2
+            cmp RBX, offset array_end_data2
+            je end_loop_below_ascending_pc
+            movsx EDX,WORD PTR [RBX]
+            lea RSI,QWORD PTR [RIP+format]
+            xor EAX,EAX
+            mov EDI,1
+            call __printf_chk@PLT
+            jmp loop_back_below_ascending_pc
+end_loop_below_ascending_pc:
             pop RBX
         ret
 
