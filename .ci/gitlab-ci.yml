@@ -511,6 +511,8 @@ build-ubuntu20-clang-profiler:
     CXX_COMPILER: 'clang++'
     BUILD_TYPE: 'RelWithDebInfo'
     CMAKE_OPTIONS: -DDDISASM_SOUFFLE_PROFILING=ON
+  rules:
+    *run-only-main
   <<: *build
 
 build-static:
