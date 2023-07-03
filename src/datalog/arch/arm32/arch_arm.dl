@@ -96,6 +96,10 @@ store_operation(Operation):-
 is_nop(EA):-
     instruction_get_operation(EA,"NOP").
 
+// e.g.: mov r0, r0
+is_nop(EA):-
+    move_reg_reg(EA,Reg,Reg).
+
 // We have no return_operation, so we override.
 .override return
 return(EA):-
@@ -491,6 +495,16 @@ reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,Sign,0):-
     op_regdirect_contains_reg(Op1,Src1),
     op_regdirect_contains_reg(Op2,Src2),
     op_regdirect_contains_reg(Op3,Dst).
+
+// ADD reg, reg, reg, lsl #imm
+reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,Mult,0):-
+    Operation = "ADD",
+    instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src1),
+    op_regdirect_contains_reg(Op2,Src2),
+    op_regdirect_contains_reg(Op3,Dst),
+    op_shifted(EA,2,Shift,"LSL"),
+    Mult = as(1 bshl Shift,number).
 
 /**
 The function `Func` receives a string argument at register `Reg`.

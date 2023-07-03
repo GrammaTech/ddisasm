@@ -199,6 +199,18 @@ uint64_t functor_aligned(uint64_t EA, size_t Size)
     return EA + ((Size - (EA % Size)) % Size);
 }
 
+uint64_t functor_choose_max(uint64_t Val1, uint64_t Val2, uint64_t Id1, uint64_t Id2)
+{
+    if(Val1 <= Val2)
+    {
+        return Id2;
+    }
+    else
+    {
+        return Id1;
+    }
+}
+
 // Decode the branch offset of a 32-bit THUMB branch instruction. Used to find
 // REL relocation addends. Backward compatible with THUMB-1 encoding.
 int64_t functor_thumb32_branch_offset(uint32_t Instruction)

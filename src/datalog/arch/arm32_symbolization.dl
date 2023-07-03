@@ -191,37 +191,9 @@ symbolic_operand_candidate(EA,OpIndex,RefAddr,"data"):-
     data_segment(Begin,End),
     LitPoolAddr >= Begin, LitPoolAddr <= End.
 
-/**
-adr r1, Label
-add r, r1, r2, lsl #4
-mov pc, r   or  bx r
-
-In the above pattern, Label is supposed to be code rather than data
-(literal pools).
-Therefore, it should not be treated as `litpool_ref`, whose target is data.
-This predicate is used for excluding such case from `litpool_ref`.
-Also, the target should not be aligned.
-*/
-.decl pc_relative_for_jump_table(EA:address)
-
-pc_relative_for_jump_table(EA_adr):-
-    op_shifted(EA_add,3,4,"LSL"),
-    substr(AddOperation,0,3) = "ADD",
-    instruction_get_operation(EA_add,AddOperation),
-    reg_def_use.def_used(EA_add,Reg,EA_jump,_),
-    arch.jump(EA_jump),
-    instruction_get_operation(EA_jump,Operation),
-    !arch.load_word_operation(Operation),
-    arch.jump_operation_op_index(Operation,Index),
-    instruction_get_op(EA_jump,Index,DestOp),
-    op_regdirect_contains_reg(DestOp,Reg),
-    reg_def_use.def_used(EA_adr,Reg1,EA_add,_),
-    arch.pc_relative_addr(EA_adr,Reg1,_).
-
 symbolic_operand_candidate(EA,OpIndex,Dest,Type):-
     code(EA),
     arch.pc_relative_addr(EA,_,Dest0),
-    !pc_relative_for_jump_table(EA),
     (
         code(Dest), Dest = Dest0, Type = "code"
         ;
@@ -231,15 +203,6 @@ symbolic_operand_candidate(EA,OpIndex,Dest,Type):-
         Type = "data"
     ),
     instruction_immediate_offset(EA,OpIndex,_,_).
-
-symbolic_operand_candidate(EA,OpIndex,Dest,"code"):-
-    code(EA),
-    arch.pc_relative_addr(EA,_,Dest0),
-    Dest = Dest0 + (EA band 1),
-    pc_relative_for_jump_table(EA),
-    code(Dest),
-    instruction_immediate_offset(EA,OpIndex,_,_).
-
 
 /**
 Matches instruction patterns that access a symbol-symbol from the literal pool.

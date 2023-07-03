@@ -12,6 +12,7 @@ from disassemble_reassemble_check import (
 )
 from pathlib import Path
 from typing import Optional, Tuple
+from gtirb.cfg import EdgeType
 import gtirb
 
 if platform.system() == "Linux":
@@ -97,6 +98,50 @@ class IFuncSymbolsTests(unittest.TestCase):
 
 
 class OverlappingInstructionTests(unittest.TestCase):
+    def subtest_lock_cmpxchg(self, example: str):
+        """
+        Subtest body for test_lock_cmpxchg
+        """
+        binary = "ex"
+        self.assertTrue(compile("gcc", "g++", "-O0", []))
+        gtirb_file = "ex.gtirb"
+        self.assertTrue(disassemble(binary, gtirb_file, format="--ir")[0])
+
+        ir_library = gtirb.IR.load_protobuf(gtirb_file)
+        m = ir_library.modules[0]
+
+        main_sym = next(m.symbols_named("main"))
+        main_block = main_sym.referent
+
+        self.assertIsInstance(main_block, gtirb.CodeBlock)
+
+        # find the lock cmpxchg instruction - ensure it exists and is
+        # reachable from main
+        block = main_block
+        inst_prefix_op = b"\xf0\x48\x0f\xb1"
+        fallthru_count = 0
+        fallthru_max = 5
+        blocks = [main_block]
+        while block.contents[: len(inst_prefix_op)] != inst_prefix_op:
+            if fallthru_count == fallthru_max:
+                trace = " -> ".join([hex(b.address) for b in blocks])
+                msg = "exceeded max fallthru searching for lock cmpxchg: {}"
+                self.fail(msg.format(trace))
+            try:
+                block = next(
+                    e
+                    for e in block.outgoing_edges
+                    if e.label.type == gtirb.Edge.Type.Fallthrough
+                ).target
+            except StopIteration:
+                self.fail("lock cmpxchg is not a code block")
+
+            self.assertIsInstance(block, gtirb.CodeBlock)
+            blocks.append(block)
+            fallthru_count += 1
+
+        self.assertEqual(len(list(block.incoming_edges)), 1)
+
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
@@ -107,21 +152,14 @@ class OverlappingInstructionTests(unittest.TestCase):
         At 0x0, lock cmpxchg
         At 0x1,      cmpxchg
         """
+        examples = (
+            "ex_overlapping_instruction",
+            "ex_overlapping_instruction_2",
+        )
 
-        binary = "ex"
-        with cd(ex_asm_dir / "ex_overlapping_instruction"):
-
-            self.assertTrue(compile("gcc", "g++", "-O0", []))
-            gtirb_file = "ex.gtirb"
-            self.assertTrue(disassemble(binary, gtirb_file, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(gtirb_file)
-            m = ir_library.modules[0]
-
-            main_sym = next(sym for sym in m.symbols if sym.name == "main")
-            main_block = main_sym.referent
-            self.assertIsInstance(main_block, gtirb.CodeBlock)
-            self.assertEqual(len(list(main_block.outgoing_edges)), 1)
+        for example in examples:
+            with self.subTest(example=example), cd(ex_asm_dir / example):
+                self.subtest_lock_cmpxchg(example)
 
 
 class AuxDataTests(unittest.TestCase):
@@ -158,14 +196,53 @@ class AuxDataTests(unittest.TestCase):
                     break
             self.assertTrue(found)
 
-            # check that we move misaligned directives to function start
-            bar_symbol = list(m.symbols_named("bar"))[0]
-            bar_block = bar_symbol.referent
-            self.assertIsNotNone(bar_block)
-            cfi_at_bar_start = [
-                directive[0] for directive in cfi[gtirb.Offset(bar_block, 0)]
-            ]
-            self.assertIn(".cfi_startproc", cfi_at_bar_start)
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_misaligned_fde(self):
+        """
+        Test that misaligned_fde_start is correctly generated.
+        """
+        binary = "ex"
+        modes = [
+            False,  # no strip
+            True,  # strip
+        ]
+
+        for mode in modes:
+            with self.subTest(mode=mode):
+                with cd(ex_asm_dir / "ex_misaligned_fde"):
+                    self.assertTrue(compile("gcc", "g++", "-O0", []))
+                    self.assertTrue(
+                        disassemble(binary, format="--ir", strip=mode)[0]
+                    )
+
+                    ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+                    m = ir_library.modules[0]
+
+                    main_sym = next(
+                        sym for sym in m.symbols if sym.name == "main"
+                    )
+                    main_block = main_sym.referent
+                    outedges = [
+                        edge
+                        for edge in main_block.outgoing_edges
+                        if edge.label.type == EdgeType.Fallthrough
+                    ]
+                    self.assertEqual(1, len(outedges))
+                    block = outedges[0].target
+                    # LEA should have a symbolic expression.
+                    # If `bar` is not recognized as misaligned_fde_start,
+                    # the LEA will be missing a symbolic expression.
+                    self.assertTrue(
+                        list(
+                            m.symbolic_expressions_at(
+                                range(
+                                    block.address, block.address + block.size
+                                )
+                            )
+                        )
+                    )
 
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."

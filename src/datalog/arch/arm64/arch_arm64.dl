@@ -138,8 +138,8 @@ reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,Sign*Mult,0):-
     op_regdirect_contains_reg(Op2,Src2),
     op_regdirect_contains_reg(Op3,Dst),
     (
-        op_shifted(EA,3,Shift,"LSL"), Mult=2^as(Shift,number);
-        !op_shifted(EA,3,_,_), Mult = 1
+        op_shifted(EA,2,Shift,"LSL"), Mult=2^as(Shift,number);
+        !op_shifted(EA,2,_,_), Mult = 1
     ).
 
 /**

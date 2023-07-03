@@ -304,16 +304,16 @@ __restore_rt:
 .decl misaligned_fde_start(start:address,start_adjusted:address)
 .output misaligned_fde_start
 
-misaligned_fde_start(Start,StartAligned):-
+// Detect intentionally misaligned fde_address in libc.
+// see sysdeps/unix/sysv/linux/x86_64/sigaction.c
+misaligned_fde_start(Start,EA):-
+    binary_isa("X64"),
     fde_addresses(Start,End),
-    (
-        StartAligned = @functor_aligned(Start,8)
-        ;
-        StartAligned = @functor_aligned(Start,16)
-    ),
-    StartAligned > Start,
-    function_symbol(StartAligned,_),
-    StartAligned < End.
+    EA = Start + 1,
+    instruction_get_operation(EA,"MOV"),
+    next(EA,Next),
+    instruction(Next,NextSize,_,"SYSCALL",_,_,_,_,_,_),
+    End = Next + NextSize.
 
 .decl lsda_callsite_addresses(Start:address,End:address,LandingPad:address)
 
