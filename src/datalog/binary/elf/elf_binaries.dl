@@ -307,6 +307,7 @@ __restore_rt:
 // Detect intentionally misaligned fde_address in libc.
 // see sysdeps/unix/sysv/linux/x86_64/sigaction.c
 misaligned_fde_start(Start,EA):-
+    binary_isa("X64"),
     fde_addresses(Start,End),
     EA = Start + 1,
     instruction_get_operation(EA,"MOV"),
