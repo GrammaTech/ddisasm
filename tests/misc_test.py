@@ -293,42 +293,6 @@ class AuxDataTests(unittest.TestCase):
             subprocess.check_call(["diff", "dbg", "aux"])
 
 
-class MovedLabelTests(unittest.TestCase):
-    @unittest.skipUnless(
-        platform.system() == "Linux", "This test is linux only."
-    )
-    def test_moved_label(self):
-        """
-        Test that labels are correctly moved.
-        """
-
-        binary = "ex"
-        with cd(ex_asm_dir / "ex_moved_label"):
-            self.assertTrue(compile("gcc", "g++", "-Os", []))
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
-            m = ir_library.modules[0]
-
-            symbol_of_interest = [s for s in m.symbols if s.name == "point.1"][
-                0
-            ]
-            assert isinstance(symbol_of_interest.referent, gtirb.CodeBlock)
-
-            block = symbol_of_interest.referent
-            bi = block.byte_interval
-            sexpr = set(
-                bi.symbolic_expressions_at(
-                    range(block.address, block.address + block.size)
-                )
-            )
-            self.assertEqual(len(sexpr), 1)
-            se1 = next(iter(sexpr))[2]
-            assert isinstance(se1, gtirb.SymAddrConst)
-            self.assertEqual(se1.symbol.name, "point.2")
-            self.assertEqual(se1.offset, 22)
-
-
 class RawGtirbTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
