@@ -165,12 +165,14 @@ dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs-OffsetAddr,End+Mul
     NewDestAddr <= End.
 
 /**
-Auxiliary predicate to compute `moved_label`. This predicate detects an address loaded into a register
-that fall outside a data section, but it is ultimately used to access the data section.
-This is typically the case for the initialization of loop counters when these are pre-incremented.
+Auxiliary predicate to compute `moved_label`. This predicate detects an address
+loaded into a register that falls outside a data section, but it is ultimately
+used to access the data section. This is typically the case for the
+initialization of loop counters when these are pre-incremented.
 
-The address 'EA' is where address 'Addr' is loaded into the register 'Reg'. Then that register
-is used to access 'AddrAccessed' at a later point ('EA_access').
+The address 'EA' is where address 'Addr' is loaded into the register 'Reg'.
+Then that register is used to access 'AddrAccessed'
+at a later point ('EA_access').
 
 E.g.
   mov RAX, Addr   // EA_from
@@ -210,7 +212,7 @@ addr_outside_section_used_for_memory_access(EA_from,Reg,Addr,AddrAccessed):-
 
 /**
 A `moved_label` candidate for an instruction that has a pc-relative
- memory computation.
+memory computation.
 */
 .decl moved_pc_relative_candidate(EA:address,Index:operand_index,Val:address,NewVal:address,Distance:unsigned)
 
@@ -265,7 +267,7 @@ moved_pc_relative_candidate(EA,Op_index,Dest,NewDest,Distance):-
     ),
     Distance = max(NewDest,Dest) - min(NewDest,Dest).
 
-//References to exception sections should match a cie or fde entry
+// References to exception sections should match a cie or fde entry
 moved_pc_relative_candidate(EA,Op_index,Dest,NewDest,Distance):-
     code(EA),
     pc_relative_operand(EA,Op_index,Dest),
@@ -284,8 +286,8 @@ moved_pc_relative_candidate(EA,Op_index,Dest,NewDest,Distance):-
 
 
 /**
-A `moved_label` candidate for an instruction that has an indirect access (non pc-relative)
-where the displacement should be symbolic.
+A `moved_label` candidate for an instruction that has an indirect access
+(non pc-relative) where the displacement should be symbolic.
 */
 .decl moved_displacement_candidate(EA:address,Op_index:operand_index,Dest:address,NewDest:address,Distance:unsigned)
 
@@ -496,7 +498,7 @@ moved_immediate_candidate(EA_def2,Imm_index,ImmediateAddr,NewDest,Distance):-
 
 /**
 Auxiliary predicate to decide which `moved_label` should be taken for a given address.
-This is decided based on the 'Priority'. Lower numbers have precedence.
+This is decided based on the 'Priority'. Lower numbers indicate higher priority.
 */
 .decl moved_label_candidate(EA:address,Op_index:operand_index,Dest:address,NewDest:address,Priority:unsigned)
 
@@ -509,14 +511,12 @@ moved_label(EA,Op_index,Dest,NewDest):-
 
 // These four should be mutually exclusive
 
-//pc-relative that misses the data sections
+
 moved_label_class(EA,Op_index,"pc-relative"),
 moved_label_candidate(EA,Op_index,Dest,NewDest,1):-
     moved_pc_relative_candidate(EA,Op_index,Dest,NewDest,Distance),
-    Distance_min = min X:moved_pc_relative_candidate(EA,Op_index,Dest,_,X),
-    Distance <= Distance_min.
+    Distance = min D :moved_pc_relative_candidate(EA,Op_index,Dest,_,D).
 
-// we take the candidate with the shortest distance/priority
 moved_label_candidate(EA,Op_index,Dest,NewDest,1):-
     moved_displacement_candidate(EA,Op_index,Dest,NewDest,Distance),
     Distance = min D: {moved_displacement_candidate(EA,Op_index,Dest,NewDest,D)}.
@@ -525,13 +525,13 @@ moved_label_candidate(EA,Op_index,Dest,NewDest,1):-
     moved_immediate_candidate(EA,Op_index,Dest,NewDest,Distance),
     Distance = min D: moved_immediate_candidate(EA,Op_index,Dest,_,D).
 
-// if the destination is an overlapping instruction
+// The destination is an overlapping instruction
 moved_label_class(EA,Op_index,"overlapping instruction"),
 moved_label_candidate(EA,Op_index,Dest,Block,1):-
     symbolic_operand(EA,Op_index,Dest,"code"),
     overlapping_instruction(Dest,Block).
 
-// If the destination is in the middle of a known symbol
+// The destination is in the middle of a known symbol
 moved_label_class(EA,Op_index,"middle of symbol"),
 moved_label_candidate(EA,Op_index,Dest,Address,2):-
     defined_symbol(Address,Size,_,_,_,_,_,_,Name),
@@ -543,6 +543,7 @@ moved_label_candidate(EA,Op_index,Dest,Address,2):-
     Address < Dest,
     Dest < Address+Size.
 
+// The destination is in the middle of a pointer
 moved_label_class(EA,Op_index,"collides with pointer"),
 moved_label_candidate(EA,Op_index,Dest,NewDest,3):-
     binary_type("EXEC"),
@@ -552,7 +553,7 @@ moved_label_candidate(EA,Op_index,Dest,NewDest,3):-
     address_in_data_refined_range.overlap(Dest,Pt_size,NewDest),
     symbolic_data(NewDest,_,_).
 
-// If we have symbolic operands pointing to synchronized accesses
+// If we have symbolic operands pointing to synchronized accesses,
 // one can be rewritten in terms of the other.
 moved_label_class(EA,Op_index,"synchronous access"),
 moved_label_candidate(EA,Op_index,Src,Dst,4):-
@@ -562,7 +563,7 @@ moved_label_candidate(EA,Op_index,Src,Dst,4):-
     symbolic_operand(_,_,Dst,"data").
 
 
-// Reference to PE header or optional header.
+// Reference to PE header or optional header
 moved_label_class(EA,Op_index,"pe header"),
 moved_label_candidate(EA,Op_index,Dest,ImageBase,5):-
     binary_format("PE"),
@@ -624,10 +625,11 @@ boundary_sym_expr(EA+InstrOffset,ImmediateAddr):-
     dest_enlarged_data_section(EA_def,Reg,_,_,_,_,EndSection),
     ImmediateAddr = EndSection.
 
-// symbolic expression that points to the
-// end of a section, which is not the beginning of another.
-// If we have known symbols at the end of the section,
-// those should be preferred over inferred symbols.
+/* Symbolic expression that points to the
+end of a section, which is not the beginning of another.
+If we have known symbols at the end of the section,
+those should be preferred over inferred symbols.
+*/
 boundary_sym_expr(EA+InstrOffset,Dest):-
     symbolic_operand(EA,Index,Dest,"data"),
     !loaded_section(Dest,_,_),
