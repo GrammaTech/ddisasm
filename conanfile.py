@@ -83,6 +83,8 @@ class DdisasmConan(Properties, ConanFile):
         "lief/%s@rewriting+extra-packages/stable" % (lief_version),
         "souffle/%s@rewriting+extra-packages/stable" % (souffle_version),
     )
+    # avoid long path problems in Windows
+    short_paths = True
 
     def build_requirements(self):
         if self.settings.os == "Windows":

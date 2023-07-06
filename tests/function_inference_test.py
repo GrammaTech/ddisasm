@@ -156,25 +156,25 @@ class TestFunctionInference(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
-    def test_functions_pointerReatribution(self):
+    def test_functions_pointerReattribution(self):
         self.check_function_inference(
-            ex_dir / "ex_pointerReatribution", "ex", "gcc", "g++", "-O3"
+            ex_dir / "ex_pointerReattribution", "ex", "gcc", "g++", "-O3"
         )
 
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
-    def test_functions_pointerReatribution2(self):
+    def test_functions_pointerReattribution2(self):
         self.check_function_inference(
-            ex_dir / "ex_pointerReatribution2", "ex", "gcc", "g++", "-O3"
+            ex_dir / "ex_pointerReattribution2", "ex", "gcc", "g++", "-O3"
         )
 
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
-    def test_functions_pointerReatribution3(self):
+    def test_functions_pointerReattribution3(self):
         self.check_function_inference(
-            ex_dir / "ex_pointerReatribution3", "ex", "gcc", "g++", "-O3"
+            ex_dir / "ex_pointerReattribution3", "ex", "gcc", "g++", "-O3"
         )
 
     @unittest.skipUnless(
@@ -316,25 +316,33 @@ class TestFunctionInference(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
-    def test_functions_pointerReatribution_clang(self):
+    def test_functions_pointerReattribution_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_pointerReatribution", "ex", "clang", "clang++", "-O3"
+            ex_dir / "ex_pointerReattribution", "ex", "clang", "clang++", "-O3"
         )
 
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
-    def test_functions_pointerReatribution2_clang(self):
+    def test_functions_pointerReattribution2_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_pointerReatribution2", "ex", "clang", "clang++", "-O3"
+            ex_dir / "ex_pointerReattribution2",
+            "ex",
+            "clang",
+            "clang++",
+            "-O3",
         )
 
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
-    def test_functions_pointerReatribution3_clang(self):
+    def test_functions_pointerReattribution3_clang(self):
         self.check_function_inference(
-            ex_dir / "ex_pointerReatribution3", "ex", "clang", "clang++", "-O3"
+            ex_dir / "ex_pointerReattribution3",
+            "ex",
+            "clang",
+            "clang++",
+            "-O3",
         )
 
     @unittest.skipUnless(

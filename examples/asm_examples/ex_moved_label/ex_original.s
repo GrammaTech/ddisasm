@@ -52,47 +52,6 @@ main:
             ret
 .cfi_endproc
 
-            nop
-            nop
-            nop
-            nop
-          .byte 0xf
-          .byte 0x1f
-          .byte 0x80
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0xf
-          .byte 0x1f
-          .byte 0x80
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x66
-          .byte 0xf
-          .byte 0x1f
-          .byte 0x44
-          .byte 0x0
-          .byte 0x0
-          .byte 0xf
-          .byte 0x1f
-          .byte 0x80
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0xf
-          .byte 0x1f
-          .byte 0x0
-          .byte 0xf
-          .byte 0x1f
-          .byte 0x80
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
-          .byte 0x0
 #-----------------------------------
 .globl print
 .type print, @function
@@ -104,10 +63,7 @@ print:
 .cfi_personality 255
 .cfi_def_cfa 7, 8
 .cfi_offset 16, -8
-            nop
-            nop
-            nop
-            nop
+
             push RBP
 .cfi_def_cfa_offset 16
 .cfi_offset 6, -16
@@ -222,19 +178,9 @@ point.2:
           .byte 0x0
 #-----------------------------------
 .globl array_end
-.type array_end, @notype
+.type array_end, @object
 #-----------------------------------
 array_end:
-#-----------------------------------
-.globl _edata
-.type _edata, @notype
-#-----------------------------------
-_edata:
-#-----------------------------------
-.globl edata
-.type edata, @notype
-#-----------------------------------
-edata:
 #===================================
 # end section .data
 #===================================

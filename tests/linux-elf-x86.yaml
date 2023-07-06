@@ -145,10 +145,10 @@ tests:
       # noreturn may result in unreachable code.
       cfg_checks: []
 
-  - name: ex_pointerReatribution
+  - name: ex_pointerReattribution
     <<: *default
 
-  - name: ex_pointerReatribution3
+  - name: ex_pointerReattribution3
     <<: *default
 
   - name: ex_stat
@@ -224,10 +224,10 @@ tests:
   - name: ex_noreturn
     <<: *position-independent
 
-  - name: ex_pointerReatribution
+  - name: ex_pointerReattribution
     <<: *position-independent
 
-  - name: ex_pointerReatribution3
+  - name: ex_pointerReattribution3
     <<: *position-independent
 
   - name: ex_stat

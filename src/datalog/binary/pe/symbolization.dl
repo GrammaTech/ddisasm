@@ -256,7 +256,7 @@ moved_data_label(EA+Disp_offset,Size,ImageBase+Dest,NewDest):-
 // Moved label due to padded jump table.
 symbolic_operand_candidate(EA,OpIndex,as(Offset,address),"jump-table"),
 moved_label_class(EA,OpIndex,"relax basic jump-table-start"),
-moved_label(EA,OpIndex,as(Offset,address),TableStart):-
+moved_label_candidate(EA,OpIndex,as(Offset,address),TableStart,6):-
     padded_rel_addr_start(EA,OpIndex,TableStart,Offset,Dest1,Dest2),
     code(Dest1),
     code(Dest2).

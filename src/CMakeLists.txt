@@ -155,7 +155,7 @@ set(DATALOG_BASE_SOURCES
     datalog/jump_tables.dl
     datalog/main.dl
     datalog/noreturn.dl
-    datalog/pointer_reatribution.dl
+    datalog/pointer_reattribution.dl
     datalog/register_type_analysis.dl
     datalog/relative_jump_tables.dl
     datalog/symbols.dl

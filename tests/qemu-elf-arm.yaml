@@ -196,10 +196,10 @@ tests:
   - name: ex_noreturn
     <<: *default
 
-  - name: ex_pointerReatribution
+  - name: ex_pointerReattribution
     <<: *default
 
-  - name: ex_pointerReatribution3
+  - name: ex_pointerReattribution3
     <<: *default
 
   - name: ex_stat
@@ -288,13 +288,13 @@ tests:
   - name: ex_noreturn
     <<: *c-object
 
-  - name: ex_pointerReatribution
+  - name: ex_pointerReattribution
     <<: *c-object
 
-  - name: ex_pointerReatribution2
+  - name: ex_pointerReattribution2
     <<: *c-object
 
-  - name: ex_pointerReatribution3
+  - name: ex_pointerReattribution3
     <<: *c-object
 
   - name: ex_stat

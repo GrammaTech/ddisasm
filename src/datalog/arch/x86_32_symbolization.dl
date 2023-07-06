@@ -107,7 +107,7 @@ plt_entry(EA,Function):-
 //          sub     edi, 88
 //          cmp     edi, DWORD PTR -28[ebp]
 moved_label_class(EA_load,1,"got-data-object relative"),
-moved_label(EA_load,1,Address,Base):-
+moved_label_candidate(EA_load,1,Address,Base,7):-
     // GOT-relative stored in stack.
     got_relative_operand(EA_load,_,Dest),
     reg_def_use.def_used(EA_load,_,EA_store,_),
@@ -122,6 +122,6 @@ moved_label(EA_load,1,Address,Base):-
     // Moved-value offset is the offset from the reference data object.
     reg_def_use.def_used(EA_arith,_,EA_cmp,_),
     best_value_reg(EA_arith,_,EA_obj,_,_,"loop"),
-    moved_label(EA_obj,1,_,Base),
+    moved_label_candidate(EA_obj,1,_,Base,_),
     Offset=as(Dest-Base,number),
     Address=Base+as(Offset,address).

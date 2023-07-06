@@ -1,0 +1,643 @@
+//===- pointer_reattribution.dl ---------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/**
+Compilers sometimes generate expressions of the form
+symbol+constant. It can happen that such expression falls:
+
+1) in the middle of a pointer (or the middle of a symbol if we know its size)
+2) in the middle of an instruction (only for programs with overlapping instructions)
+3) outside the data sections or
+4) on a data section that is different from the one of the symbols.
+
+We want to detect those cases and generate the adequate symbol+constant.
+
+We generate two predicates:
+
+-moved_data_label
+ for pointers in data sections
+-moved_label
+ for pointers in code sections
+
+We only 'move' pointers in data sections if their destination falls in
+the middle of another pointer, symbol or instruction (cases 1 and 2).
+
+In code sections we consider
+the three possibilities.
+
+In addition, we distinguish three types:
+
+P) the pointer is a pc-relative operand (and does not access memory i.e. LEA).
+pc-relative operands should always be symbolic, we just need to find the best candidate.
+
+D) the pointer appears as an displacement in an indirect operand.
+For indirect operands, we know they are being used to access memory. This makes
+them more likely to be symbolic. They cannot be a float for example.
+But they could still be a constant. We make the displacement symbolic
+if we can "prove" that the registers used cannot contain a base address
+(so the displacement should contain a base address).
+
+I) the pointer appears as an immediate operand.
+For immediate operands, they are likely to be symbolic if they are used to
+compute an address or compared to an address. We specifically detect
+cases where immediates are used to initialized loop counters or as loop bounds.
+
+*/
+
+/**
+A symbolic expression at address 'EA' pointing to 'Dest' should use a
+symbol pointing to 'NewDest' plus an offset . The offset is NewDest-Dest.
+*/
+.decl moved_data_label(EA:address,Size:unsigned,Dest:address,NewDest:address)
+
+/**
+A symbolic operand at address 'EA' with index 'Index' and pointing to 'Dest'
+should use a symbol pointing to 'NewDest' plus an offset.
+The offset is NewDest-Dest.
+*/
+.decl moved_label(EA:address,Index:operand_index,Dest:address,NewDest:address)
+
+
+/**
+The symbolic expression at address 'EA' pointing to 'Dest' should
+point to an 'at-end' symbol.
+*/
+.decl boundary_sym_expr(EA:address,Dest:address)
+
+// this predicate is just for debugging purposes
+.decl moved_label_class(EA:address,Index:operand_index,Reason:symbol)
+.output moved_label_class
+
+////////////////////////////////////////////////////////////////////////////////////
+
+moved_data_label(EA,Size,Dest,NewDest):-
+    symbolic_data(EA,Size,Dest),
+    address_in_data_refined_range.overlap(Dest,8,NewDest),
+    symbolic_data(NewDest,8,_).
+
+//if something points to the middle of a known symbol we express it as symbol+constant
+//as long as it is not code
+moved_data_label(EA,SizePointer,Dest,Address):-
+    symbolic_data(EA,SizePointer,Dest),
+    !code(Dest),
+    symbol(Address,Size,_,_,_,_,_,_,Name),
+    !function_symbol(Address,Name),
+    Address < Dest,
+    Dest < Address+Size.
+
+// create a symbol+constant for overlapping instructions
+moved_data_label(EA,SizePointer,Dest,Address):-
+    symbolic_data(EA,SizePointer,Dest),
+    overlapping_instruction(Dest,Address).
+
+////////////////////////////////////////////////////////////////////////////////////
+// Auxiliary predicates for `moved_label`
+
+/**
+Instruction at address 'EA' compares registers 'Reg1' and 'Reg2'.
+*/
+.decl cmp_reg_to_reg(EA:address,Reg1:register,Reg2:register)
+
+cmp_reg_to_reg(EA,Reg1,Reg2):-
+    code(EA),
+    instruction_get_operation(EA,Operation),
+    arch.cmp_operation(Operation),
+    instruction_get_op(EA,_,Op1),
+    op_regdirect_contains_reg(Op1,Reg1),
+    instruction_get_op(EA,_,Op2), Op2!=Op1,
+    op_regdirect_contains_reg(Op2,Reg2).
+
+/**
+Auxiliary predicate to compute `moved_label`. This predicate detects that
+the register 'Reg' at address 'EA' is a loop counter iterating over data in a section
+at address [OldBeg,OldEnd). Based on the multiplier of the loop, we compute
+and extended area [Beg,End). If we find pointers to that extended area
+related to the same loop, we will move them to the `NewDest`.
+*/
+.decl dest_enlarged_data_section(EA:address,Reg:register,NewDest:address,
+            Beg:address,End:address,OldBeg:address,OldEnd:address)
+
+dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs,End+MultAbs,Beg,End):-
+    best_value_reg(EA_def,Reg,_,Mult,NewDest,"loop"), NewDest >= 0,
+    NewDestAddr = as(NewDest,address),
+    MultAbs = as(max(Mult,-Mult),unsigned),
+    regular_data_section(Name),
+    loaded_section(Beg,End,Name),
+    NewDestAddr >= Beg,
+    NewDestAddr <= End.
+
+// The data access is always done with an offset e.g.:
+// mov EBX,OFFSET state
+// mov RDX,QWORD PTR [RBX+1320]
+// sub RBX,88
+// cmp RBX,OFFSET state-1408
+dest_enlarged_data_section(EA_def,Reg,NewDestAddr,Beg-MultAbs-OffsetAddr,End+MultAbs-OffsetAddr,Beg,End):-
+    best_value_reg(EA_def,Reg,EA_from,Mult,_,"loop"),
+    reg_def_use.def_used(EA_def,Reg,EA_used,Op_index),
+    value_reg_at_operand_loop(EA_used,Op_index,Reg,EA_from,Mult,NewDest,"loop"), NewDest >= 0,
+    data_access(EA_used,Op_index,"NONE",Reg,"NONE",_,Offset,_), Offset > 0,
+    OffsetAddr = as(Offset,address),
+    @functor_data_valid(OffsetAddr,1) = 0,
+    NewDestAddr = as(NewDest,address),
+    MultAbs = as(max(Mult,-Mult),unsigned),
+    regular_data_section(Name),
+    loaded_section(Beg,End,Name),
+    NewDestAddr >= Beg,
+    NewDestAddr <= End.
+
+/**
+Auxiliary predicate to compute `moved_label`. This predicate detects an address
+loaded into a register that falls outside a data section, but it is ultimately
+used to access the data section. This is typically the case for the
+initialization of loop counters when these are pre-incremented.
+
+The address 'EA' is where address 'Addr' is loaded into the register 'Reg'.
+Then that register is used to access 'AddrAccessed'
+at a later point ('EA_access').
+
+E.g.
+  mov RAX, Addr   // EA_from
+loop:
+  sub RAX, 4
+  mov RBX, [RAX]  // EA_access accesses AddrAccessed = Addr - 4
+  ...
+*/
+.decl addr_outside_section_used_for_memory_access(EA:address,Reg:register,Addr:address,AddrAccessed:address)
+
+addr_outside_section_used_for_memory_access(EA_from,Reg,Addr,AddrAccessed):-
+    data_access(EA_access,Op_index,_,_,_,_,_,_),
+    data_access_pattern_candidate(AddrAccessed,_,Mult,EA_access),
+    value_reg_at_operand(EA_access,Op_index,Reg,EA_from,_,_,Type),
+    Type != "incomplete",
+    // check the initial addr considered
+    best_value_reg(EA_from,Reg,EA_from,_,AddrSigned,"complete"),
+    AddrSigned >= 0,
+    Addr = as(AddrSigned,address),
+
+    regular_data_section(Name),
+    loaded_section(Beg,End,Name),
+    Beg <= AddrAccessed, AddrAccessed < End,
+    MultAbs = as(max(Mult,-Mult),unsigned),
+    // Only consider if the Addr does not fall in the original section
+    // but it is 1 or less multipliers away
+    (
+        Addr < Beg,
+        Addr >= Beg - MultAbs
+        ;
+        Addr > End,
+        Addr <= End + MultAbs
+    ).
+
+////////////////////////////////////////////////////////////////////////////////
+// pc-relative operand (type P)
+
+/**
+A `moved_label` candidate for an instruction that has a pc-relative
+memory computation.
+*/
+.decl moved_pc_relative_candidate(EA:address,Index:operand_index,Val:address,NewVal:address,Distance:unsigned)
+
+// pc-relative LEA instruction used to load loop bound
+moved_pc_relative_candidate(EA_def2,Op_index,Dest,NewDest,Distance):-
+    binary_format("ELF"),
+    cmp_reg_to_reg(EA,Reg1,Reg2),
+    reg_def_use.def_used(EA_def1,Reg1,EA,_),
+    dest_enlarged_data_section(EA_def1,Reg1,NewDest,Beg,End,OldBeg,OldEnd),
+
+    reg_def_use.def_used(EA_def2,Reg2,EA,_),
+    pc_relative_operand(EA_def2,Op_index,Dest),
+    instruction_get_operation(EA_def2,"LEA"),
+
+    Beg <= Dest, Dest <= End,
+    (
+        OldBeg > Dest,
+        UNUSED(OldEnd)
+        ;
+        Dest > OldEnd,
+        UNUSED(OldBeg)
+    ),
+    Distance = max(NewDest,Dest) - min(NewDest,Dest).
+
+// pc-relative LEA used to access memory
+moved_pc_relative_candidate(EA,Op_index,Addr,AddrAccessed,Distance):-
+    addr_outside_section_used_for_memory_access(EA,Reg,Addr,AddrAccessed),
+    pc_relative_operand(EA,Op_index,Addr),
+    instruction_get_operation(EA,"LEA"),
+    instruction_get_dest_op(EA,_,Op),
+    op_regdirect_contains_reg(Op,Reg),
+    Distance = max(AddrAccessed,Addr) - min(AddrAccessed,Addr).
+
+// a pc-relative reference is always symbolic. If we have no better
+// candidates we just find the closest data section
+moved_pc_relative_candidate(EA,Op_index,Dest,NewDest,Distance):-
+    code(EA),
+    binary_format("ELF"),
+    binary_isa("X64"),
+    pc_relative_operand(EA,Op_index,Dest),
+    !symbolic_operand(EA,Op_index,_,_),
+    regular_data_section(Name),
+    loaded_section(Base,End,Name),
+    (
+        Base > Dest,
+        NewDest = Base,
+        UNUSED(End)
+        ;
+        Dest > End,
+        NewDest = End,
+        UNUSED(Base)
+    ),
+    Distance = max(NewDest,Dest) - min(NewDest,Dest).
+
+// References to exception sections should match a cie or fde entry
+moved_pc_relative_candidate(EA,Op_index,Dest,NewDest,Distance):-
+    code(EA),
+    pc_relative_operand(EA,Op_index,Dest),
+    !symbolic_operand(EA,Op_index,_,_),
+    exception_section(Name),
+    loaded_section(Base,_,Name),
+    (
+        cie_entry(Dest, _,_,_);
+        fde_entry(Dest,_,_,_,_,_)
+    ),
+    NewDest = Base,
+    Distance = max(NewDest,Dest) - min(NewDest,Dest).
+
+////////////////////////////////////////////////////////////////////////////////
+// indirect operand (type D)
+
+
+/**
+A `moved_label` candidate for an instruction that has an indirect access
+(non pc-relative) where the displacement should be symbolic.
+*/
+.decl moved_displacement_candidate(EA:address,Op_index:operand_index,Dest:address,NewDest:address,Distance:unsigned)
+
+// the pointer is likely to point to the wrong section
+moved_label_class(EA,Op_index,"indirect wrong section"),
+moved_displacement_candidate(EA,Op_index,Dest,NewDest,Distance):-
+    binary_type("EXEC"),
+    symbolic_operand(EA,Op_index,Dest,_),
+    data_access(EA,Op_index,_,_,_,_,_,_),
+    data_access_pattern_candidate(Access_dest,_,Mult,EA),
+    Access_dest != Dest,
+    NewDest = Access_dest,
+    Distance = max(Access_dest,Dest) - min(Access_dest,Dest),
+
+    loaded_section(Base,End,Name),
+    Dest >= Base, Dest <= End,
+
+    regular_data_section(Name2), Name2 != Name,
+    loaded_section(Base2,End2,Name2),
+    NewDest >= Base2, NewDest <= End2,
+
+    // sections can have one overlapping address
+    Dest != Base2,
+    // There seems to be an asymmetry here
+    // Requiring the movement to be consistent with the sign of the
+    // multiplier works very well for positive multipliers, not so much
+    // for negative ones.
+    (
+        Mult > 0, NewDest > Dest
+        ;
+        Mult <= 0
+    ).
+
+moved_label_class(EA,Op_index,"miss section with access"),
+moved_displacement_candidate(EA,Op_index,DestAddr,AccessDest,1):-
+    binary_type("EXEC"),
+    data_access(EA,Op_index,_,_,_,_,Dest,Size),
+    Dest >= 0,
+    Size != 0,
+    DestAddr = as(Dest,address),
+    !symbolic_operand(EA,Op_index,_,_),
+    !pc_relative_operand(EA,Op_index,_),
+    !split_load_operand(EA,Op_index,_),
+    data_access_pattern_candidate(AccessDest,_,_,EA),
+    regular_data_section(Name),
+    loaded_section(Base,End,Name),
+    AccessDest >= Base,
+    AccessDest < End,
+
+    Distance = max(AccessDest,DestAddr) - min(AccessDest,DestAddr),
+    10*DestAddr >= Base,
+    // the remaining component does not fall on any data or code section
+    @functor_data_valid(Distance,1) = 0,
+    // does not fall in bss sections
+    bss_section_limits(BssBeg,BssEnd),
+    (
+        Distance < BssBeg,
+        BssEnd = BssEnd // avoid warning
+        ;
+        Distance > BssEnd,
+        BssBeg = BssBeg // avoid warning
+    ).
+
+// We have an access with a register that is multiplied by something
+// If the register does not contain the base address, then the displacement should contain it.
+moved_label_class(EA,Op_index,"constant + multiplied reg"),
+moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
+    binary_type("EXEC"),
+    !binary_isa("X86"), // TODO: PE32: False positives for ex_2modulesPIC.
+    data_access(EA,Op_index,"NONE","NONE",RegMult,Mult,Dest,_), Dest >= 0,
+    DestAddr = as(Dest,address),
+    !instruction_get_operation(EA,"LEA"),
+    !symbolic_operand(EA,Op_index,_,_),
+    !pc_relative_operand(EA,Op_index,_),
+    !split_load_operand(EA,Op_index,_),
+    (
+        Mult > 1,
+        RegMult = RegMult // avoid warning
+        ;
+        value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,0,_),
+        Mult2 > 1,
+        Mult = Mult // avoid warning
+    ),
+    regular_data_section(Name),
+    loaded_section(Base,End,Name),
+    (
+        DestAddr < Base,
+        Distance = Base-DestAddr,
+        NewDest = Base,
+        10*DestAddr > Base,
+        End = End // avoid warning
+        ;
+        DestAddr > End,
+        Distance = DestAddr-End,
+        NewDest = End
+    ).
+
+//Same case as before with the other register
+moved_label_class(EA,Op_index,"constant + multiplied reg2"),
+moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
+    binary_type("EXEC"),
+    data_access(EA,Op_index,"NONE",Reg,"NONE",_,Dest,_), Dest >= 0,
+    DestAddr = as(Dest,address),
+    !instruction_get_operation(EA,"LEA"),
+    !symbolic_operand(EA,Op_index,_,_),
+    !pc_relative_operand(EA,Op_index,_),
+    !split_load_operand(EA,Op_index,_),
+    value_reg_at_operand(EA,Op_index,Reg,_,Mult2,0,_), Mult2>1,
+    regular_data_section(Name),
+    loaded_section(Base,End,Name),
+    (
+        DestAddr < Base,
+        Distance = Base-DestAddr,
+        NewDest = Base,
+        10*DestAddr > Base,
+        UNUSED(End)
+        ;
+        DestAddr > End,
+        Distance = DestAddr-End,
+        NewDest = End,
+        UNUSED(Base)
+    ).
+
+// Same case as before but with a repeated register
+moved_label_class(EA,Op_index,"constant + repeated reg"),
+moved_displacement_candidate(EA,Op_index,DestAddr,NewDest,Distance):-
+    binary_type("EXEC"),
+    !binary_isa("X86"), // TODO: PE32: False positives in ex1.
+    data_access(EA,Op_index,"NONE",Reg,Reg,_,Dest,_), Dest >= 0,
+    DestAddr = as(Dest,address),
+    !instruction_get_operation(EA,"LEA"),
+    !symbolic_operand(EA,Op_index,_,_),
+    regular_data_section(Name),
+    loaded_section(Base,End,Name),
+    // the destination is below or above the section
+    (
+        DestAddr < Base,
+        Distance = Base-DestAddr,
+        NewDest = Base,
+        10*DestAddr > Base,
+        UNUSED(End)
+    ;
+        DestAddr > End,
+        Distance = DestAddr-End,
+        NewDest = End,
+        UNUSED(Base)
+    ).
+
+////////////////////////////////////////////////////////////////////////////////
+
+/**
+A `moved_label` candidate for an instruction that has an immediate.
+*/
+.decl moved_immediate_candidate(EA:address,Op_index:operand_index,Immediate:address,New_immmediate:address,Distance:unsigned)
+
+
+// immediate used to access memory
+moved_label_class(EA,Op_index,"immediate used to access memory"),
+moved_immediate_candidate(EA,Op_index,Addr,AddrAccessed,Distance):-
+    binary_type("EXEC"),
+    addr_outside_section_used_for_memory_access(EA,Reg,Addr,AddrAccessed),
+    arch.move_reg_imm(EA,Reg,as(Addr,number),Op_index),
+    Distance = max(AddrAccessed,Addr) - min(AddrAccessed,Addr).
+
+moved_label_class(EA,Imm_index,"immediate loop bound"),
+moved_immediate_candidate(EA,Imm_index,ImmediateAddr,NewDest,Distance):-
+    binary_type("EXEC"),
+    cmp_immediate_to_reg(EA,Reg,Imm_index,Immediate), Immediate >= 0,
+    ImmediateAddr = as(Immediate,address),
+    reg_def_use.def_used(EA_def,Reg,EA,_),
+    dest_enlarged_data_section(EA_def,Reg,NewDest,Beg,End,OldBeg,OldEnd),
+    Beg <= ImmediateAddr,
+    ImmediateAddr <= End,
+    (
+        OldBeg > ImmediateAddr,
+        UNUSED(OldEnd)
+        ;
+        ImmediateAddr > OldEnd,
+        UNUSED(OldBeg)
+    ),
+    Distance = max(NewDest,ImmediateAddr) - min(NewDest,ImmediateAddr).
+
+moved_label_class(EA_def2,Imm_index,"loaded immediate loop bound"),
+moved_immediate_candidate(EA_def2,Imm_index,ImmediateAddr,NewDest,Distance):-
+    binary_type("EXEC"),
+    cmp_reg_to_reg(EA,Reg1,Reg2),
+    reg_def_use.def_used(EA_def1,Reg1,EA,_),
+    dest_enlarged_data_section(EA_def1,Reg1,NewDest,Beg,End,OldBeg,OldEnd),
+    reg_def_use.def_used(EA_def2,Reg2,EA,_),
+    arch.move_reg_imm(EA_def2,Reg2,Immediate,Imm_index),
+    Immediate >= 0,
+    ImmediateAddr = as(Immediate,address),
+
+    Beg <= ImmediateAddr,
+    ImmediateAddr <= End,
+    (
+        OldBeg > ImmediateAddr,
+        UNUSED(OldEnd)
+        ;
+        ImmediateAddr > OldEnd,
+        UNUSED(OldBeg)
+    ),
+    Distance = max(NewDest,ImmediateAddr) - min(NewDest,ImmediateAddr).
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+
+/**
+Auxiliary predicate to decide which `moved_label` should be taken for a given address.
+This is decided based on the 'Priority'. Lower numbers indicate higher priority.
+*/
+.decl moved_label_candidate(EA:address,Op_index:operand_index,Dest:address,NewDest:address,Priority:unsigned)
+
+
+
+moved_label(EA,Op_index,Dest,NewDest):-
+    moved_label_candidate(EA,Op_index,Dest,NewDest,Priority),
+    Priority = min P: moved_label_candidate(EA,Op_index,_,_,P).
+
+
+// These four should be mutually exclusive
+
+
+moved_label_class(EA,Op_index,"pc-relative"):-
+    moved_pc_relative_candidate(EA,Op_index,_,_,_).
+
+moved_label_candidate(EA,Op_index,Dest,NewDest,1):-
+    moved_pc_relative_candidate(EA,Op_index,Dest,NewDest,Distance),
+    Distance = min D :moved_pc_relative_candidate(EA,Op_index,Dest,_,D).
+
+moved_label_candidate(EA,Op_index,Dest,NewDest,1):-
+    moved_displacement_candidate(EA,Op_index,Dest,NewDest,Distance),
+    Distance = min D: {moved_displacement_candidate(EA,Op_index,Dest,NewDest,D)}.
+
+moved_label_candidate(EA,Op_index,Dest,NewDest,1):-
+    moved_immediate_candidate(EA,Op_index,Dest,NewDest,Distance),
+    Distance = min D: moved_immediate_candidate(EA,Op_index,Dest,_,D).
+
+// The destination is an overlapping instruction
+moved_label_class(EA,Op_index,"overlapping instruction"),
+moved_label_candidate(EA,Op_index,Dest,Block,1):-
+    symbolic_operand(EA,Op_index,Dest,"code"),
+    overlapping_instruction(Dest,Block).
+
+// The destination is in the middle of a known symbol
+moved_label_class(EA,Op_index,"middle of symbol"),
+moved_label_candidate(EA,Op_index,Dest,Address,2):-
+    defined_symbol(Address,Size,_,_,_,_,_,_,Name),
+    !function_symbol(Address,Name),
+    (
+      symbolic_operand(EA,Op_index,Dest,"data");
+      got_relative_operand(EA,Op_index,Dest)
+    ),
+    Address < Dest,
+    Dest < Address+Size.
+
+// The destination is in the middle of a pointer
+moved_label_class(EA,Op_index,"collides with pointer"),
+moved_label_candidate(EA,Op_index,Dest,NewDest,3):-
+    binary_type("EXEC"),
+    symbolic_operand(EA,Op_index,Dest,"data"),
+    //it collides with a pointer
+    arch.pointer_size(Pt_size),
+    address_in_data_refined_range.overlap(Dest,Pt_size,NewDest),
+    symbolic_data(NewDest,_,_).
+
+// If we have symbolic operands pointing to synchronized accesses,
+// one can be rewritten in terms of the other.
+moved_label_class(EA,Op_index,"synchronous access"),
+moved_label_candidate(EA,Op_index,Src,Dst,4):-
+    first_synchronous_access(Dst,Src),
+    Dst != Src,
+    symbolic_operand(EA,Op_index,Src,"data"),
+    symbolic_operand(_,_,Dst,"data").
+
+
+// Reference to PE header or optional header
+moved_label_class(EA,Op_index,"pe header"),
+moved_label_candidate(EA,Op_index,Dest,ImageBase,5):-
+    binary_format("PE"),
+    base_address(ImageBase),
+    symbolic_operand(EA,Op_index,Dest,"data"),
+    Dest >= ImageBase, Dest <= ImageBase + 1024.
+
+
+////////////////////////////////////////////////////////////////////////////
+// Symbolic expressions that should be pointing at the end of sections
+
+
+// The immediate is the start of a loop counting down
+boundary_sym_expr(EA+InstrOffset,Dest):-
+    symbolic_operand(EA,Index,Dest,"data"),
+    (
+        arch.move_reg_imm(EA,_,as(Dest,number),Index),
+        instruction_immediate_offset(EA,Index,InstrOffset,_)
+        ;
+        pc_relative_operand(EA,Index,_),
+        instruction_displacement_offset(EA,Index,InstrOffset,_)
+    ),
+    value_reg(_,_,EA,"Unknown",Mult,_,_), Mult < 0,
+    //  At the boundary between two sections
+    loaded_section(Dest,_,_),
+    loaded_section(_,Dest,_).
+
+/**
+E.g., libc.so (v2.36)
+leaq __elf_set___libc_atexit_element__IO_cleanup__(%rip),%rbx
+leaq __start___libc_IO_vtables(%rip),%rax (or mov __start___libc_IO_vtables, %rax)
+cmpq %rax,%rbx
+*/
+boundary_sym_expr(EA+InstrOffset,Dest):-
+    symbolic_operand(EA,Index,Dest,"data"),
+    //  At the boundary between two sections
+    loaded_section(Dest,_,_),
+    loaded_section(Beg,Dest,_),
+    // The symbol is possibly used in loop-bound check instruction (e.g., cmp).
+    reg_def_use.def_used(EA,Reg1,EA_cmp,_),
+    cmp_reg_to_reg(EA_cmp,Reg1,Reg2),
+    reg_def_use.def_used(EA_beg,Reg2,EA_cmp,_),
+    symbolic_operand(EA_beg,_,Dest2,"data"),
+    Dest2 >= Beg,
+    Dest2 < Dest,
+    (
+        instruction_displacement_offset(EA,Index,InstrOffset,_)
+        ;
+        instruction_immediate_offset(EA,Index,InstrOffset,_)
+    ).
+
+// Immediate comparison to loop counter
+boundary_sym_expr(EA+InstrOffset,ImmediateAddr):-
+    binary_type("EXEC"),
+    symbolic_operand(EA,Index,ImmediateAddr,"data"),
+    cmp_immediate_to_reg(EA,Reg,Index,_),
+    instruction_immediate_offset(EA,Index,InstrOffset,_),
+    reg_def_use.def_used(EA_def,Reg,EA,_),
+    dest_enlarged_data_section(EA_def,Reg,_,_,_,_,EndSection),
+    ImmediateAddr = EndSection.
+
+/* Symbolic expression that points to the
+end of a section, which is not the beginning of another.
+If we have known symbols at the end of the section,
+those should be preferred over inferred symbols.
+*/
+boundary_sym_expr(EA+InstrOffset,Dest):-
+    symbolic_operand(EA,Index,Dest,"data"),
+    !loaded_section(Dest,_,_),
+    loaded_section(_,Dest,_),
+    (
+        instruction_immediate_offset(EA,Index,InstrOffset,_)
+        ;
+        instruction_displacement_offset(EA,Index,InstrOffset,_)
+    ).

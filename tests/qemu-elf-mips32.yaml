@@ -92,15 +92,15 @@ tests:
   - name: ex_noreturn
     <<: *default
 
-  - name: ex_pointerReatribution
+  - name: ex_pointerReattribution
     <<: *default
 
-  - name: ex_pointerReatribution2
+  - name: ex_pointerReattribution2
     <<: *default
 
   # Currently, ddisasm fails to find symbolic operands in split-load
   # in the optimized binaries built in ubuntu16 and ubuntu18.
-  - name: ex_pointerReatribution3
+  - name: ex_pointerReattribution3
     <<: *zero-optimize
 
   - name: ex_struct
@@ -171,17 +171,17 @@ tests:
     <<: *default
     <<: *test-strip-default
 
-  - name: ex_pointerReatribution
+  - name: ex_pointerReattribution
     <<: *default
     <<: *test-strip-default
 
-  - name: ex_pointerReatribution2
+  - name: ex_pointerReattribution2
     <<: *default
     <<: *test-strip-default
 
   # Currently, ddisasm fails to find symbolic operands in split-load
   # in the optimized binaries built in ubuntu16 and ubuntu18.
-  - name: ex_pointerReatribution3
+  - name: ex_pointerReattribution3
     <<: *zero-optimize
     <<: *test-strip-default
 
@@ -256,17 +256,17 @@ tests:
     <<: *default
     <<: *test-sstrip-default
 
-  - name: ex_pointerReatribution
+  - name: ex_pointerReattribution
     <<: *default
     <<: *test-sstrip-default
 
-  - name: ex_pointerReatribution2
+  - name: ex_pointerReattribution2
     <<: *default
     <<: *test-sstrip-default
 
   # Currently, ddisasm fails to find symbolic operands in split-load
   # in the optimized binaries built in ubuntu16 and ubuntu18.
-  - name: ex_pointerReatribution3
+  - name: ex_pointerReattribution3
     <<: *zero-optimize
     <<: *test-sstrip-default
 
