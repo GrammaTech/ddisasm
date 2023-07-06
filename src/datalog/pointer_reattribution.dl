@@ -1,4 +1,4 @@
-//===- pointer_reatribution.dl ----------------------------------*- datalog -*-===//
+//===- pointer_reattribution.dl ---------------------------------*- datalog -*-===//
 //
 //  Copyright (C) 2019 GrammaTech, Inc.
 //
@@ -42,7 +42,7 @@ We only 'move' pointers in data sections if their destination falls in
 the middle of another pointer, symbol or instruction (cases 1 and 2).
 
 In code sections we consider
-the tree possibilities.
+the three possibilities.
 
 In addition, we distinguish three types:
 

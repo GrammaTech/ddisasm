@@ -156,10 +156,10 @@ tests:
       # noreturn may result in unreachable code.
       cfg_checks: []
 
-  - name: ex_pointerReatribution
+  - name: ex_pointerReattribution
     <<: *default
 
-  - name: ex_pointerReatribution3
+  - name: ex_pointerReattribution3
     <<: *default
 
   - name: ex_stat
@@ -321,15 +321,15 @@ tests:
     <<: *default
     <<: *test-strip-default
 
-  - name: ex_pointerReatribution
+  - name: ex_pointerReattribution
     <<: *default
     <<: *test-strip-default
 
-  - name: ex_pointerReatribution2
+  - name: ex_pointerReattribution2
     <<: *default
     <<: *test-strip-default
 
-  - name: ex_pointerReatribution3
+  - name: ex_pointerReattribution3
     <<: *default
     <<: *test-strip-default
 
@@ -360,13 +360,13 @@ tests:
   # ----------------------------------------------------------------------------
   # Assembly examples.
   # ----------------------------------------------------------------------------
-  - name: ex_pointerReatribution3
+  - name: ex_pointerReattribution3
     <<: *assembly
 
-  - name: ex_pointerReatribution3_clang
+  - name: ex_pointerReattribution3_clang
     <<: *assembly
 
-  - name: ex_pointerReatribution3_clang
+  - name: ex_pointerReattribution3_clang
     <<: *assembly
     build:
       c: ["gcc"]
@@ -442,15 +442,15 @@ tests:
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
   # ----------------------------------------------------------------------------
-  - name: ex_pointerReatribution3
+  - name: ex_pointerReattribution3
     <<: *assembly
     <<: *test-strip-default
 
-  - name: ex_pointerReatribution3_clang
+  - name: ex_pointerReattribution3_clang
     <<: *assembly
     <<: *test-strip-default
 
-  - name: ex_pointerReatribution3_pie
+  - name: ex_pointerReattribution3_pie
     <<: *assembly
     <<: *test-strip-default
     build:
@@ -542,13 +542,13 @@ tests:
   - name: ex_noreturn
     <<: *c-object
 
-  - name: ex_pointerReatribution
+  - name: ex_pointerReattribution
     <<: *c-object
 
-  - name: ex_pointerReatribution2
+  - name: ex_pointerReattribution2
     <<: *c-object
 
-  - name: ex_pointerReatribution3
+  - name: ex_pointerReattribution3
     <<: *c-object
 
   - name: ex_stat

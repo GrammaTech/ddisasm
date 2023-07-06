@@ -27,9 +27,9 @@ It uses the results of several analysis:
  -value
  -data_access
 
-Part of symbolization is pointer reatribution, that is detecting cases
+Part of symbolization is pointer reattribution, that is detecting cases
 where a number is the result of a symbol+constant. This is done in an
-independent module 'pointer_reatribution' which also uses the results
+independent module 'pointer_reattribution' which also uses the results
 of these analyses.
 
 The data symbolization itself uses the following heuristics:
@@ -60,7 +60,7 @@ This module also computes and symbol_minus_symbol.
 #include "value_analysis.dl"
 #include "boundary_value_analysis.dl"
 #include "data_access_analysis.dl" // data_access_analysis uses predicates from here
-#include "pointer_reatribution.dl"
+#include "pointer_reattribution.dl"
 #include "register_type_analysis.dl"
 
 /**
