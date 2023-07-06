@@ -27,7 +27,7 @@ symbol+constant. It can happen that such expression falls:
 1) in the middle of a pointer (or the middle of a symbol if we know its size)
 2) in the middle of an instruction (only for programs with overlapping instructions)
 3) outside the data sections or
-4) on a data section that is different from the one of the symbol.
+4) on a data section that is different from the one of the symbols.
 
 We want to detect those cases and generate the adequate symbol+constant.
 
@@ -129,7 +129,7 @@ cmp_reg_to_reg(EA,Reg1,Reg2):-
 /**
 Auxiliary predicate to compute `moved_label`. This predicate detects that
 the register 'Reg' at address 'EA' is a loop counter iterating over data in a section
-at address [OldBeg,OndEnd). Based on the multiplier of the loop, we compute
+at address [OldBeg,OldEnd). Based on the multiplier of the loop, we compute
 and extended area [Beg,End). If we find pointers to that extended area
 related to the same loop, we will move them to the `NewDest`.
 */
@@ -512,7 +512,9 @@ moved_label(EA,Op_index,Dest,NewDest):-
 // These four should be mutually exclusive
 
 
-moved_label_class(EA,Op_index,"pc-relative"),
+moved_label_class(EA,Op_index,"pc-relative"):-
+    moved_pc_relative_candidate(EA,Op_index,_,_,_).
+
 moved_label_candidate(EA,Op_index,Dest,NewDest,1):-
     moved_pc_relative_candidate(EA,Op_index,Dest,NewDest,Distance),
     Distance = min D :moved_pc_relative_candidate(EA,Op_index,Dest,_,D).

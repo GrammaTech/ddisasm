@@ -30,7 +30,7 @@ class MovedLabelTests(unittest.TestCase):
             m = ir_library.modules[0]
 
             symbol_of_interest = next(m.symbols_named("point.1"))
-            assert isinstance(symbol_of_interest.referent, gtirb.CodeBlock)
+            self.assertIsInstance(symbol_of_interest.referent, gtirb.CodeBlock)
 
             block = symbol_of_interest.referent
             bi = block.byte_interval
@@ -41,7 +41,7 @@ class MovedLabelTests(unittest.TestCase):
             )
             self.assertEqual(len(sexpr), 1)
             se1 = next(iter(sexpr))[2]
-            assert isinstance(se1, gtirb.SymAddrConst)
+            self.assertIsInstance(se1, gtirb.SymAddrConst)
             self.assertEqual(se1.symbol.name, "array_end")
             self.assertEqual(se1.offset, 0)
 
