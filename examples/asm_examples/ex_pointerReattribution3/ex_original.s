@@ -1,4 +1,4 @@
-    // pointer_reatribution3
+    // pointer_reattribution3
     // a pointer falls in a different (lower) section
     // the symbol should point to data, not to .got.plt
 
@@ -37,7 +37,7 @@ main:
     mov	edi, 1
     sub	rbx, 88
     call	__printf_chk
-    //here is where the pointer reatribution takes place
+    //here is where the pointer reattribution takes place
     cmp	rbx, OFFSET FLAT:state-88
     jne	.L2
     xor	eax, eax
