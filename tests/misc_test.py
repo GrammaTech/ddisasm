@@ -697,7 +697,7 @@ class NpadTests(unittest.TestCase):
         with cd(ex_asm_dir / "ex_npad"):
             subprocess.run(make("clean"), stdout=subprocess.DEVNULL)
 
-            # # Build assembly test case for all legacy npad macros.
+            # Build assembly test case for all legacy npad macros.
             subprocess.run(make("all"), stdout=subprocess.DEVNULL)
 
             # Disassemble to GTIRB file.
