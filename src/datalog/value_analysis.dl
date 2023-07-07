@@ -173,7 +173,7 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     def_used_for_address(EA,Reg,_),
     arch.load(EA,SrcOp,_,Reg,_,_,_,_),
     simple_memory_access(MemAddr,SrcOp,Size,EA),
-    4 <= Size, Size <=8,
+    4 <= Size, Size <= 8,
     (
         data_word(MemAddr,Size,Val),
         !symbolic_expr_from_relocation(MemAddr,_,_,_,_)
