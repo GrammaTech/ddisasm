@@ -459,7 +459,7 @@ conan-windows-release-package:
     # Build ddisasm
     - mkdir build
     - cd build
-    - cmake -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCPACK_DEBIAN_PACKAGE_RELEASE="$(lsb_release -sc)" -DBUILD_FUNINFER=1 -DDDISASM_STRIP_DEBUG_SYMBOLS=ON -DDDISASM_GENERATE_MANY=ON ..
+    - cmake -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER=${CXX_COMPILER} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCPACK_DEBIAN_PACKAGE_RELEASE="$(lsb_release -sc)" -DBUILD_FUNINFER=1 -DDDISASM_STRIP_DEBUG_SYMBOLS=ON -DDDISASM_GENERATE_MANY=ON ${CMAKE_OPTIONS} ..
     - make -j8
     # Report ccache stats.
     - ccache --show-stats
@@ -501,6 +501,18 @@ build-ubuntu20-clang-debug:
     OS: 'ubuntu20'
     CXX_COMPILER: 'clang++'
     BUILD_TYPE: 'Debug'
+  <<: *build
+
+build-ubuntu20-clang-profiler:
+  stage: build
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20:$IMAGE_TAG
+  variables:
+    OS: 'ubuntu20'
+    CXX_COMPILER: 'clang++'
+    BUILD_TYPE: 'RelWithDebInfo'
+    CMAKE_OPTIONS: -DDDISASM_SOUFFLE_PROFILING=ON
+  rules:
+    *run-only-main
   <<: *build
 
 build-static:
@@ -656,6 +668,16 @@ run-ubuntu20-clang-debug:
   variables:
     OS: 'ubuntu20'
     BUILD_TYPE: 'Debug'
+  script:
+  <<: *test-and-tag
+
+run-ubuntu20-clang-profiler:
+  stage: test-and-tag
+  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20:$IMAGE_TAG
+  needs: ['build-ubuntu20-clang-profiler']
+  variables:
+    OS: 'ubuntu20'
+    BUILD_TYPE: 'RelWithDebInfo'
   script:
   <<: *test-and-tag
 
