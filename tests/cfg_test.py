@@ -608,7 +608,7 @@ class CfgTests(unittest.TestCase):
         Each entry in `expected_cfg` is represent a block
         and its outgoing edges. Blocks are identified by their
         associated symbol names. An edge is a tuple with a
-        block symbol name and an EdgLabel.
+        block symbol name and an EdgeLabel.
         """
         for src, edges in expected_cfg.items():
             src_block = next(module.symbols_named(src)).referent

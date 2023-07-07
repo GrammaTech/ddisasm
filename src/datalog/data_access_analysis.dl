@@ -176,7 +176,6 @@ that can be computed without using the value register
 analysis.
 */
 .decl simple_memory_access(Address:address,Op_index:unsigned,Size:unsigned,FromWhere:address)
-.output simple_memory_access
 
 /**
 The address at 'EA' is probably accessed with size 'Size' using the same

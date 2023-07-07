@@ -188,7 +188,7 @@ a pointer at address 'DataPointer' that refers to the external symbol
 
 pointer_to_external_symbol(DataPointer,Symbol):-
     symbolic_expr(DataPointer,_,Symbol,0),
-    !inferred_symbol(_,Symbol,_,_,_),
+    !inferred_symbol(_,Symbol,_,_,_,_),
     !defined_symbol(_,_,_,_,_,_,_,_,Symbol).
 
 // We don't generate `symbolic_expr` for entries in the IAT
