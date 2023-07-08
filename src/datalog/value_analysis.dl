@@ -172,7 +172,7 @@ value_reg(EA,Reg,EA,"NONE",0,as(Val,number),1):-
 value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     def_used_for_address(EA,Reg,_),
     arch.load(EA,SrcOp,_,Reg,_,_,_,_),
-    simple_memory_access(MemAddr,SrcOp,Size,EA),
+    simple_data_access_pattern(MemAddr,SrcOp,Size,EA),
     4 <= Size, Size <= 8,
     (
         data_word(MemAddr,Size,Val),

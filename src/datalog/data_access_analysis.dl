@@ -171,11 +171,11 @@ Auxiliary predicate that computes initial approximation of `data_access_pattern`
 /**
 The address `Address` is accessed from instruction at address `FromWhere`.
 The access is done from operand `Op_index` and has size `Size`.
-`simple_memory_access` is a subset of `data_access_pattern_candidate`
+`simple_data_access_pattern` is a subset of `data_access_pattern_candidate`
 that can be computed without using the value register
 analysis.
 */
-.decl simple_memory_access(Address:address,Op_index:unsigned,Size:unsigned,FromWhere:address)
+.decl simple_data_access_pattern(Address:address,Op_index:unsigned,Size:unsigned,FromWhere:address)
 
 /**
 The address at 'EA' is probably accessed with size 'Size' using the same
@@ -188,7 +188,7 @@ by propagating data accesses based on their multiplier.
 
 
 //single access
-simple_memory_access(Address,Op_index,Size,EA):-
+simple_data_access_pattern(Address,Op_index,Size,EA):-
     data_access(EA,Op_index,"NONE","NONE","NONE",_,Offset,Size),
     !instruction_has_relocation(EA,_),
     Address = as(Offset,address),
@@ -197,7 +197,7 @@ simple_memory_access(Address,Op_index,Size,EA):-
     Address <= End.
 
 // pc relative
-simple_memory_access(Address,Op_index,Size,EA):-
+simple_data_access_pattern(Address,Op_index,Size,EA):-
     code(EA),
     (
         pc_relative_operand(EA,Op_index,Address);
@@ -209,7 +209,7 @@ simple_memory_access(Address,Op_index,Size,EA):-
     Address <= End.
 
 // Access using relocation
-simple_memory_access(Address,Op_index,Size,EA):-
+simple_data_access_pattern(Address,Op_index,Size,EA):-
     data_access(EA,Op_index,_,_,_,_,_,Size),
     instruction_has_relocation(EA,EA_rel),
     symbolic_expr_from_relocation(EA_rel,_,_,_,Address),
@@ -219,12 +219,12 @@ simple_memory_access(Address,Op_index,Size,EA):-
 
 // Accesses known without value_reg computation
 data_access_pattern_candidate(Address,Size,0,EA):-
-    simple_memory_access(Address,_,Size,EA).
+    simple_data_access_pattern(Address,_,Size,EA).
 
 // directly computed
 data_access_pattern_candidate(Address,Size,Mult*Mult2,EA):-
     data_access(EA,Op_index,"NONE",RegBase,RegMult,Mult,Offset1,Size),
-    !simple_memory_access(_,Op_index,_,EA),
+    !simple_data_access_pattern(_,Op_index,_,EA),
     RegMult != "NONE",
     RegMult != RegBase,
     value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,Offset2,_),
@@ -244,7 +244,7 @@ data_access_pattern_candidate(Address,Size,Mult*Mult2,EA):-
 // indirectly computed
 data_access_pattern_candidate(Address,Size,Mult,EA):-
     data_access(EA,Op_index,"NONE",RegBase,RegMult,Mult2,Offset1,Size),
-    !simple_memory_access(_,Op_index,_,EA),
+    !simple_data_access_pattern(_,Op_index,_,EA),
     RegMult != RegBase,
     value_reg_at_operand(EA,Op_index,RegMult,_,0,Offset2,"complete"),
     value_reg_at_operand(EA,Op_index,RegBase,_,Mult,Offset3,_),
