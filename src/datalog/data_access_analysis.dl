@@ -287,6 +287,8 @@ data_access_pattern_candidate_refined(Address,Size,Multiplier,From):-
         ;
         relocation(Address,_,_,_,_,_,_)
         ;
+        pe_import_entry(Address,_,_,_)
+        ;
         !indirect_jump(From),
         !indirect_call(From)
     ).
