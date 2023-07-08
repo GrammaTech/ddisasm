@@ -19,8 +19,9 @@ class TestStackChkFallthrough(unittest.TestCase):
             test_dir / "linux-elf-x86.yaml",
             test_dir / "linux-elf-x64.yaml",
             test_dir / "qemu-elf-arm.yaml",
-            # TODO: rework plt_entry definition for arm and mips
-            # test_dir / "qemu-elf-arm64.yaml",
+            test_dir / "qemu-elf-arm64.yaml",
+            # In order for this test to work, the no-return
+            # analysis needs to be expanded to resolved jumps
             # test_dir / 'qemu-elf-mips32.yaml',
         ]
 
