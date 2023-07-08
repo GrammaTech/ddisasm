@@ -573,6 +573,8 @@ plt_entry(EA_JR,Function):-
 
     relocation(Dest_addr,_,Function,_,_,_,_).
 
+
+// FIXME: This rule might be subsumed by the general rules
 // lui reg1, hi(XXX)
 // lw reg2, lo(XXX)(reg1)
 // jr reg2
