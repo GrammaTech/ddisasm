@@ -573,17 +573,6 @@ plt_entry(EA_JR,Function):-
 
     relocation(Dest_addr,_,Function,_,_,_,_).
 
-// If "jalr t9", where t9 is a concrete address value, it can be considered as
-// a direct-call.
-resolved_transfer(EA,DestAddr,"call"):-
-    instruction(EA,_,_,"JALR",Op,0,0,0,_,_),
-    op_regdirect_contains_reg(Op,"T9"),
-    reg_def_use.def_used(EA_def,"T9",EA,_),
-    value_reg(EA_def,"T9",_,"NONE",_,Dest,_),
-    DestAddr = as(Dest,address),
-    code(DestAddr).
-
-
 // lui reg1, hi(XXX)
 // lw reg2, lo(XXX)(reg1)
 // jr reg2
