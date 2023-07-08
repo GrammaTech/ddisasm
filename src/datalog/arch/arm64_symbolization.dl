@@ -104,8 +104,18 @@ split_load(EA, NextEA, as(Base + Offset,address), "LDR/STR") :-
 
     op_indirect_mapped(OffsetOp,"NONE",Reg,"NONE",_,Offset,_).
 
-pc_relative_jump(EA, as(Dest,address)):-
-    split_load(EA, _, Dest, "LDR/STR").
+
+plt_entry(EA_jump,Function):-
+    plt_section(SecName),
+    loaded_section(Beg,End,SecName),
+    EA >= Beg,
+    EA < End,
+    split_load(_, EA, Got_entry, "LDR/STR"),
+    next(EA,EA_next),
+    next(EA_next,EA_jump),
+    reg_jump(EA_jump,_),
+    relocation(Got_entry,_,Function,_,_,_,_),
+    Function != "".
 
 /**
 A reference to a page-aligned value loaded by an adr or adrp instruction.
