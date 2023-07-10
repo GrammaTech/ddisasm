@@ -30,13 +30,24 @@ default: &default
       - main_is_code
       - decode_mode_matches_arch
       - outgoing_edges
+      - edge_instruction_group
+      - cfg_completeness
 
 cpp: &default-cpp
   <<: *default
   test:
     <<: *default-test
-    # Don't run CFG checks on CPP binaries
-    cfg_checks: []
+    # Don't run all CFG checks on CPP binaries
+    cfg_checks:
+    #  - unreachable
+    #  - unresolved_branch
+      - cfg_empty
+      - main_is_code
+      - decode_mode_matches_arch
+      - outgoing_edges
+      - edge_instruction_group
+      - cfg_completeness
+
   reassemble:
     compiler: "g++"
     flags: ["-m32", "-fno-pie", "-no-pie", "-nostartfiles"]
@@ -58,13 +69,6 @@ position-independent: &position-independent
     flags: ["-m32", "-fpie", "-nostartfiles"]
     skip: false
 
-  test:
-    <<: *default-test
-    # TODO: re-enable CFG checks.
-    # PIE CFG tests are currently disabled due to failures in clang PIE binaries.
-    # See issue #329
-    cfg_checks: []
-
 strip: &strip
   test:
     strip_exe: "strip"
@@ -74,8 +78,17 @@ position-independent-cpp: &position-independent-cpp
   <<: *position-independent
   test:
     <<: *default-test
-    # Don't run CFG checks on CPP binaries
-    cfg_checks: []
+    # Don't run all CFG checks on CPP binaries
+    cfg_checks:
+    # - unreachable
+    # - unresolved_branch
+      - cfg_empty
+      - main_is_code
+      - decode_mode_matches_arch
+      - outgoing_edges
+      - edge_instruction_group
+      - cfg_completeness
+
   reassemble:
     compiler: "g++"
     flags: ["-m32", "-pie", "-nostartfiles"]
@@ -114,10 +127,6 @@ tests:
 
   - name: ex_false_pointer_array
     <<: *default
-    test:
-      <<: *default-test
-      # TODO: this example fails because function pointers are not resolved in the CFG
-      cfg_checks: []
 
   - name: ex_float
     <<: *default
@@ -206,8 +215,17 @@ tests:
     <<: *position-independent
     test:
       <<: *default-test
-      # TODO: this example fails because function pointers are not resolved in the CFG
-      cfg_checks: []
+      # TODO: Refine computation of indirect edges.
+      # The access to the GOT entry is computed in a couple of steps.
+      cfg_checks:
+      # - unreachable
+      # - unresolved_branch
+        - cfg_empty
+        - main_is_code
+        - decode_mode_matches_arch
+        - outgoing_edges
+        - edge_instruction_group
+        - cfg_completeness
 
   - name: ex_float
     <<: *position-independent
@@ -296,7 +314,17 @@ tests:
       flags: ["-shared", "-nostartfiles"]
       skip: false
     test:
-      cfg_checks: []
+      <<: *default-test
+      # TODO: Revise TLS-related cfg edges
+      cfg_checks:
+        # - unreachable
+        #- unresolved_branch
+        - cfg_empty
+        - main_is_code
+        - decode_mode_matches_arch
+        - outgoing_edges
+        - edge_instruction_group
+        #- cfg_completeness
 
   - name: ex_dyn_library2
     <<: *position-independent

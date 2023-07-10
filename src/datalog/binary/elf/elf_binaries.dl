@@ -120,7 +120,10 @@ non_zero_data_section(Name):-
 ////////////////////////////////////////////////////////////////////////////
 // detect references  to libraries (calls to plt)
 
-.decl plt_entry(ea:address, function:symbol)
+/**
+There is a PLT jump at address 'EA' to external function 'Function'.
+*/
+.decl plt_entry(EA:address, function:symbol)
 
 plt_entry(EA,Function):-
     plt_section(SecName),

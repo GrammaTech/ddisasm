@@ -20,8 +20,8 @@ class TestStackChkFallthrough(unittest.TestCase):
             test_dir / "linux-elf-x64.yaml",
             test_dir / "qemu-elf-arm.yaml",
             test_dir / "qemu-elf-arm64.yaml",
-            # TODO: mips doesn't seem to be generating the CFG correctly for
-            # the PLT block at all.
+            # In order for this test to work, the no-return
+            # analysis needs to be expanded to resolved jumps
             # test_dir / 'qemu-elf-mips32.yaml',
         ]
 

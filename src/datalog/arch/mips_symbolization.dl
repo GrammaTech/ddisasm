@@ -539,7 +539,7 @@ plt_entry(EA,Function):-
 //   EA_JR:    jr $t9                     // no delay-slot
 //
 // NOTE: Cases of no delay-slot were observed
-plt_entry(EA,Function):-
+plt_entry(EA_JR,Function):-
     plt_section(SecName),
     loaded_section(Beg,End,SecName),
     EA >= Beg,
@@ -573,24 +573,21 @@ plt_entry(EA,Function):-
 
     relocation(Dest_addr,_,Function,_,_,_,_).
 
-// If "jalr t9", where t9 is a concrete address value, it can be considered as
-// a direct-call.
-direct_call_resolved(EA,as(Dest,address)):-
-    instruction(EA,_,_,"JALR",Op,0,0,0,_,_),
-    op_regdirect_contains_reg(Op,"T9"),
-    reg_def_use.def_used(EA_def,"T9",EA,_),
-    value_reg(EA_def,"T9",_,"NONE",_,Dest,_).
 
+// FIXME: This rule might be subsumed by the general rules
 // lui reg1, hi(XXX)
 // lw reg2, lo(XXX)(reg1)
 // jr reg2
-resolved_jump(EA,as(Dest,address)):-
+resolved_transfer(EA,DestAddr,"branch"):-
+    code(EA),
     instruction(EA,_,_,"JR",Op,0,0,0,_,_),
     op_regdirect_contains_reg(Op,Reg),
     reg_def_use.def_used(EA_def,Reg,EA,_),
     instruction_get_operation(EA_def, "LW"),
     split_load_candidate(_,EA_def,Addr,_),
-    symbolic_data(Addr,4,Dest).
+    symbolic_data(Addr,4,Dest),
+    DestAddr = as(Dest,address),
+    code(DestAddr).
 
 abi_intrinsic(Address,Sym):-
     symbol(Address,_,_,_,_,_,_,_,Sym),

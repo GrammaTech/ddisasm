@@ -168,6 +168,15 @@ Auxiliary predicate that computes initial approximation of `data_access_pattern`
 .decl data_access_pattern_candidate(Address:address,Size:unsigned,Multiplier:number,FromWhere:address)
 
 /**
+The address `Address` is accessed from instruction at address `FromWhere`.
+The access is done from operand `Op_index` and has size `Size`.
+`simple_data_access_pattern` is a subset of `data_access_pattern_candidate`
+that can be computed without using the value register
+analysis.
+*/
+.decl simple_data_access_pattern(Address:address,Op_index:unsigned,Size:unsigned,FromWhere:address)
+
+/**
 The address at 'EA' is probably accessed with size 'Size' using the same
 pattern as the data access in 'AccessEA'. Preferred data accesses are computed
 by propagating data accesses based on their multiplier.
@@ -178,15 +187,16 @@ by propagating data accesses based on their multiplier.
 
 
 //single access
-data_access_pattern_candidate(Address,Size,0,EA):-
-    data_access(EA,_,"NONE","NONE","NONE",_,Offset,Size),
+simple_data_access_pattern(Address,Op_index,Size,EA):-
+    data_access(EA,Op_index,"NONE","NONE","NONE",_,Offset,Size),
+    !instruction_has_relocation(EA,_),
     Address = as(Offset,address),
     data_segment(Beg,End),
     Address >= Beg,
     Address <= End.
 
 // pc relative
-data_access_pattern_candidate(Address,Size,0,EA):-
+simple_data_access_pattern(Address,Op_index,Size,EA):-
     code(EA),
     (
         pc_relative_operand(EA,Op_index,Address);
@@ -197,11 +207,23 @@ data_access_pattern_candidate(Address,Size,0,EA):-
     Address >= Beg,
     Address <= End.
 
+// Access using relocation
+simple_data_access_pattern(Address,Op_index,Size,EA):-
+    data_access(EA,Op_index,_,_,_,_,_,Size),
+    instruction_has_relocation(EA,EA_rel),
+    symbolic_expr_from_relocation(EA_rel,_,_,_,Address),
+    data_segment(Beg,End),
+    Address >= Beg,
+    Address <= End.
+
+// Accesses known without value_reg computation
+data_access_pattern_candidate(Address,Size,0,EA):-
+    simple_data_access_pattern(Address,_,Size,EA).
+
 // directly computed
 data_access_pattern_candidate(Address,Size,Mult*Mult2,EA):-
     data_access(EA,Op_index,"NONE",RegBase,RegMult,Mult,Offset1,Size),
-    !pc_relative_operand(EA,Op_index,_),
-    !split_load_operand(EA,Op_index,_),
+    !simple_data_access_pattern(_,Op_index,_,EA),
     RegMult != "NONE",
     RegMult != RegBase,
     value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,Offset2,_),
@@ -221,8 +243,7 @@ data_access_pattern_candidate(Address,Size,Mult*Mult2,EA):-
 // indirectly computed
 data_access_pattern_candidate(Address,Size,Mult,EA):-
     data_access(EA,Op_index,"NONE",RegBase,RegMult,Mult2,Offset1,Size),
-    !pc_relative_operand(EA,Op_index,_),
-    !split_load_operand(EA,Op_index,_),
+    !simple_data_access_pattern(_,Op_index,_,EA),
     RegMult != RegBase,
     value_reg_at_operand(EA,Op_index,RegMult,_,0,Offset2,"complete"),
     value_reg_at_operand(EA,Op_index,RegBase,_,Mult,Offset3,_),
@@ -261,7 +282,12 @@ data_access_pattern_candidate_refined(Address,Size,Multiplier,From):-
     Operation != "LEA",
     (
         // if it is an indirect call or jump, the destination should be a potential address
-        address_in_data(Address,_);
+        address_in_data(Address,_)
+        ;
+        relocation(Address,_,_,_,_,_,_)
+        ;
+        pe_import_entry(Address,_,_,_)
+        ;
         !indirect_jump(From),
         !indirect_call(From)
     ).

@@ -152,8 +152,8 @@ E.g.,
   add ip, ip, #16, #20
   ldr pc, [ip, #2640]
 */
-plt_entry(EA,Function):-
-    plt_entry_arm_candidate(EA,_,Function,_).
+plt_entry(EA_jump,Function):-
+    plt_entry_arm_candidate(_,EA_jump,Function,_).
 
 /**
 E.g.,

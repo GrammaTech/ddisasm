@@ -24,19 +24,33 @@
 This module generates the control flow graph of the disassembled code
 */
 
+/**
+This predicate specifies a CFG edge between two locations in the binary.
+*/
 .decl cfg_edge(src:address,dest:address,conditional:symbol,indirect:symbol,type:symbol)
 .output cfg_edge
 
-// edges whose destination we do not know
+/**
+This predicate specifies CFG edges from `src` to a Top proxy block
+to model calls or jumps whose destination is unknown.
+This is optimistic, if at least one target of a jump/call is known,
+the edge to the proxy block will not be generated.
+*/
 .decl cfg_edge_to_top(src:address,conditional:symbol,type:symbol)
 .output cfg_edge_to_top
 
-.decl cfg_edge_to_symbol(Src:address,Symbol:symbol,Type:symbol)
+/**
+ This predicate specifies CFG edges whose destination is an external symbol.
+ */
+.decl cfg_edge_to_symbol(src:address,Symbol:symbol,conditional:symbol,indirect:symbol,type:symbol)
 .output cfg_edge_to_symbol
 
 /////////////////////////////////////////////////////////////////////////////////
-// jump table identification
-.decl jump_table(Src:address,Data:address)
+/**
+The jump at address `Src` might access the jump table
+entry at address `Memory`.
+*/
+.decl jump_table(Src:address,Memory:address)
 
 //use the data access pattern
 jump_table(EA,Initial_memory):-
@@ -51,8 +65,18 @@ jump_table(EA,Initial_memory):-
 jump_table(EA,Initial_memory):-
     code(EA),
     indirect_jump(EA),
-    arch.pointer_size(Pt_size),
     symbolic_operand(EA,1,Initial_memory,"data"),
+    data_access(EA,1,_,RegBase,RegIndex,_,_,_),
+    (
+        RegBase != "NONE",
+        !arch.pc_reg(RegBase),
+        UNUSED(RegIndex)
+        ;
+        RegIndex != "NONE",
+        !arch.pc_reg(RegIndex),
+        UNUSED(RegBase)
+    ),
+    arch.pointer_size(Pt_size),
     symbolic_data(Initial_memory,Pt_size,Dest_block),
     refined_block(Dest_block).
 
@@ -79,54 +103,138 @@ jump_table(EA,Memory+Pt_size):-
         EA > Content_next
     ).
 
-// Resolve easy jumps that access a straightforward jump table
-.decl resolved_jump(Src:address,Dest:address)
+/**
+ This predicate represents known targets of indirect jumps
+ or calls. `EA` is the address of the jump or call instruction and `Dest`
+is the destination address. Type can be "branch" or "call".
+ */
+.decl resolved_transfer(EA:address,Dest:address,Type:symbol)
 
-resolved_jump(EA,Dest):-
+resolved_transfer(EA,Dest,"branch"):-
     jump_table(EA,Memory),
     code(EA),
     symbolic_data(Memory,_,Dest),
+    !symbolic_expr_from_relocation(Memory,_,_,_,_),
     refined_block(Dest).
 
 // Symbol-Symbol jump tables
-resolved_jump(EA,Dest):-
+resolved_transfer(EA,Dest,EdgeType):-
     jump_table_start(EA,Size,TableStart,_,_),
+    // jump_table_start can refer to call instructions too
+    (
+        arch.jump(EA),
+        EdgeType="branch"
+        ;
+        arch.call(EA,_),
+        EdgeType="call"
+    ),
     relative_jump_table_entry(_,TableStart,Size,_,Dest,_,_).
 
-resolved_jump(Src,Dest):-
-    jump_table_candidate_refined(Src,_,Dest).
+resolved_transfer(EA,Dest,"branch"):-
+    jump_table_candidate_refined(EA,_,Dest).
+
+
+// Indirect jumps/calls where we know which data we are accessing
+resolved_transfer(EA,Dest,Type):-
+    arch.pointer_size(PtrSize),
+    (
+        indirect_jump(EA), Type = "branch"
+        ;
+        indirect_call(EA), Type = "call"
+    ),
+    !plt_entry(EA,_),
+    data_access_pattern_candidate_refined(DataPointer,PtrSize,0,EA),
+    (
+        symbolic_data(DataPointer,_,Dest),
+        !symbolic_expr_from_relocation(DataPointer,_,_,_,_)
+        ;
+        symbolic_expr_from_relocation(DataPointer, _, Symbol, _, Dest),
+        defined_symbol(_,_,_,_,_,_,_,_,Symbol)
+    ),
+    code(Dest).
+
+// Register jumps/calls where we know the value of the register
+resolved_transfer(EA,DestAddr,Type):-
+    (
+        reg_jump(EA,Reg), Type = "branch"
+        ;
+        reg_call(EA,Reg), Type = "call"
+    ),
+    !plt_entry(EA,_),
+    reg_def_use.def_used(EA_def,Reg,EA,_),
+    value_reg(EA_def,Reg,_,"NONE",_,Dest,_),
+    DestAddr = as(Dest,address),
+    code(DestAddr).
+
+resolved_transfer(EA,DestAddr, "branch"):-
+    plt_entry(EA,Function),
+    defined_symbol(DestAddr,_,_,_,_,SectIndex,_,_,Function),
+    SectIndex != 0.
+
+/**
+This predicates represent known targets of indirect jumps or calls
+that refer to external symbols. It is similar to `resolved_transfer`
+but its target is not an address but a symbol.
+'Type' can be "branch" or "call".
+*/
+.decl resolved_transfer_to_symbol(EA:address,Symbol:symbol,Type:symbol)
+
+/**
+Auxiliary predicate of `resolved_transfer_to_symbol` that captures
+a pointer at address 'DataPointer' that refers to the external symbol
+'Symbol'.
+*/
+.decl pointer_to_external_symbol(DataPointer:address,Symbol:symbol)
+
+pointer_to_external_symbol(DataPointer,Symbol):-
+    symbolic_expr(DataPointer,_,Symbol,0),
+    !inferred_symbol(_,Symbol,_,_,_,_),
+    !defined_symbol(_,_,_,_,_,_,_,_,Symbol).
+
+// We don't generate `symbolic_expr` for entries in the IAT
+// so we have to consider these separately
+pointer_to_external_symbol(DataPointer,Symbol):-
+    pe_import_entry(DataPointer,_,Symbol,_).
+
+
+// Indirect jumps/calls where we know which data is accessed
+// and that data element has a symbolic expression pointing
+// to an external symbol
+resolved_transfer_to_symbol(EA,Symbol,Type):-
+    arch.pointer_size(PtrSize),
+    (
+        indirect_jump(EA), Type = "branch"
+        ;
+        indirect_call(EA), Type = "call"
+    ),
+    data_access_pattern_candidate_refined(DataPointer,PtrSize,0,EA),
+    pointer_to_external_symbol(DataPointer,Symbol).
+
+
+// Register jump/call where the register is loaded
+// from a known data address and the data element
+// has a symbolic expression pointing to an external symbol
+resolved_transfer_to_symbol(EA,Symbol,Type):-
+    (
+        reg_jump(EA,Reg), Type = "branch"
+        ;
+        reg_call(EA,Reg), Type = "call"
+    ),
+    reg_def_use.def_used(EA_def,Reg,EA,_),
+    arch.load(EA_def,_,_,Reg,_,_,_,_),
+    arch.pointer_size(PtrSize),
+    data_access_pattern_candidate_refined(DataPointer,PtrSize,0,EA_def),
+    pointer_to_external_symbol(DataPointer,Symbol).
+
+resolved_transfer_to_symbol(EA,Function, "branch"):-
+    plt_entry(EA,Function),
+    symbol(_,_,_,_,_,SectIndex,_,_,Function),
+    SectIndex = 0.
 
 //////////////////////////////////////////////////////////////////////////////
 // edge creation
 
-cfg_edge(Src,Dest,Conditional,Indirect,EdgeType):-
-    refined_block_control_instruction(Src,EA),
-    (
-        direct_jump(EA,Dest), Indirect = "false";
-        pc_relative_jump(EA,Dest), Indirect = "false";
-        resolved_jump(EA,Dest), Indirect = "true"
-    ),
-    refined_block(Dest),
-    (
-        arch.jump(EA),EdgeType="branch";
-        arch.call(EA,_),EdgeType="call"
-    ),
-    (
-        !arch.conditional(EA,_),Conditional = "false";
-        arch.conditional(EA,_),Conditional = "true"
-    ).
-
-cfg_edge(Src,Dest,"false","false","call"):-
-    refined_block_control_instruction(Src,EA),
-    (
-        direct_call(EA,Dest);
-        direct_call_resolved(EA,Dest);
-        pc_relative_call(EA,Dest)
-    ),
-    !pc_load_call(EA,_),
-    refined_block(Dest).
-
-cfg_edge(Src,Dest,"false","false","fallthrough"):-
+cfg_edge(Src,Dest,Conditional,"false","fallthrough"):-
     refined_block_control_instruction(Src,EA),
     may_fallthrough(EA,Dest),
     !no_return_call_propagated(EA),
@@ -134,17 +242,45 @@ cfg_edge(Src,Dest,"false","false","fallthrough"):-
     code_in_refined_block(Dest,Dest),
     next_refined_block_in_section(Src,Dest),
     // Assume no fallthrough edge from one plt block to another.
-    !plt_block(Src,_).
+    !plt_block(Src,_),
+    (
+        !arch.conditional(EA,_),
+        Conditional = "false"
+        ;
+        arch.conditional(EA,_),
+        !arch.jump(EA),
+        Conditional = "false"
+        ;
+        arch.jump(EA),
+        arch.conditional(EA,_),
+        Conditional = "true"
+    ).
 
 cfg_edge(Src,Dest,"false","false","fallthrough"):-
     cfg_edge(_,Src,_,_,_),
     nop_block(Src),
     next_refined_block_in_section(Src,Dest).
 
-cfg_edge(Src,Dest,"false","false","fallthrough"):-
-     nop_block(Src),
-     cfg_edge(_,Src,_,_,_),
-     next_refined_block_in_section(Src,Dest).
+
+cfg_edge(Src,Dest,Conditional,Indirect,Type):-
+    refined_block_control_instruction(Src,EA),
+    (
+        direct_jump(EA,Dest),
+        Type="branch",
+        Indirect = "false"
+        ;
+        direct_call(EA,Dest),
+        !pc_load_call(EA,_),
+        Type = "call",
+        Indirect = "false"
+        ;
+        resolved_transfer(EA,Dest,Type), Indirect = "true"
+    ),
+    refined_block(Dest),
+    (
+        !arch.conditional(EA,_),Conditional = "false";
+        arch.conditional(EA,_),Conditional = "true"
+    ).
 
 cfg_edge(ReturnBlock,NextBlock,Conditional,"false","return"):-
     cfg_edge(Caller,Block,_,_,"call"),
@@ -157,13 +293,46 @@ cfg_edge(ReturnBlock,NextBlock,Conditional,"false","return"):-
         conditional_return(Insn), Conditional = "true"
     ).
 
+// Direct calls or jumps to external functions
+// This will typically happen in object files.
+cfg_edge_to_symbol(Src,Symbol,Conditional,"false",EdgeType):-
+    refined_block_control_instruction(Src,EA),
+    (
+        arch.jump(EA),
+        EdgeType="branch"
+        ;
+        arch.call(EA,_),
+        EdgeType="call"
+    ),
+    instruction_immediate_offset(EA,_,Offset,_),
+    (
+        !arch.conditional(EA,_),Conditional = "false";
+        arch.conditional(EA,_),Conditional = "true"
+    ),
+    Rel = EA+Offset,
+    // Note: This pointer is part of the instruction.
+    pointer_to_external_symbol(Rel,Symbol).
+
+// Calls or jumps to external functions
+// through indirect pointer
+cfg_edge_to_symbol(Src,Symbol,Conditional,"true",EdgeType):-
+    refined_block_control_instruction(Src,EA),
+    resolved_transfer_to_symbol(EA,Symbol,EdgeType),
+    (
+        !arch.conditional(EA,_),Conditional = "false";
+        arch.conditional(EA,_),Conditional = "true"
+    ).
+
+
+// Undefined edges
 cfg_edge_to_top(Src,Conditional,"branch"):-
     refined_block_control_instruction(Src,EA),
     (
         reg_jump(EA,_);
         indirect_jump(EA)
     ),
-    !resolved_jump(EA,_),
+    !resolved_transfer(EA,_,"branch"),
+    !resolved_transfer_to_symbol(EA,_,"branch"),
     (
         unconditional_jump(EA), Conditional = "false";
         conditional_jump(EA), Conditional = "true"
@@ -174,7 +343,9 @@ cfg_edge_to_top(Src,"false","call"):-
     (
         reg_call(EA,_);
         indirect_call(EA)
-    ).
+    ),
+    !resolved_transfer(EA,_,"call"),
+    !resolved_transfer_to_symbol(EA,_,"call").
 
 // a return to top if no other return exists
 cfg_edge_to_top(Src,Conditional,"return"):-
@@ -184,37 +355,3 @@ cfg_edge_to_top(Src,Conditional,"return"):-
         conditional_return(Insn), Conditional = "true"
     ),
     !cfg_edge(Src,_,_,_,"return").
-
-cfg_edge_to_symbol(Src,Symbol,"branch"):-
-    refined_block(Src),
-    plt_block(Src,Symbol),
-    refined_block_control_instruction(Src,EA),
-    arch.jump(EA),
-    !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
-    !inferred_special_symbol(_,Symbol,_,_,_,_).
-
-cfg_edge_to_symbol(Src,Symbol,"branch"):-
-    refined_block_control_instruction(Src,EA),
-    arch.jump(EA),
-    instruction_has_relocation(EA,Rel),
-    relocation(Rel,_,Symbol,_,_,_,_),
-    !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
-    Symbol != "".
-
-cfg_edge_to_symbol(Src,Symbol,"call"):-
-    refined_block_control_instruction(Src,EA),
-    arch.call(EA,_),
-    instruction_has_relocation(EA,Rel),
-    relocation(Rel,_,Symbol,_,_,_,_),
-    !defined_symbol(_,_,_,_,_,_,_,_,Symbol),
-    Symbol != "".
-
-// pc relative jump with undefined destination
-cfg_edge_to_top(Src,Conditional,"branch"):-
-    refined_block_control_instruction(Src,EA),
-    pc_relative_jump(EA,Dest),
-    !refined_block(Dest),
-    (
-        unconditional_jump(EA), Conditional = "false";
-        !unconditional_jump(EA),Conditional = "true"
-    ).

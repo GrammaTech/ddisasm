@@ -31,8 +31,11 @@ otherwise produce spurious def_used instances.
 incomplete_block(Block):-
     block_last_instruction(Block,BlockEnd),
     (
-        indirect_jump(BlockEnd);
-        reg_jump(BlockEnd,_);
+        indirect_jump(BlockEnd),
+        !pc_relative_jump(BlockEnd,_)
+        ;
+        reg_jump(BlockEnd,_)
+        ;
         arch.return(BlockEnd)
     ).
 

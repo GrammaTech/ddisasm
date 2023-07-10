@@ -135,7 +135,14 @@ value_reg_unsupported(EA,Reg):-
 // mov reg immediate
 value_reg(EA,Reg,EA,"NONE",0,Immediate,1):-
     def_used_for_address(EA,Reg,_),
-    arch.move_reg_imm(EA,Reg,Immediate,_).
+    (
+        arch.move_reg_imm(EA,Reg,Immediate,_),
+        !instruction_has_relocation(EA,_)
+    ;
+        instruction_has_relocation(EA,EA_rel),
+        symbolic_expr_from_relocation(EA_rel,_,_,_,Address),
+        Immediate = as(Address,number)
+    ).
 
 //reset a register
 value_reg(EA,Reg,EA,"NONE",0,0,1):-
@@ -150,10 +157,10 @@ value_reg(EA,Reg,EA,"NONE",0,Immediate,1):-
 // pc-relative LEA
 value_reg(EA,Reg,EA,"NONE",0,Address,1):-
     code(EA),
-    instruction(EA,Size,_,"LEA",Op1,Op2,0,0,_,_),
-    op_indirect_mapped(Op1,_,PcReg,"NONE",_,Offset,_),
+    arch.reg_arithmetic_operation(EA,Reg,PcReg,1,Offset),
+    instruction(EA,Size,_,_,_,_,_,_,_,_),
+    !instruction_has_relocation(EA,_),
     arch.pc_reg(PcReg),
-    op_regdirect_contains_reg(Op2,Reg),
     track_register(Reg),
     Address = as(EA+Size,number)+Offset.
 
@@ -161,24 +168,20 @@ value_reg(EA,Reg,EA,"NONE",0,as(Val,number),1):-
     arch.pc_relative_addr(EA,Reg,Val),
     track_register(Reg).
 
-// mov DWORD from memory (constant address)
+// mov QWORD or DWORD from memory (constant address)
 value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     def_used_for_address(EA,Reg,_),
-    arch.load(EA,_,_,Reg,"NONE","NONE",_,Offset),
-    Offset >= 0,
-    Offset_addr = as(Offset,address),
-    data_word(Offset_addr,4,Val),
-    Val >= 0.
-
-// mov DWORD from memory (PC-relative address)
-value_reg(EA,Reg,EA,"NONE",0,Val,1):-
-    def_used_for_address(EA,Reg,_),
-    arch.load(EA,_,_,_,_,_,_,_),
-    instruction(EA,_,_,_,Op1,Op2,0,0,_,_),
-    op_regdirect_contains_reg(Op2,Reg),
-    op_indirect(Op1,_,_,_,_,_,32),
-    pc_relative_operand(EA,1,Offset),
-    data_word(Offset,4,Val),
+    arch.load(EA,SrcOp,_,Reg,_,_,_,_),
+    simple_data_access_pattern(MemAddr,SrcOp,Size,EA),
+    4 <= Size, Size <= 8,
+    (
+        data_word(MemAddr,Size,Val),
+        !symbolic_expr_from_relocation(MemAddr,_,_,_,_)
+        ;
+        symbolic_expr_from_relocation(MemAddr,Size, Symbol, _, TargetAddr),
+        defined_symbol(_,_,_,_,_,_,_,_,Symbol),
+        Val = as(TargetAddr,number)
+    ),
     Val >= 0.
 
 /**
