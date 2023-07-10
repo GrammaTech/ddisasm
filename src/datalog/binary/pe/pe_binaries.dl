@@ -196,15 +196,6 @@ data_region(Start,Size):-
     loaded_section(Start,_,".text"),
     Size = Last - Start.
 
-data_region(EA,Size):-
-    binary_format("PE"),
-    code_section(Name),
-    loaded_section(Start,End,Name),
-    repeated_byte(EA,0,Size),
-    EA >= Start, EA < End,
-    arch.pointer_size(Pointer),
-    Size >= Pointer.
-
 /**
 Jump table start pattern where the TableStart is moved through padding.
 */
