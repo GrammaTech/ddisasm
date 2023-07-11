@@ -2,6 +2,7 @@
 * Update code inference to use weighted interval scheduling to resolve blocks;
   this improves code inference results, especially on ARM.
 * ARM: Discover unreferenced code blocks occurring after literal pools.
+* ELF: Infer `SHARED` or `PIE` for `DYN` binary type
 
 # 1.6.0
 * ARM: Improve code inference using unwind information from .ARM.exidx section

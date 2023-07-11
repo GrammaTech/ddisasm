@@ -1133,10 +1133,12 @@ std::string ElfReader::inferDynMode()
         }
     }
 
-    // Executables should include `.interp` section, and `INTERP` entry
-    // in the program header.
-    // If there is no .interp section, it should be Shared.
-    if(Module->findSections(".interp").empty())
+    // Executables should include a `INTERP` segment.
+    // If there is no `INTERP` segment, it should be Shared.
+    auto InterpSegment = std::find_if(Elf->segments().begin(), Elf->segments().end(), [](auto &S) {
+        return S.type() == LIEF::ELF::SEGMENT_TYPES::PT_INTERP;
+    });
+    if(InterpSegment == Elf->segments().end())
     {
         return DYN_MODE_SHARED;
     }
