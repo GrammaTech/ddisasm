@@ -64,6 +64,7 @@ private:
 
     // For sectionless binaries
     std::map<std::string, uint64_t> getDynamicEntries();
+    std::string inferDynMode();
     std::optional<std::pair<uint64_t, uint64_t>> getTls();
     void resurrectSections();
     void resurrectSymbols();
