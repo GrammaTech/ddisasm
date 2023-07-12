@@ -126,12 +126,39 @@ Non-destructive multi-byte NOPs used by the MSVC compiler. (See `listing.inc'.)
 .decl npad(EA:address,Size:unsigned)
 
 // mov edi, edi
-npad(EA,Size):-
-    instruction(EA,Size,_,"MOV",Op,Op,_,_,_,_),
-    op_regdirect(Op,"EDI"),
-    Size = 2.
+npad(EA,2):-
+    instruction(EA,2,_,"MOV",Op,Op,_,_,_,_),
+    op_regdirect(Op,"EDI").
+
+// lea ecx, [ecx+00]
+// DB 8DH, 49H, 00H
+npad(EA,3):-
+    instruction(EA,3,_,"LEA",_,_,_,_,_,_),
+    data_uword(EA,4,Bytes),
+    Bytes band 0x00FFFFFF = 0x498D.
+
+// lea esp, [esp+00]
+// DB 8DH, 64H, 24H, 00H
+npad(EA,4):-
+    instruction(EA,4,_,"LEA",_,_,_,_,_,_),
+    data_uword(EA,4,0x0024648D).
+
+// lea ebx, [ebx+00000000]
+// DB 8DH, 9BH, 00H, 00H, 00H, 00H
+npad(EA,6):-
+    instruction(EA,6,_,"LEA",_,_,_,_,_,_),
+    data_uword(EA,8,Bytes),
+    Bytes band 0x0000FFFFFFFFFFFF = 0x9B8D.
+
+// lea esp, [esp+00000000]
+// DB 8DH, 0A4H, 24H, 00H, 00H, 00H, 00H
+npad(EA,7):-
+    instruction(EA,7,_,"LEA",_,_,_,_,_,_),
+    data_uword(EA,8,Bytes),
+    Bytes band 0x00FFFFFFFFFFFFFF = 0x24A48D.
 
 // jmp .+N; .npad N
+// DB 0E8H, 0?H, ...
 npad(EA,Size):-
     unconditional_jump(EA),
     direct_jump(EA,Dest),
@@ -141,6 +168,12 @@ npad(EA,Size):-
 
 is_padding(EA):-
     binary_format("PE"),
+    npad(EA,_),
+    !may_fallthrough(_,EA).
+
+is_padding(EA):-
+    is_padding(Prev),
+    next(Prev,EA),
     npad(EA,_).
 
 .decl merged_data_region(Start:address,End:address)
