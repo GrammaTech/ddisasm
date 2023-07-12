@@ -199,6 +199,67 @@ class AuxDataTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
+    def test_dyn_shared(self):
+        """
+        Test that binary types for DYN SHARED are correctly generated.
+        """
+        binary = "fun.so"
+        with cd(ex_dir / "ex_dyn_library"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            self.assertTrue(disassemble(binary, format="--ir")[0])
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+            dyn = m.aux_data["binaryType"].data
+
+            self.assertIn("DYN", dyn)
+            self.assertIn("SHARED", dyn)
+            self.assertNotIn("PIE", dyn)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_dyn_pie(self):
+        """
+        Test that binary types for DYN PIE are correctly generated.
+        """
+        binary = "ex"
+        with cd(ex_asm_dir / "ex_plt_nop"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            self.assertTrue(disassemble(binary, format="--ir")[0])
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+            dyn = m.aux_data["binaryType"].data
+
+            self.assertIn("DYN", dyn)
+            self.assertIn("PIE", dyn)
+            self.assertNotIn("SHARED", dyn)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_dyn_none(self):
+        """
+        Test that binary types for non-DYN are correctly generated.
+        """
+        binary = "ex"
+        with cd(ex_asm_dir / "ex_moved_label"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            self.assertTrue(disassemble(binary, format="--ir")[0])
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+            dyn = m.aux_data["binaryType"].data
+
+            self.assertIn("EXEC", dyn)
+            self.assertNotIn("DYN", dyn)
+            self.assertNotIn("PIE", dyn)
+            self.assertNotIn("SHARED", dyn)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_misaligned_fde(self):
         """
         Test that misaligned_fde_start is correctly generated.

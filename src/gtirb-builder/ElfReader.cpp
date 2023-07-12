@@ -1095,6 +1095,69 @@ const LIEF::ELF::Section *ElfReader::findRelocationSection(const LIEF::ELF::Relo
     }
 }
 
+//-------------------------------------------------------
+// Decision Tree for -shared vs. -pie:
+//
+//           SONAME
+//     yes /        \ no
+//    -shared       DF_1_PIE
+//              yes /      \ no
+//             -pie        .interp
+//                     no /        \ yes
+//                  -shared     missing-mandatory
+//                           yes /         \ no
+//                         -shared        default:-pie
+//-------------------------------------------------------
+#define DYN_MODE_SHARED "SHARED"
+#define DYN_MODE_PIE "PIE"
+std::string ElfReader::inferDynMode()
+{
+    assert(Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_DYN);
+
+    // SONAME is used at compilation time by linker to provide version
+    // backwards-compatibility information, which is used only for shared
+    // objects.
+    std::map<std::string, uint64_t> DynamicEntries = getDynamicEntries();
+    if(DynamicEntries.find("SONAME") != DynamicEntries.end())
+    {
+        return DYN_MODE_SHARED;
+    }
+
+    // Flags used by Solaris.
+    // It must be an EXE if DF_1_PIE (0x800000) bit is set in FLAGS_1.
+    if(auto result = DynamicEntries.find("FLAGS_1"); result != DynamicEntries.end())
+    {
+        if((result->second & 0x8000000) != 0)
+        {
+            return DYN_MODE_PIE;
+        }
+    }
+
+    // Executables should include a `INTERP` segment.
+    // If there is no `INTERP` segment, it should be Shared.
+    auto InterpSegment = std::find_if(Elf->segments().begin(), Elf->segments().end(), [](auto &S) {
+        return S.type() == LIEF::ELF::SEGMENT_TYPES::PT_INTERP;
+    });
+    if(InterpSegment == Elf->segments().end())
+    {
+        return DYN_MODE_SHARED;
+    }
+
+    // Check for dynamic entries mandatory for executables.
+    // If any of the mandatory entries is missing, it should be Shared.
+    if(DynamicEntries.find("RELA") == DynamicEntries.end()
+       || DynamicEntries.find("RELASZ") == DynamicEntries.end()
+       || DynamicEntries.find("RELAENT") == DynamicEntries.end())
+    {
+        return DYN_MODE_SHARED;
+    }
+
+    // Pie by default
+    return DYN_MODE_PIE;
+}
+#undef DYN_MODE_SHARED
+#undef DYN_MODE_PIE
+
 void ElfReader::addAuxData()
 {
     // Add `binaryType' aux data table.
@@ -1103,6 +1166,7 @@ void ElfReader::addAuxData()
     {
         case LIEF::ELF::E_TYPE::ET_DYN:
             BinaryType.emplace_back("DYN");
+            BinaryType.emplace_back(inferDynMode());
             break;
         case LIEF::ELF::E_TYPE::ET_EXEC:
             BinaryType.emplace_back("EXEC");

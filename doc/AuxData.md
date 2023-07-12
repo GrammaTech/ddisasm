@@ -39,9 +39,8 @@ compiled on commit `8533031c` with support for the `X64` ISA.
 |  Type | `std::vector<std::string>`         |
 | Value | A list of binary type descriptors. |
 
-ELF binaries have either a `DYN` (PIE) or `EXEC` entry. PE binaries have either
-a `DLL` or `EXE` entry and optionally a [subsystem][SUBSYSTEM] descriptor (e.g.
-`WINDOWS_GUI`).
+ELF binaries have either a [`DYN`,`PIE`] or [`DYN`,`SHARED`] or [`EXEC`] or [`REL`] entry.
+ PE binaries have either a [`DLL`] or [`EXE`] entry and optionally a [subsystem][SUBSYSTEM] descriptor (e.g. `WINDOWS_GUI`).
 
 [SUBSYSTEM]: https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#windows-subsystem
 
