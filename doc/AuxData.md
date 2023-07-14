@@ -365,6 +365,24 @@ Note: Relation names are namespaced with the name of the pass in which they belo
 |  Type | `std::map<uint64_t, gtirb::UUID>`              |
 | Value | Map from ELF section indices to section UUIDs. |
 
+### elfDynamicInit
+
+`sanctioned`
+
+| <!-- --> | <!-- -->                                           |
+|----------|----------------------------------------------------|
+| Label    | ```"elfDynamicInit"```                             |
+| Type     | ```gtirb::UUID```                                  |
+| Note     | The CodeBlock to which a DT_INIT entry in an ELF file's .dynamic section refers. |
+
+### elfDynamicFini
+
+| <!-- --> | <!-- -->                                           |
+|----------|----------------------------------------------------|
+| Label    | ```"elfDynamicFini"```                             |
+| Type     | ```gtirb::UUID```                                  |
+| Note     | The CodeBlock to which a DT_FINI entry in an ELF file's .dynamic section refers. |
+
 ## elfSymbolInfo
 
 `provisional`
