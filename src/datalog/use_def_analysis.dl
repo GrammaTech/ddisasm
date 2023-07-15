@@ -494,7 +494,7 @@ stack_base_reg_move(Block,EA,Src,Dst):-
     // we must propagate through this block on a per-instruction basis.
     live_var_used_in_block(Block,NextEA,[BaseReg,StackPos],VarUsed,EA_used,Index,Moves+1):-
         (
-            adjusts_stack_in_block(Block,_,_BaseReg,_);
+            adjusts_stack_in_block(Block,_,BaseReg,_);
             stack_base_reg_move(Block,_,_,BaseReg)
         ),
         live_var_at_block_end(Block,BlockUsed,[BaseReg,StackPos]),
