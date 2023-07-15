@@ -247,7 +247,9 @@ jump_table_max(TableStart2,TableStart2+IndexValue*Size2):-
     jump_table_element_access(EA1,Size1,TableStart1,_),
     jump_table_max(TableStart1,TableEnd1),
     reg_def_use.def_used(EA1,Reg,EA2,_),
+    EA1 != EA2,
     jump_table_element_access(EA2,Size2,TableStart2,Reg),
+    TableStart1 != TableStart2,
     TableAddress = range(TableStart1,TableEnd1+Size1,Size1),
     data_uword(TableAddress,Size1,IndexValue).
 
