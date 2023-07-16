@@ -97,7 +97,7 @@ class DdisasmConan(Properties, ConanFile):
         "gtirb/%s@rewriting+gtirb/master" % (gtirb_version),
         "gtirb-pprinter/%s@rewriting+gtirb-pprinter/master"
         % (gtirb_pprinter_version),
-        "capstone/%s@rewriting+extra-packages/next" % (capstone_version),
+        "capstone/%s@rewriting+extra-packages/v5" % (capstone_version),
     )
 
     def imports(self):
