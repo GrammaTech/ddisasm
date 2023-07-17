@@ -10,6 +10,7 @@ import yaml
 from disassemble_reassemble_check import (
     disassemble_reassemble_test as drt,
     skip_reassemble,
+    reassemble_using_makefile,
 )
 
 
@@ -103,6 +104,11 @@ class TestExamples(unittest.TestCase):
         }
         if config["reassemble"].get("skip", False):
             args["reassemble_function"] = skip_reassemble
+        if config["reassemble"].get("using_makefile", False):
+            args["reassemble_function"] = reassemble_using_makefile
+        makefile_target = config["reassemble"].get("makefile_target", False)
+        if makefile_target:
+            args["reassemble_makefile_target"]: makefile_target
         self.assertTrue(drt(path, binary, **args))
 
 

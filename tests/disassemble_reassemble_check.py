@@ -218,24 +218,27 @@ def skip_reassemble(compiler, binary, extra_flags):
     return True
 
 
-def reassemble(compiler, binary, extra_flags):
+# compiler, exec_wrapper, and makefile_target are not used in this function.
+def reassemble(
+    compiler, assembler, binary, extra_flags, exec_wrapper, makefile_target
+):
     """
     Reassemble the assembly file binary+'.s' into a new binary
     """
     print("# Reassembling", binary + ".s", "into", binary)
 
-    if "uasm" in compiler:
+    if "uasm" in assembler:
         obj = Path(binary).with_suffix(".o")
-        cmd = [compiler, *extra_flags, "-Fo", obj, binary + ".s"]
+        cmd = [assembler, *extra_flags, "-Fo", obj, binary + ".s"]
         proc = subprocess.run(cmd)
     elif platform.system() == "Linux":
         cmd = (
             build_chroot_wrapper()
-            + [compiler, binary + ".s", "-o", binary]
+            + [assembler, binary + ".s", "-o", binary]
             + extra_flags
         )
     elif platform.system() == "Windows":
-        cmd = [compiler, binary + ".s"] + extra_flags
+        cmd = [assembler, binary + ".s"] + extra_flags
 
         if "/link" not in cmd:
             cmd.append("/link")
@@ -257,17 +260,21 @@ def reassemble(compiler, binary, extra_flags):
     return True
 
 
-def reassemble_using_makefile(assembler, binary, extra_flags):
+def reassemble_using_makefile(
+    compiler, assembler, binary, extra_flags, exec_wrapper, makefile_target
+):
     def quote_args(*args):
         return " ".join(shlex.quote(arg) for arg in args)
 
     # Copy the current environment and modify the copy.
     env = dict(os.environ)
+    env["CC"] = compiler
     env["AS"] = assembler
     env["ASFLAGS"] = quote_args(*extra_flags)
+    env["EXEC"] = exec_wrapper
     print("# Reassembling", binary + ".s", "into", binary)
     completedProcess = subprocess.run(
-        make("reassemble"), env=env, stdout=subprocess.DEVNULL
+        make(makefile_target), env=env, stdout=subprocess.DEVNULL
     )
     if completedProcess.returncode != 0:
         print(bcolors.fail("# Reassembly failed\n"))
@@ -332,6 +339,7 @@ def disassemble_reassemble_test(
     strip=False,
     sstrip=False,
     reassemble_function=reassemble,
+    reassemble_makefile_target="reassemble",
     skip_test=False,
     exec_wrapper=None,
     arch=None,
@@ -405,7 +413,12 @@ def disassemble_reassemble_test(
                     disassembly_errors += 1
                     continue
                 if not reassemble_function(
-                    reassembly_compiler, binary, extra_reassemble_flags
+                    compiler,
+                    reassembly_compiler,
+                    binary,
+                    extra_reassemble_flags,
+                    exec_wrapper,
+                    reassemble_makefile_target,
                 ):
                     reassembly_errors += 1
                     continue
