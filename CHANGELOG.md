@@ -2,6 +2,8 @@
 * Update code inference to use weighted interval scheduling to resolve blocks;
   this improves code inference results, especially on ARM.
 * ARM: Discover unreferenced code blocks occurring after literal pools.
+* Refactored CFG inference. It now infers more kinds of indirect calls and
+  and branches using value analysis, data accesses, and relocations.
 * ELF: Infer `SHARED` or `PIE` for `DYN` binary type
 * ELF: Generate `elfDynamicInit` and `elfDynamicFini` auxdata
 
