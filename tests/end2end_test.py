@@ -108,7 +108,7 @@ class TestExamples(unittest.TestCase):
             args["reassemble_function"] = reassemble_using_makefile
         makefile_target = config["reassemble"].get("makefile_target", False)
         if makefile_target:
-            args["reassemble_makefile_target"]: makefile_target
+            args["reassemble_makefile_target"] = makefile_target
         self.assertTrue(drt(path, binary, **args))
 
 
