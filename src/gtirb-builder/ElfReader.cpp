@@ -1271,7 +1271,7 @@ void ElfReader::addAuxData()
     {
         DynamicEntryTuples.insert({it->first, it->second});
     }
-    Module->addAuxData<gtirb::provisional_schema::DynamicEntries>(std::move(DynamicEntryTuples));
+    Module->addAuxData<gtirb::schema::DynamicEntries>(std::move(DynamicEntryTuples));
 }
 
 std::string ElfReader::getRelocationType(const LIEF::ELF::Relocation &Entry)

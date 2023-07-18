@@ -77,6 +77,8 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<SouffleOutputs>();
     gtirb::AuxDataContainer::registerAuxDataType<RawEntries>();
     gtirb::AuxDataContainer::registerAuxDataType<Overlay>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfDynamicInit>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfDynamicFini>();
 }
 
 void registerDatalogLoaders()
