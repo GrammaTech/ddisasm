@@ -89,6 +89,13 @@ namespace gtirb
             typedef std::set<auxdata::Relocation> Type;
         };
 
+        /// \brief Auxiliary data describing a binary's dynamic entries.
+        struct DynamicEntries
+        {
+            static constexpr const char* Name = "dynamicEntries";
+            typedef std::set<auxdata::ElfDynamicEntry> Type;
+        };
+
         /// \brief Auxiliary data mapping a section index to a section UUID.
         struct SectionIndex
         {

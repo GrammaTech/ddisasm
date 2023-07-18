@@ -1,6 +1,7 @@
 import os
 import platform
 import unittest
+import re
 import subprocess
 from disassemble_reassemble_check import (
     compile,
@@ -352,6 +353,58 @@ class AuxDataTests(unittest.TestCase):
 
             # compare the relations directories
             subprocess.check_call(["diff", "dbg", "aux"])
+
+    def assert_regex_match(self, text, pattern):
+        """
+        Like unittest's assertRegex, but also return the match object on
+        success.
+
+        assertRegex provides a nice output on failure, but doesn't return the
+        match object, so we assert, and then search.
+        """
+        compiled = re.compile(pattern)
+        self.assertRegex(text, compiled)
+        return re.search(compiled, text)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_dynamic_init_fini(self):
+        """
+        Test generating auxdata from DT_INIT and DT_FINI dynamic entries
+        """
+        binary = "ex"
+        with cd(ex_dir / "ex_dynamic_initfini"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+
+            # Ensure INIT / FINI are present (so that this breaks if compiler
+            # behavior changes in the future)
+            readelf = subprocess.run(
+                ["readelf", "--dynamic", binary],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            template = r"0x[0-9a-f]+\s+\({}\)\s+(0x[0-9a-f]+)"
+            init_match = self.assert_regex_match(
+                readelf.stdout, template.format("INIT")
+            )
+            fini_match = self.assert_regex_match(
+                readelf.stdout, template.format("FINI")
+            )
+
+            self.assertTrue(disassemble(binary, format="--ir")[0])
+
+            ir = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir.modules[0]
+            init = m.aux_data["elfDynamicInit"].data
+            fini = m.aux_data["elfDynamicFini"].data
+
+            self.assertIsInstance(init, gtirb.CodeBlock)
+            self.assertIsInstance(fini, gtirb.CodeBlock)
+
+            self.assertEqual(int(init_match.group(1), 16), init.address)
+            self.assertEqual(int(fini_match.group(1), 16), fini.address)
 
 
 class RawGtirbTests(unittest.TestCase):

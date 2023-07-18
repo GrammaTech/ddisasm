@@ -1467,6 +1467,44 @@ void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram &Program)
     }
 }
 
+void buildDynamicAuxdata(gtirb::Module &Module)
+{
+    auto DynamicEntries = Module.getAuxData<gtirb::schema::DynamicEntries>();
+    if(DynamicEntries)
+    {
+        for(auto &[Key, Value] : *DynamicEntries)
+        {
+            if(Key == "INIT")
+            {
+                auto CB = Module.findCodeBlocksAt(gtirb::Addr(Value));
+                if(CB.empty())
+                {
+                    std::cerr << "WARNING: No code block created at DT_INIT\n";
+                }
+                else
+                {
+                    gtirb::UUID UUID = CB.begin()->getUUID();
+                    Module.addAuxData<gtirb::schema::ElfDynamicInit>(std::move(UUID));
+                }
+            }
+            else if(Key == "FINI")
+            {
+                auto CB = Module.findCodeBlocksAt(gtirb::Addr(Value));
+                if(CB.empty())
+                {
+                    std::cerr << "WARNING: No code block created at DT_FINI\n";
+                    continue;
+                }
+                else
+                {
+                    gtirb::UUID UUID = CB.begin()->getUUID();
+                    Module.addAuxData<gtirb::schema::ElfDynamicFini>(std::move(UUID));
+                }
+            }
+        }
+    }
+}
+
 void shiftThumbBlocks(gtirb::Module &Module)
 {
     // Find thumb code blocks.
@@ -1551,6 +1589,7 @@ void disassembleModule(gtirb::Context &Context, gtirb::Module &Module,
     buildCFG(Context, Module, Program);
     buildPadding(Module, Program);
     buildComments(Module, Program, SelfDiagnose);
+    buildDynamicAuxdata(Module);
     updateEntryPoint(Module, Program);
     removeSymbolVersionsFromNames(Module);
     buildArchInfo(Module, Program);
