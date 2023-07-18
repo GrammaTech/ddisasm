@@ -211,4 +211,4 @@ tests:
       flags: ["-nostartfiles"]
       skip: false
       using_makefile: true
-      makefile_target: reassemble_bar
+      makefile_target: "reassemble_bar"

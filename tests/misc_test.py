@@ -77,6 +77,7 @@ class IFuncSymbolsTests(unittest.TestCase):
             self.assertTrue(disassemble(binary, format="--asm")[0])
             self.assertTrue(
                 reassemble(
+                    "",
                     "gcc",
                     binary,
                     extra_flags=[
@@ -84,6 +85,8 @@ class IFuncSymbolsTests(unittest.TestCase):
                         "-Wl,--version-script=ex.map",
                         "-nostartfiles",
                     ],
+                    exec_wrapper="",
+                    makefile_target="",
                 )
             )
 
@@ -428,7 +431,14 @@ class RawGtirbTests(unittest.TestCase):
             self.assertTrue(disassemble("ex.gtirb", format="--asm")[0])
 
             self.assertTrue(
-                reassemble("gcc", "ex.gtirb", extra_flags=["-nostartfiles"])
+                reassemble(
+                    "",
+                    "gcc",
+                    "ex.gtirb",
+                    extra_flags=["-nostartfiles"],
+                    exec_wrapper="",
+                    makefile_target="",
+                )
             )
             self.assertTrue(test())
 
@@ -505,6 +515,7 @@ class PeResourcesTests(unittest.TestCase):
                 ml, entry = "ml", "_EntryPoint"
             self.assertTrue(
                 reassemble(
+                    "",
                     ml,
                     "ex.exe",
                     extra_flags=[
@@ -513,6 +524,8 @@ class PeResourcesTests(unittest.TestCase):
                         "/entry:" + entry,
                         "/subsystem:console",
                     ],
+                    exec_wrapper="",
+                    makefile_target="",
                 )
             )
 
