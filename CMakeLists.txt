@@ -422,6 +422,36 @@ if(DDISASM_ENABLE_TESTS)
 endif()
 
 # ---------------------------------------------------------------------------
+# Package policy enforcement
+# ---------------------------------------------------------------------------
+
+if(DDISASM_PACKAGE_POLICY)
+  set(PACKAGE_POLICY ${DDISASM_PACKAGE_POLICY})
+elseif(ENABLE_CONAN OR WIN32)
+  set(PACKAGE_POLICY conan)
+else()
+  set(PACKAGE_POLICY unix)
+endif()
+
+if(PACKAGE_POLICY STREQUAL "unix")
+
+  # Provides copyright file for Unix packages.
+  install(
+    FILES ${CMAKE_SOURCE_DIR}/LICENSE.txt
+    COMPONENT license
+    DESTINATION share/doc/ddisasm
+    RENAME copyright)
+
+elseif(PACKAGE_POLICY STREQUAL "conan")
+
+  # Provides LICENSE.txt for Conan packages
+  install(
+    FILES ${CMAKE_SOURCE_DIR}/LICENSE.txt
+    COMPONENT license
+    DESTINATION licenses)
+
+endif()
+# ---------------------------------------------------------------------------
 # Package generation with cpack
 # ---------------------------------------------------------------------------
 set(CPACK_PROJECT_CONFIG_FILE ${CMAKE_CURRENT_SOURCE_DIR}/cpack-config.cmake)
