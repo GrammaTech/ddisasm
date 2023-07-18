@@ -286,6 +286,12 @@ basic_target(Val):-
         ;
         entry_point(Val)
         ;
+        dynamic_entry("INIT",Addr),
+        Val = as(Addr,address)
+        ;
+        dynamic_entry("FINI",Addr),
+        Val = as(Addr,address)
+        ;
         code_section(Name),
         loaded_section(Addr,_,Name),
         arch.instruction_at(Addr,Val)
@@ -606,6 +612,15 @@ Known blocks are blocks that must exist due to metadata.
 known_block(Block,"code",Size,"entry point"):-
     !binary_type("REL"),
     entry_point(Block),
+    block_candidate_boundaries(Block,"code",Beg,End),
+    Size = End - Beg.
+
+known_block(Block,"code",Size,cat("DT_",Entry)):-
+    (
+        Entry = "INIT";
+        Entry = "FINI"
+    ),
+    dynamic_entry(Entry,Block),
     block_candidate_boundaries(Block,"code",Beg,End),
     Size = End - Beg.
 
