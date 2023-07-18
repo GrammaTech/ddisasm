@@ -252,7 +252,7 @@ symbolic_operand_attribute(EA,2,"LO12"):-
     !relocation(EA,_,_,_,_,_,_),
     !relocation(as(Dest,address),"GLOB_DAT",_,_,_,_,_).
 
-/*
+/**
 OpIndex: operand index for the corresponding relocation
 */
 .decl lo_reloc_index(RelocType:symbol, OpIndex:unsigned)
