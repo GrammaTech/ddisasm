@@ -891,6 +891,8 @@ interval_schedule_tie(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB):-
     wis_memo(IPrev,LeaveWeight,_),
     I = IPrev + 1,
     unresolved_interval_best_block(I,BlockA,TypeA,SizeA,IWeight),
+    // Don't warn if the selected block is later discarded.
+    !discarded_block(BlockA,TypeA,SizeA,_,_),
     wis_prior(I,P),
     wis_memo(P,TakeWeight0,_),
     TakeWeight = TakeWeight0 + IWeight,
