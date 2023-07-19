@@ -194,10 +194,7 @@ padding(EA,Size):-
 .decl block_has_non_nop(Block:address)
 
 block_has_non_nop(Block):-
-    block_information(Block,_,BegAddr,EndAddr),
     code_in_refined_block(EA,Block),
-    EA >= BegAddr,
-    EA < EndAddr,
     !arch.is_nop(EA).
 
 .decl nop_block(Block:address)
