@@ -43,11 +43,11 @@ class LibrarySymbolsTests(unittest.TestCase):
             m = ir_library.modules[0]
 
             # foo is a symbol pointing to a code block
-            foo = [s for s in m.symbols if s.name == "foo"][0]
+            foo = next(m.symbols_named("foo"))
             assert isinstance(foo.referent, gtirb.CodeBlock)
 
             # bar calls through the plt
-            bar = [s for s in m.symbols if s.name == "bar"][0]
+            bar = next(m.symbols_named("bar"))
             bar_block = bar.referent
             callee = [
                 e.target
@@ -282,9 +282,7 @@ class AuxDataTests(unittest.TestCase):
                     ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
                     m = ir_library.modules[0]
 
-                    main_sym = next(
-                        sym for sym in m.symbols if sym.name == "main"
-                    )
+                    main_sym = next(m.symbols_named("main"))
                     main_block = main_sym.referent
                     outedges = [
                         edge
@@ -529,7 +527,7 @@ class SymbolSelectionTests(unittest.TestCase):
         with symbol 'block_name' points to a symbol with
         name 'target_name'
         """
-        sym = next(s for s in m.symbols if s.name == block_name)
+        sym = next(m.symbols_named(block_name))
         self.assertIsInstance(sym.referent, gtirb.CodeBlock)
         block = sym.referent
         sexpr = sorted(
@@ -564,12 +562,14 @@ class SymbolSelectionTests(unittest.TestCase):
             self.check_first_sym_expr(m, "Block_bye", "bye_obj")
 
             # check symbols at the end of sections
-            syms = [
-                s
-                for s in m.symbols
-                if s.name
-                in ["__init_array_end", "end_of_data_section", "edata", "_end"]
-            ]
+            syms = []
+            for s in [
+                "__init_array_end",
+                "end_of_data_section",
+                "edata",
+                "_end",
+            ]:
+                syms += m.symbols_named(s)
             self.assertTrue(all(s.at_end for s in syms))
 
             # check chosen function names
@@ -626,7 +626,7 @@ class ElfSymbolAuxdataTests(unittest.TestCase):
             self.assertIn((["libfoo.so"], VER_FLG_BASE), defs.values())
 
             foo_symbols = sorted(
-                [sym for sym in m.symbols if sym.name == "foo"],
+                m.symbols_named("foo"),
                 key=lambda x: x.referent.address,
             )
             self.assertEqual(len(foo_symbols), 3)
@@ -650,7 +650,7 @@ class ElfSymbolAuxdataTests(unittest.TestCase):
             self.assertTrue(symver_entries[foo2][1])
             self.assertFalse(symver_entries[foo3][1])
 
-            bar_symbols = [sym for sym in m.symbols if sym.name == "bar"]
+            bar_symbols = m.symbols_named("bar")
 
             bar1, bar2 = bar_symbols
             # Check needed symbol versions
