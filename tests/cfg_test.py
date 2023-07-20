@@ -13,6 +13,7 @@ ex_dir = Path("./examples/")
 ex_asm_dir = ex_dir / "asm_examples"
 ex_arm_asm_dir = ex_dir / "arm_asm_examples"
 ex_arm64_asm_dir = ex_dir / "arm64_asm_examples"
+ex_mips_asm_dir = ex_dir / "mips_asm_examples"
 
 
 class CfgTests(unittest.TestCase):
@@ -34,9 +35,7 @@ class CfgTests(unittest.TestCase):
 
             # check that the jumping_block has edges
             # to all the jump table entries
-            jumping_block_symbol = [
-                s for s in m.symbols if s.name == "jumping_block"
-            ][0]
+            jumping_block_symbol = next(m.symbols_named("jumping_block"))
             assert isinstance(jumping_block_symbol.referent, gtirb.CodeBlock)
             jumping_block = jumping_block_symbol.referent
             expected_dest_blocks = [
@@ -73,7 +72,7 @@ class CfgTests(unittest.TestCase):
 
                 # check that the .jump has edges to only the four jump table
                 # entries
-                jump_sym = next(s for s in m.symbols if s.name == ".jump")
+                jump_sym = next(m.symbols_named(".jump"))
                 self.assertEqual(
                     len(list(jump_sym.referent.outgoing_edges)), 4
                 )
@@ -99,8 +98,33 @@ class CfgTests(unittest.TestCase):
             m = ir_library.modules[0]
 
         # check that the .jump has edges to only the four jump table entries
-        jump_sym = next(s for s in m.symbols if s.name == ".jump")
+        jump_sym = next(m.symbols_named(".jump"))
         self.assertEqual(len(list(jump_sym.referent.outgoing_edges)), 4)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_nop_block(self):
+        """
+        Test that nop_block is correctly recognized, and no fallthrough edge
+        to main is created.
+        """
+        binary = "ex"
+        with cd(ex_mips_asm_dir / "ex_nop_block"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            self.assertTrue(disassemble(binary, format="--ir")[0])
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+
+            main_sym = next(m.symbols_named("main"))
+            main_block = main_sym.referent
+            inedges = [
+                edge
+                for edge in main_block.incoming_edges
+                if edge.label.type == EdgeType.Fallthrough
+            ]
+            self.assertEqual(0, len(inedges))
 
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
@@ -207,7 +231,7 @@ class CfgTests(unittest.TestCase):
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
 
-            sym = [s for s in m.symbols if s.name == "main"][0]
+            sym = next(m.symbols_named("main"))
             block = sym.referent
             self.assertEqual(len(list(block.outgoing_edges)), 2)
 
@@ -235,7 +259,7 @@ class CfgTests(unittest.TestCase):
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
 
-            sym = [s for s in m.symbols if s.name == "main"][0]
+            sym = next(m.symbols_named("main"))
             block = sym.referent
             self.assertEqual(len(list(block.outgoing_edges)), 1)
 
@@ -267,7 +291,7 @@ class CfgTests(unittest.TestCase):
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
 
-            main = [s for s in m.symbols if s.name == "main"][0]
+            main = next(m.symbols_named("main"))
             main_block = main.referent
 
             # check on bxeq lr
@@ -288,7 +312,7 @@ class CfgTests(unittest.TestCase):
                 self.assertTrue(edge2.label.conditional)
 
             # check on bx lr
-            sym = [s for s in m.symbols if s.name == "foo"][0]
+            sym = next(m.symbols_named("foo"))
             bx_block = sym.referent
 
             self.assertEqual(len(list(bx_block.outgoing_edges)), 1)
@@ -373,9 +397,7 @@ class CfgTests(unittest.TestCase):
                     # check that there are symbolic expressions for all four
                     # jump table entries
                     if example_dir.startswith("ex_tbb_r3_"):
-                        table_sym = next(
-                            s for s in m.symbols if s.name == "table"
-                        )
+                        table_sym = next(m.symbols_named("table"))
                         table_address = table_sym.referent.address
                     else:
                         table_address = jumping_block.address + len(
@@ -504,7 +526,7 @@ class CfgTests(unittest.TestCase):
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
 
-            main = next(s for s in m.symbols if s.name == "main")
+            main = next(m.symbols_named("main"))
             main_block = main.referent
             jump_block = next(
                 edge
