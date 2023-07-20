@@ -253,14 +253,6 @@ invalid(EA,"arm64-udf"):-
     binary_isa("ARM64"),
     instruction_get_operation(EA,"UDF").
 
-invalid(EA,"INT3"):-
-    binary_format("PE"),
-    (
-        binary_isa("X86");
-        binary_isa("X64")
-    ),
-    instruction_get_operation(EA,"INT3").
-
 .decl possible_ea(EA:address) inline
 
 possible_ea(EA):-
