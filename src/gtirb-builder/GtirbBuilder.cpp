@@ -45,11 +45,18 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
 
         // LIEF's DYNSYM_COUNT_METHOD::AUTO for counting dynamic symbols
         // is broken in 0.13.x, use the COUNT_SECTION method until 0.14
-        // is released
+        // is released.
         std::shared_ptr<LIEF::Binary> Binary{
             LIEF::ELF::is_elf(Path)
                 ? LIEF::ELF::Parser::parse(Path, LIEF::ELF::DYNSYM_COUNT_METHODS::COUNT_SECTION)
                 : LIEF::Parser::parse(Path)};
+
+        // If the binary had no sections, parse again with AUTO count method.
+        if(LIEF::ELF::is_elf(Path) && Binary->sections().empty())
+        {
+            Binary = LIEF::ELF::Parser::parse(Path, LIEF::ELF::DYNSYM_COUNT_METHODS::COUNT_AUTO);
+        }
+
         if(!Binary)
         {
             return GtirbBuilder::build_error::ParseError;
