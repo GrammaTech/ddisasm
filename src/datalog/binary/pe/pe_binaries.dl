@@ -181,18 +181,29 @@ is_padding(EA):-
 Identify series of jump trampolines prepended to the .text section
 of PE binaries built with "incremental linking".
 */
-.decl incremental_linking_trampoline(EA:address)
-.output incremental_linking_trampoline
+.decl incremental_linking_candidate(EA:address)
 
-incremental_linking_trampoline(First):-
+incremental_linking_candidate(First):-
     binary_format("PE"),
     First = min EA: { instruction(EA,_,_,_,_,_,_,_,_,_), !is_padding(EA) },
     unconditional_jump(First).
 
-incremental_linking_trampoline(Next):-
-    incremental_linking_trampoline(EA),
+incremental_linking_candidate(Next):-
+    incremental_linking_candidate(EA),
     next(EA,Next),
     unconditional_jump(Next).
+
+/**
+Select the 'First' address and 'Last' address of candidate jump trampolines,
+where the number of consecutives jumps exceeds a threshold indicative of
+incremental linking.
+*/
+.decl incremental_linking(First:address,Last:address)
+
+incremental_linking(First,Last):-
+    Count = count : { incremental_linking_candidate(_) }, Count > 5,
+    First = min X : { incremental_linking_candidate(X) },
+    Last = max X : { incremental_linking_candidate(X) }.
 
 /**
 Locate data directory and debug data merged with the text section. Note that
@@ -217,12 +228,11 @@ data_region(Start,Size):-
     Last = max End : { merged_data_region(_,End) },
     (
         // Merged .rdata begins after incremental linking trampolines.
-        Count = count : { incremental_linking_trampoline(_) }, Count > 10,
-        EA = max X : { incremental_linking_trampoline(X) },
+        incremental_linking(_,EA),
         next(EA,Start)
         ;
         // Code entry follows PE data directories or debug info.
-        !incremental_linking_trampoline(_),
+        !incremental_linking(_,_),
         entry_point(Entry),
         Last <= Entry,
         loaded_section(Start,_,".text")
