@@ -498,6 +498,9 @@ tests:
     <<: *assembly
     flags: ["-no-pie", "-nostartfiles"]
 
+  - name: ex_boundary_sym_expr2
+    <<: *assembly
+
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
   # ----------------------------------------------------------------------------
@@ -559,6 +562,10 @@ tests:
     <<: *test-strip-default
 
   - name: ex_fde_entry
+    <<: *assembly
+    <<: *test-strip-default
+
+  - name: ex_boundary_sym_expr2
     <<: *assembly
     <<: *test-strip-default
 

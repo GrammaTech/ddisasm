@@ -627,6 +627,16 @@ boundary_sym_expr(EA+InstrOffset,ImmediateAddr):-
     dest_enlarged_data_section(EA_def,Reg,_,_,_,_,EndSection),
     ImmediateAddr = EndSection.
 
+// Data entry that points to the end of an address array as well as the end of
+// a section.
+boundary_sym_expr(EA,ArrayEnd):-
+    binary_type("EXEC"),
+    aligned_address_in_data(EA,ArrayEnd),
+    loaded_section(_,ArrayEnd,_),
+    arch.pointer_size(Size),
+    address_array(ArrayEnd-Size,_,ArrayStart),
+    !address_array(ArrayEnd,_,ArrayStart).
+
 /* Symbolic expression that points to the
 end of a section, which is not the beginning of another.
 If we have known symbols at the end of the section,
