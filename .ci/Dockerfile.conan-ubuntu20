@@ -14,7 +14,6 @@ FROM ubuntu:20.04
 # Use bash for more convenient variable substitution syntax
 SHELL ["/bin/bash", "-c"]
 
-RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 
 # Install APT packages
