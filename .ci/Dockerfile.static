@@ -3,7 +3,6 @@
 # ------------------------------------------------------------------------------
 FROM ubuntu:20.04 AS souffle
 
-RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 
 RUN apt-get -y update \
@@ -34,7 +33,6 @@ RUN git clone -b 2.4 https://github.com/souffle-lang/souffle && \
 # ------------------------------------------------------------------------------
 FROM ubuntu:20.04 AS lief
 
-RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 
 RUN apt-get -y update && \
@@ -53,7 +51,6 @@ RUN git clone -b 0.13.0 --depth 1 https://github.com/lief-project/LIEF.git /usr/
 # ------------------------------------------------------------------------------
 FROM ubuntu:20.04 AS libehp
 
-RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 
 RUN apt-get -y update && \
@@ -72,7 +69,6 @@ RUN git clone https://github.com/GrammaTech/libehp.git /usr/local/src/libehp && 
 # ------------------------------------------------------------------------------
 FROM ubuntu:14.04 as UASM
 
-RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 
 RUN apt-get update -y && \
@@ -95,7 +91,6 @@ FROM docker.grammatech.com/rewriting/gtirb-pprinter/static
 # Use bash for more convenient variable substitution syntax
 SHELL ["/bin/bash", "-c"]
 
-RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 
 # Install APT packages
