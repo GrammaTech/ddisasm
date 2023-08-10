@@ -633,6 +633,8 @@ boundary_sym_expr(EA,ArrayEnd):-
     binary_type("EXEC"),
     aligned_address_in_data(EA,ArrayEnd),
     loaded_section(_,ArrayEnd,_),
+    loaded_section(ArrayEnd,_,Name),
+    special_data_section(Name),
     arch.pointer_size(Size),
     address_array(ArrayEnd-Size,_,ArrayStart),
     !address_array(ArrayEnd,_,ArrayStart).
