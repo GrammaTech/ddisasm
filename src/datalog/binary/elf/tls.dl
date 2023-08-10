@@ -672,6 +672,17 @@ symbolic_operand_attribute(EA,Index,Type):-
         Type = "TLSLDM"
     ).
 
+symbolic_expr_from_relocation(EA,Size,"",0,Dest):-
+    arch.pointer_size(Size),
+    (
+        relocation(EA,"DTPMOD64","",_,_,_,_),
+        !relocation(EA+Size,"DTPOFF64",_,_,_,_,_)
+        ;
+        relocation(EA,"TLS_DTPMOD32","",_,_,_,_),
+        !relocation(EA,"TLS_DTPOFF32",_,_,_,_,_)
+    ),
+    tls_segment(Dest,_,_).
+
 // Initial Executable (IE) TLS reference to GOT:
 //   i.e.  X@GOTTPOFF + FS:[REG]
 symbolic_operand_attribute(EA,Index,"GOT"),
