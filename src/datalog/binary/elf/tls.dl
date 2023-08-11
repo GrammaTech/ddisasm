@@ -607,20 +607,6 @@ got_reference(EA,Symbol):-
     arch.pointer_size(Size),
     symbolic_expr_symbol_minus_symbol(EA+Size,Size,_,Symbol,_,_).
 
-// Infer indirect symbol references from @DTPOFF operands (LD).
-got_reference(EA,Symbol):-
-    (
-        relocation(EA,"DTPMOD64","",_,_,_,_),
-        pc_relative_operand(Load,_,EA)
-        ;
-        relocation(EA,"TLS_DTPMOD32","",_,_,_,_),
-        got_relative_operand(Load,_,EA)
-    ),
-    tls_get_addr(Load,Call,_),
-    reg_def_use.def_used(Call,_,Ref,_),
-    tls_relative_operand(Ref,_,Dest,"DTPOFF"),
-    symbol(Dest,_,"TLS",_,_,_,_,_,Symbol).
-
 got_reference(EA,Symbol):-
     tls_segment(Start,_,_),
     tls_descriptor(EA,Offset),
