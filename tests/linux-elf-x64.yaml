@@ -279,31 +279,10 @@ tests:
   - name: ex_dynamic_tls2
     <<: *default
     binary: fun.so
-    build:
-      <<: *default-build
-      # Use -O2 to generate lea RDI,[RIP+buffer@TLSLD]; call __tls_get_addr@PLT
-      optimizations: ["-O2"]
     reassemble:
       compiler: "gcc"
       flags: ["-shared", "-nostartfiles"]
       skip: false
-
-  # stripped version
-  - name: ex_dynamic_tls2
-    <<: *default
-    <<: *test-strip-default
-    binary: fun.so
-    build:
-      <<: *default-build
-      # Use -O2 to generate lea RDI,[RIP+buffer@TLSLD]; call __tls_get_addr@PLT
-      optimizations: ["-O2"]
-    reassemble:
-      compiler: "gcc"
-      flags: ["-shared", "-nostartfiles"]
-      skip: false
-    test:
-      strip_exe: "strip"
-      strip: true
 
   - name: ex_call_once
     <<: *default-cpp
@@ -444,6 +423,34 @@ tests:
   - name: ex_thread_local
     <<: *default
     <<: *test-strip-default
+
+  - name: ex_dynamic_tls
+    <<: *default
+    <<: *test-strip-default
+    binary: fun.so
+    reassemble:
+      compiler: "gcc"
+      flags: ["-shared", "-nostartfiles"]
+      skip: false
+
+  - name: ex_dynamic_tls
+    <<: *default
+    <<: *test-strip-default
+    binary: fun_initial_exec.so
+    reassemble:
+      compiler: "gcc"
+      flags: ["-shared", "-nostartfiles"]
+      skip: false
+
+  - name: ex_dynamic_tls2
+    <<: *default
+    <<: *test-strip-default
+    binary: fun.so
+    reassemble:
+      compiler: "gcc"
+      flags: ["-shared", "-nostartfiles"]
+      skip: false
+
 
   # ----------------------------------------------------------------------------
   # Assembly examples.

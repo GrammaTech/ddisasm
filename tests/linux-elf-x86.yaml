@@ -326,6 +326,14 @@ tests:
         - edge_instruction_group
         #- cfg_completeness
 
+  - name: ex_dynamic_tls2
+    <<: *position-independent
+    binary: fun.so
+    reassemble:
+      compiler: "gcc"
+      flags: ["-m32","-shared", "-nostartfiles"]
+      skip: false
+
   - name: ex_dyn_library2
     <<: *position-independent
     binary: fun.so
@@ -345,6 +353,32 @@ tests:
     <<: *position-independent
     <<: *strip
 
+  - name: ex_dynamic_tls
+    <<: *position-independent
+    <<: *strip
+    binary: fun.so
+    reassemble:
+      compiler: "gcc"
+      flags: ["-m32", "-shared", "-nostartfiles"]
+      skip: false
+
+  - name: ex_dynamic_tls
+    <<: *position-independent
+    <<: *strip
+    binary: fun_initial_exec.so
+    reassemble:
+      compiler: "gcc"
+      flags: ["-m32", "-shared", "-nostartfiles"]
+      skip: false
+
+  - name: ex_dynamic_tls2
+    <<: *position-independent
+    <<: *strip
+    binary: fun.so
+    reassemble:
+      compiler: "gcc"
+      flags: ["-m32","-shared", "-nostartfiles"]
+      skip: false
 
   # ----------------------------------------------------------------------------
   # Assembly examples.
