@@ -360,8 +360,8 @@ Local Dynamic TLS uses a single DTPMOD relocation, and __tls_get_addr returns
 the start of the TLS block. Variables are addressed with integral offsets in
 indirect operands.
 
-We identify @TLSLD relocations by a call to __tls_get_address followed by the
-use of non-zero offsets in indirect operands. For x86-64, we distinguish @TLSGD
+We identify @TLSLD relocations by a call to __tls_get_address that
+are not global dynamic. For x86-64, we distinguish @TLSGD
 from @TLSLD with the code template described in 'tls_global_dynamic'.
 */
 .decl tls_local_dynamic(EA:address)
@@ -369,11 +369,8 @@ from @TLSLD with the code template described in 'tls_global_dynamic'.
 tls_local_dynamic(Load):-
     binary_format("ELF"),
     tls_segment(Start,_,_),
-    tls_get_addr(Load,Call,Start),
-    !tls_global_dynamic(Load),
-    reg_def_use.def_used(Call,Reg,EA,Index),
-    instruction_get_op(EA,Index,Op),
-    op_indirect_mapped(Op,"NONE",Reg,_,_,_,_).
+    tls_get_addr(Load,_,Start),
+    !tls_global_dynamic(Load).
 
 /**
 A 'tlsdesc' struct is located in the GOT at address 'EA' and references a
@@ -598,7 +595,7 @@ got_reference(EA,Symbol):-
     ),
     Symbol != "".
 
-// Infer indirect symbol references from DTPOFF offsets in GOT (GD).
+// Infer indirect symbol references from DTPOFF offsets in GOT (GD and LD).
 got_reference(EA,Symbol):-
     (
         relocation(EA,"DTPMOD64","",_,_,_,_);
@@ -606,20 +603,6 @@ got_reference(EA,Symbol):-
     ),
     arch.pointer_size(Size),
     symbolic_expr_symbol_minus_symbol(EA+Size,Size,_,Symbol,_,_).
-
-// Infer indirect symbol references from @DTPOFF operands (LD).
-got_reference(EA,Symbol):-
-    (
-        relocation(EA,"DTPMOD64","",_,_,_,_),
-        pc_relative_operand(Load,_,EA)
-        ;
-        relocation(EA,"TLS_DTPMOD32","",_,_,_,_),
-        got_relative_operand(Load,_,EA)
-    ),
-    tls_get_addr(Load,Call,_),
-    reg_def_use.def_used(Call,_,Ref,_),
-    tls_relative_operand(Ref,_,Dest,"DTPOFF"),
-    symbol(Dest,_,"TLS",_,_,_,_,_,Symbol).
 
 got_reference(EA,Symbol):-
     tls_segment(Start,_,_),
@@ -641,13 +624,10 @@ inferred_symbol(EA,"_TLS_MODULE_BASE_","LOCAL","DEFAULT","NONE","Beg"):-
     tls_segment(EA,_,_).
 
 // Symbolize tls_index.ti_offset value in GOT (i.e. DTPOFF relocation).
-symbol_minus_symbol(EA+Size,Size,Start,Dest,1,0):-
+symbol_minus_symbol(EA+Size,Size,Start,Start+Offset,1,0):-
     arch.pointer_size(Size),
     tls_segment(Start,_,_),
-    tls_global_dynamic(Load),
-    tls_get_addr(Load,_,Dest),
-    symbolic_operand(Load,_,EA,"data"),
-    tls_index(EA,_).
+    tls_index(EA,Offset).
 
 // General Dynamic (GD) TLS reference to GOT:
 //   i.e.  X@TLSGD + __tls_get_addr()
@@ -671,6 +651,7 @@ symbolic_operand_attribute(EA,Index,Type):-
         relocation(Dest,"TLS_DTPMOD32",_,_,_,_,_),
         Type = "TLSLDM"
     ).
+
 
 // Initial Executable (IE) TLS reference to GOT:
 //   i.e.  X@GOTTPOFF + FS:[REG]

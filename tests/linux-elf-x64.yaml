@@ -276,6 +276,14 @@ tests:
         - edge_instruction_group
         #- cfg_completeness
 
+  - name: ex_dynamic_tls2
+    <<: *default
+    binary: fun.so
+    reassemble:
+      compiler: "gcc"
+      flags: ["-shared", "-nostartfiles"]
+      skip: false
+
   - name: ex_call_once
     <<: *default-cpp
     reassemble:
@@ -415,6 +423,34 @@ tests:
   - name: ex_thread_local
     <<: *default
     <<: *test-strip-default
+
+  - name: ex_dynamic_tls
+    <<: *default
+    <<: *test-strip-default
+    binary: fun.so
+    reassemble:
+      compiler: "gcc"
+      flags: ["-shared", "-nostartfiles"]
+      skip: false
+
+  - name: ex_dynamic_tls
+    <<: *default
+    <<: *test-strip-default
+    binary: fun_initial_exec.so
+    reassemble:
+      compiler: "gcc"
+      flags: ["-shared", "-nostartfiles"]
+      skip: false
+
+  - name: ex_dynamic_tls2
+    <<: *default
+    <<: *test-strip-default
+    binary: fun.so
+    reassemble:
+      compiler: "gcc"
+      flags: ["-shared", "-nostartfiles"]
+      skip: false
+
 
   # ----------------------------------------------------------------------------
   # Assembly examples.
