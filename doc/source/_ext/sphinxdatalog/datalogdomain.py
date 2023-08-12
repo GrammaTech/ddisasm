@@ -353,7 +353,12 @@ def load_dependence_graph():
     """
     global SCC_GRAPH
     dependencies = (
-        (THIS_DIRECTORY.parent.parent / "3-REFERENCES" / "src_docs" / "dependencies.csv")
+        (
+            THIS_DIRECTORY.parent.parent
+            / "DATALOG-API"
+            / "src_docs"
+            / "dependencies.csv"
+        )
         .read_text()
         .splitlines()
     )

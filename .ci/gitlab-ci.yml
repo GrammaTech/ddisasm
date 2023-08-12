@@ -579,10 +579,10 @@ pages:
   artifacts:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
-      - public
+      - doc/build/html
   script:
-    - python3  doc/build_index.py
-    - python3 -m sphinx  doc public
+    - cd doc
+    - make html
 
 # We want to generate documentation for
 # releases but not publish it in gitlab directly.

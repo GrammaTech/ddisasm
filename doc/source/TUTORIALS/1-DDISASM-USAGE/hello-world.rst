@@ -1,0 +1,56 @@
+Rewriting hello world
+=====================================================
+
+
+Disassemble
+-------------
+
+Ddisasm can be used to disassemble an binary into the [GTIRB](https://github.com/grammatech/gtirb) representation:
+
+.. code-block:: bash
+
+    ddisasm examples/ex1/ex --ir ex.gtirb
+
+
+
+Once you have the GTIRB representation, you can make programmatic changes to the
+binary using [GTIRB](https://github.com/grammatech/gtirb) or [gtirb-rewriting](https://github.com/grammatech/gtirb-rewriting).
+
+Reassemble
+-------------
+
+Then, you can use [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter) to produce
+a new version of the binary:
+
+.. code-block:: bash
+
+    gtirb-pprinter ex.gtirb -b ex_rewritten
+
+Internally, `gtirb-pprinter` will generate an assembly file and invoke the compiler/assembler (e.g. gcc)
+to produce a new binary. `gtirb-pprinter` will take care or generating all the necessary command line
+options to generate a new binary, including compilation options, library dependencies, or version linker scripts.
+
+You can also use `gtirb-pprinter` to generate an assembly listing for manual modification:
+
+.. code-block:: bash
+
+    gtirb-pprinter ex.gtirb --asm ex.s
+
+
+This assembly listing can then be manually recompiled:
+
+.. code-block:: bash
+
+    gcc -nostartfiles ex.s -o ex_rewritten
+
+
+Run
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can run the rewritten program now
+.. code-block:: bash
+
+    ./ex_rewritten
+
+
+Congratulations!

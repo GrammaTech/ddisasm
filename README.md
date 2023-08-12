@@ -5,7 +5,7 @@ DDisasm is a *fast* disassembler which is *accurate* enough for the
 resulting assembly code to be reassembled.  DDisasm is implemented
 using the datalog ([souffle](https://github.com/souffle-lang/souffle))
 declarative logic programming language to compile disassembly rules
-and heuristics.  The disassembler first parses ELF file information
+and heuristics.  The disassembler first parses ELF/PE file information
 and decodes a superset of possible instructions to create an initial
 set of datalog facts.  These facts are analyzed to identify *code
 location*, *symbolization*, and *function boundaries*.  The results of
@@ -16,22 +16,41 @@ representation for binary analysis and reverse engineering.  The
 may then be used to pretty print the GTIRB to reassemblable assembly
 code.
 
-ddisasm supports disassembling ELF and PE binary formats on x86_32, x86_64,
+Ddisasm supports disassembling ELF and PE binary formats on x86_32, x86_64,
 ARM32, ARM64, and MIPS32 architectures.
 
 ## Usage
 
-ddisasm can be used to disassemble an ELF binary:
+Ddisasm can be used to disassemble an binary into the [GTIRB](https://github.com/grammatech/gtirb) representation:
+
+```bash
+ddisasm examples/ex1/ex --ir ex.gtirb
+```
+
+Once you have the GTIRB representation, you can make programmatic changes to the
+binary using [GTIRB](https://github.com/grammatech/gtirb) or [gtirb-rewriting](https://github.com/grammatech/gtirb-rewriting).
+
+Then, you can use [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter) to produce
+a new version of the binary:
 
 ```
-ddisasm examples/ex1/ex --asm ex.s
+gtirb-pprinter ex.gtirb -b ex_rewritten
+```
+Internally, `gtirb-pprinter` will generate an assembly file and invoke the compiler/assembler (e.g. gcc)
+to produce a new binary. `gtirb-pprinter` will take care or generating all the necessary command line
+options to generate a new binary, including compilation options, library dependencies, or version linker scripts.
+
+You can also use `gtirb-pprinter` to generate an assembly listing for manual modification:
+```bash
+gtirb-pprinter ex.gtirb --asm ex.s
 ```
 
-The generated assembly can then be rebuilt with gcc:
-
-```
+This assembly listing can then be manually recompiled:
+```bash
 gcc -nostartfiles ex.s -o ex_rewritten
 ```
+
+Please take a look at https://grammatech.github.io/ddisasm/ for additional documentation.
 
 ## Installing
 
@@ -257,6 +276,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md)
 ## External Contributors
 
  * Programming Language Group, The University of Sydney: Initial support for ARM64.
+ * Github user gogo2464: Documentation refactoring.
 
 ## AuxData
 
