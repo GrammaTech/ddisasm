@@ -3,13 +3,17 @@ import sys
 
 sys.path.append(os.path.abspath("./_ext"))
 
-extensions = ["sphinxdatalog.datalogdomain"]
+extensions = [
+    "recommonmark",
+    "sphinx_markdown_tables",
+    "sphinxdatalog.datalogdomain",
+]
 
 project = "Ddisasm"
 todo_include_todos = True
 primary_domain = "dl"
 default_role = "pred"
-html_title = "Ddisasm datalog documentation"
+html_title = "Ddisasm documentation"
 html_short_title = "Ddisasm docs"
 html_theme = "alabaster"
-html_theme_options = {"description": "Ddisasm's datalog internal API"}
+html_theme_options = {"description": "Ddisasm's documentation"}

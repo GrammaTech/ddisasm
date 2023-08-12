@@ -1,11 +1,11 @@
-API Reference
+Datalog API Reference
 =============================
 
 .. toctree::
     :glob:
     :titlesonly:
-    
-    3-REFERENCES/src_docs/**/*
-    3-REFERENCES/src_docs/*
+
+    DATALOG-API/src_docs/**/*
+    DATALOG-API/src_docs/*
 
 :ref:`predicateindex`

@@ -1,11 +1,9 @@
-Tutorial
+Tutorials
 =============================
 
 .. toctree::
     :glob:
     :titlesonly:
+    :numbered:
 
-    1-TUTORIALS/**/*
-    1-TUTORIALS/*
-
-:ref:`predicateindex`
+    TUTORIALS/**/*
