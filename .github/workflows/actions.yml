@@ -122,6 +122,7 @@ jobs:
       - name: Generate API documentation
         run: |
           cd doc
+          pip3 install -r requirements-docs.txt
           make html
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v1.0.8

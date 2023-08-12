@@ -1,0 +1,4 @@
+networkx
+recommonmark
+sphinx
+sphinx_markdown_tables

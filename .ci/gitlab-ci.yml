@@ -582,6 +582,7 @@ pages:
       - doc/build/html
   script:
     - cd doc
+    - pip3 install -r requirements-docs.txt
     - make html
 
 # We want to generate documentation for
@@ -595,10 +596,11 @@ pages-no-publish:
   artifacts:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
-      - public
+      - doc/build/html
   script:
-    - python3  doc/build_index.py
-    - python3 -m sphinx  doc public
+    - cd doc
+    - pip3 install -r requirements-docs.txt
+    - make html
 
 static-drivers:
   stage: deploy
