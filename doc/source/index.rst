@@ -5,7 +5,7 @@ Getting started
     :maxdepth: 2
     :titlesonly:
 
-    tutorials.rst
+    Tutorials.rst
 
 Applications
 =============================
@@ -14,9 +14,9 @@ Applications
     :maxdepth: 2
     :titlesonly:
 
-    applications.rst
+    Applications.rst
 
-Internal Documentation
+Developer's Documentation
 =============================
 
 Documentation for advanced users and developers of Ddisasm.
@@ -26,5 +26,6 @@ Documentation for advanced users and developers of Ddisasm.
     :maxdepth: 1
     :titlesonly:
 
-    AuxData.md
-    api-ref.rst
+
+    DEVELOPMENT_DOCS/*
+    APIRef.rst
