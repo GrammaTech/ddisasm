@@ -339,7 +339,6 @@ class AutoFileDirective(Directive):
         self.env = self.state.document.settings.env
         sourcedir = Path(self.env.app.config.datalogautodoc_basedir)
         self.sourcepath = sourcedir / self.arguments[0]
-        print(self.sourcepath)
         self.state.document.settings.record_dependencies.add(self.sourcepath)
         file_nodes = self._parsefile()
         return file_nodes
