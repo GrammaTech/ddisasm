@@ -50,6 +50,7 @@ docker run -v $PWD/examples:/examples -it grammatech/ddisasm:latest
 Within the Docker container, let us build one of the examples:
 
 ```bash
+apt update && apt install build-essential -y
 cd /examples/ex1
 make
 ```
