@@ -123,11 +123,11 @@ jobs:
         run: |
           cd doc
           pip3 install -r requirements-docs.txt
-          make html
+          BUILDDIR=../public make -e
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v1.0.8
         with:
-          path: doc/build/html
+          path: public
 
   deploy-pages:
     needs: build-pages

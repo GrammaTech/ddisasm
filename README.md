@@ -127,10 +127,19 @@ To build ddisasm from source, the following requirements should be installed:
 - [gtirb](https://github.com/grammatech/gtirb)
 - [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
 - [Capstone](http://www.capstone-engine.org/), version 5.0.0 or later
-  - 5.x is not yet released by the Capstone team.
   - GrammaTech builds and tests using the [GrammaTech/capstone](https://github.com/GrammaTech/capstone) fork.
 - [Souffle](https://souffle-lang.github.io), version 2.4
   - Must be configured with support for 64 bit numbers (via `-DSOUFFLE_DOMAIN_64BIT=1` during configuration)
+
+For linux:
+```bash
+git clone -b 2.4 https://github.com/souffle-lang/souffle
+cd souffle
+cmake . -Bbuild -DCMAKE_BUILD_TYPE=Release -DSOUFFLE_USE_CURSES=0 -DSOUFFLE_USE_SQLITE=0 -DSOUFFLE_DOMAIN_64BIT=1
+cd build
+make install -j4
+```
+
 - [libehp](https://git.zephyr-software.com/opensrc/libehp) or GrammaTech's [mirror]((https://github.com/GrammaTech/libehp), version 1.0.0 or higher
 - [LIEF](https://lief.quarkslab.com/), version 0.13.0 or higher
 
@@ -189,20 +198,15 @@ $ cmake ./ -Bbuild -DDDISASM_ARM_64=OFF -DDDISASM_X86_32=OFF
 ```
 will deactivate ARM_64 and X86_32 support.
 
-## Running the analysis
+## Command-Line options
 
-Once `ddisasm` is built, we can run complete analysis on a file by
-calling `build/bin/ddisasm'`.  For example, we can run the analysis on one
-of the examples as follows:
-
-```
-cd build/bin && ./ddisasm ../../examples/ex1/ex --asm ex.s
-```
-
-Ddisasm accepts the following parameters:
+Ddisasm accepts the following options:
 
 `--help`
 :   produce help message
+
+`--version`
+:   display ddisasm version
 
 `--ir arg`
 :   GTIRB output file
@@ -214,13 +218,19 @@ Ddisasm accepts the following parameters:
 :   ASM output file
 
 `--debug`
-:   if the assembly code is printed, it is printed with debugging information
+:   generate GTIRB file with debugging information
 
 `--debug-dir arg`
 :   location to write CSV files for debugging
 
 `--hints arg`
 :   location of user-provided hints file
+
+`--input-file arg`
+:   File to disasemble
+
+`--ignore-errors`
+:   Return success even if there are disassembly errors.
 
 `-K [ --keep-functions ] arg`
 :   Print the given functions even if they are skipped by default (e.g. _start)
@@ -234,8 +244,18 @@ Ddisasm accepts the following parameters:
 `-F [ --skip-function-analysis ]`
 :   Skip additional analyses to compute more precise function boundaries.
 
+`--with-souffle-relations`
+:   Package facts/output relations into an AuxData table.
+
+`--no-cfi-directives`
+:   Do not produce cfi directives. Instead it produces symbolic expressions in .eh_frame
+(this functionality is experimental and does not produce reliable results).
+
 `-j [ --threads ]`
 :   Number of cores to use.
+
+`-n [ --no-analysis ]`
+:   Do not perform disassembly. This option only parses/loads the binary object into GTIRB.
 
 `-I [ --interpreter ] arg`
 :   Execute the Souffle interpreter with the specified source directory.
