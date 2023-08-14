@@ -552,17 +552,17 @@ simple_data_access(EA,Data,Size):-
 
 // ldr Reg1, [BaseReg, Offset]  or ldrd Reg1, Reg2, [BaseReg, Offset]
 reg_relative_load(EA,BaseRegNN,Offset,Size):-
-    arch.load(EA,_,_,Reg1,BaseReg,"NONE",_,Offset),
+    load(EA,_,_,Reg1,BaseReg,"NONE",_,Offset),
     reg_nonnull(BaseReg,BaseRegNN),
     instruction_memory_access_size(EA,_,Size),
     as(Offset,unsigned) >= 0,
-    !arch.memory_access("LOAD",EA,_,_,_,_,_,_,Offset-4),
-    !arch.pc_reg(Reg1),
-    !arch.pc_reg(BaseReg).
+    !memory_access("LOAD",EA,_,_,_,_,_,_,Offset-4),
+    !pc_reg(Reg1),
+    !pc_reg(BaseReg).
 
 // ldm r1, {r2, r3}
 reg_relative_load(EA,RegNN,0,Size):-
-    arch.load(EA,_,_,_,Reg,_,_,_),
+    load(EA,_,_,_,Reg,_,_,_),
     reg_nonnull(Reg,RegNN),
     instruction_get_operation(EA,Operation),
     contains("LDM",Operation),
@@ -570,12 +570,12 @@ reg_relative_load(EA,RegNN,0,Size):-
     op_register_bitfield(RegBitFieldOp,MaxIndex,_),
     !op_register_bitfield(RegBitFieldOp,MaxIndex+1,_),
     RegCnt = MaxIndex + 1,
-    arch.pointer_size(Pt_size),
+    pointer_size(Pt_size),
     Size = RegCnt * Pt_size.
 
 // vldn.type {dn,...}, r1
 reg_relative_load(EA,RegNN,0,AccessSize):-
-    arch.memory_access_aggregated("LOAD",EA,Reg,_,_,_,AccessSize),
+    memory_access_aggregated("LOAD",EA,Reg,_,_,_,AccessSize),
     reg_nonnull(Reg,RegNN),
     instruction_get_operation(EA,Operation),
     match("VLD[1-4].*",Operation).
