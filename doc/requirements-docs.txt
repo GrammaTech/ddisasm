@@ -2,4 +2,4 @@ networkx
 recommonmark
 sphinx
 sphinx_markdown_tables
-sphinx_adc_theme
+sphinx_rtd_theme

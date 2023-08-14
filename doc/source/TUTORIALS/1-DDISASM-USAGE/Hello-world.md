@@ -5,7 +5,7 @@
 ## Disassemble
 
 
-Ddisasm can be used to disassemble an binary into the [GTIRB](https://github.com/grammatech/gtirb) representation:
+Ddisasm can be used to disassemble a binary into the [GTIRB](https://github.com/grammatech/gtirb) representation:
 
 ``` bash
 ddisasm examples/ex1/ex --ir ex.gtirb
