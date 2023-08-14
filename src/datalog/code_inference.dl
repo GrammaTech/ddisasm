@@ -334,7 +334,7 @@ possible_target_from(Dest,Src):-
     code_in_block_candidate(Src,_),
     (
         may_have_symbolic_immediate(Src,Dest),
-        !arch.simple_data_access(Src,Dest,_)
+        !arch.simple_data_load(Src,Dest,_)
         ;
         direct_jump(Src,Dest);
         direct_call(Src,Dest);
@@ -342,7 +342,7 @@ possible_target_from(Dest,Src):-
         pc_relative_jump(Src,Dest);
         pc_relative_call(Src,Dest);
         pc_relative_operand(Src,_,Dest),
-        !arch.simple_data_access(Src,Dest,_)
+        !arch.simple_data_load(Src,Dest,_)
     ).
 
 .decl possible_target(Target:address)
@@ -527,7 +527,7 @@ data_block_candidate(Block,Size):-
     relative_address(Block,Size,_,_,_,_).
 
 data_block_candidate(Block,Size):-
-    arch.simple_data_access(EA,Block,Size),
+    arch.simple_data_load(EA,Block,Size),
     code_in_block_candidate(EA,_).
 
 data_block_candidate(Block,AccessSize):-
@@ -613,7 +613,7 @@ block_candidate_dependency_edge(BlockA,"code",EndAddrA-BegAddrA,BlockB,"code",En
     BlockA != BlockB.
 
 block_candidate_dependency_edge(BlockA,"code",EndAddrA-BegAddrA,BlockB,"data",SizeB):-
-    arch.simple_data_access(EA,BlockB,SizeB),
+    arch.simple_data_load(EA,BlockB,SizeB),
     code_in_block_candidate_refined(EA,BlockA),
     data_block_candidate(BlockB,SizeB),
     block_candidate_boundaries(BlockA,"code",BegAddrA,EndAddrA).
@@ -1399,7 +1399,7 @@ block_points(Block,"code",Size,0,5,"seh handler"):-
 
 block_points(Block,"data",AccessSize,0,Points,"data access"):-
     !binary_isa("ARM"), // ARM's litpool_ref system gives points
-    arch.simple_data_access(EA,Block,AccessSize),
+    arch.simple_data_load(EA,Block,AccessSize),
     unresolved_block(Block,"data",AccessSize),
     code_in_block_candidate_refined(EA,Block0),
     (

@@ -246,8 +246,9 @@ reg_relative_load(EA,BaseRegNN,Offset,Size):-
     !pc_reg(BaseReg),
     instruction_memory_access_size(EA,MemOp,Size).
 
-simple_data_access(EA,Data,Size):-
+simple_data_load(EA,Data,Size):-
     pc_relative_operand(EA,MemIndex,Data),
+    load(EA,MemIndex,_,_,_,_,_,_),
     instruction_memory_access_size(EA,MemIndex,Size),
     Size != 0.
 

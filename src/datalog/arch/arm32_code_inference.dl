@@ -392,7 +392,7 @@ known_block(Block,"code",Size,"arm: THM_CALL relocation"):-
 
 litpool_ref(EA,EA,RefAddr,0,Size,OpIndex):-
     !invalid(EA,_),
-    arch.simple_data_access(EA,RefAddr,Size),
+    arch.simple_data_load(EA,RefAddr,Size),
     instruction_memory_access_size(EA,OpIndex,Size).
 
 litpool_ref(EA,EA_load,RefAddr,Offset,Size,OpIndex):-

@@ -23,7 +23,7 @@ class DataAccessTests(unittest.TestCase):
         )
 
         accesses = snippets.parse_souffle_output(
-            module, "arch.simple_data_access"
+            module, "arch.simple_data_load"
         )
         self.assertIn(
             (
@@ -81,7 +81,7 @@ class DataAccessTests(unittest.TestCase):
         )
 
         accesses = snippets.parse_souffle_output(
-            module, "arch.simple_data_access"
+            module, "arch.simple_data_load"
         )
         self.assertIn(
             (

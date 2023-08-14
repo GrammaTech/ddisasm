@@ -540,7 +540,7 @@ library_string_arg("strstr","R1").
 
 // LDR or LDRD, e.g.:
 // ldr Reg, [pc, off]   or   ldrd Reg1, Reg2, [pc, off]
-simple_data_access(EA,Data,Size):-
+simple_data_load(EA,Data,Size):-
     pc_reg(PC),
     load(EA,_,_,Reg,PC,"NONE",_,Offset),
     !memory_access("LOAD",EA,_,_,_,_,_,_,Offset-4),

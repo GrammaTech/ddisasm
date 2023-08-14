@@ -430,11 +430,11 @@ reg_relative_load(0,"",0,0):-
     false.
 
 /**
-A single instruction accesses data with a predetermined size and location
+A single instruction reads data with a predetermined size and location
 */
-.decl simple_data_access(EA:address,Data:address,Size:unsigned)
+.decl simple_data_load(EA:address,Data:address,Size:unsigned)
 
-simple_data_access(0,0,0):-
+simple_data_load(0,0,0):-
     false.
 
 // ===========================================================================
