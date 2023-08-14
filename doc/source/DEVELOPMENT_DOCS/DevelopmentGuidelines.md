@@ -1,5 +1,7 @@
 # Development Guidelines
 
+This section outlines information useful for developers interested in contributing to Ddisasm.
+
 ## Souffle interpreter
 
 For accelerated development of datalog logic, ddisasm can also execute the
