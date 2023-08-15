@@ -30,7 +30,7 @@ Our [Dockerfile](https://github.com/GrammaTech/ddisasm/blob/main/Dockerfile)
 is a good reference of how all the dependencies can be installed.
 
 Note that these versions are newer than what your package manager may provide
-by default: This is true on Ubuntu 18, Debian 10, and others. Prefer building
+by default: This is true on Ubuntu 20, Debian 10, and others. Prefer building
 these dependencies from sources to avoid versioning problems. Alternatively,
 you can use the GrammaTech PPA to get the correct versions of the dependencies.
 See the [GTIRB readme](https://github.com/GrammaTech/gtirb/#installing) for
