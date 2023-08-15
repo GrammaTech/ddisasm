@@ -50,9 +50,9 @@ docker run -v $PWD/examples:/examples -it grammatech/ddisasm:latest
 Within the Docker container, let us build one of the examples:
 
 ```bash
-apt update && apt install build-essential -y
+apt update && apt install gcc -y
 cd /examples/ex1
-make
+gcc ex.c -o ex
 ```
 
 Now we can proceed to disassemble the binary:
