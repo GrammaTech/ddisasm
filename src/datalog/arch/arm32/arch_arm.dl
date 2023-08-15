@@ -538,4 +538,46 @@ library_string_arg("strstr","R0").
 library_string_arg("strstr","R1").
 // TODO: add more
 
+// LDR or LDRD, e.g.:
+// ldr Reg, [pc, off]   or   ldrd Reg1, Reg2, [pc, off]
+simple_data_load(EA,Data,Size):-
+    pc_reg(PC),
+    load(EA,_,_,Reg,PC,"NONE",_,Offset),
+    !memory_access("LOAD",EA,_,_,_,_,_,_,Offset-4),
+    instruction_memory_access_size(EA,_,Size),
+    pc_relative_disp(EA,Disp),
+    align_addr(EA_aligned,EA),
+    Data = EA_aligned + as(Disp+Offset,address),
+    !pc_reg(Reg).
+
+// ldr Reg1, [BaseReg, Offset]  or ldrd Reg1, Reg2, [BaseReg, Offset]
+reg_relative_load(EA,BaseRegNN,Offset,Size):-
+    load(EA,_,_,Reg1,BaseReg,"NONE",_,Offset),
+    reg_nonnull(BaseReg,BaseRegNN),
+    instruction_memory_access_size(EA,_,Size),
+    as(Offset,unsigned) >= 0,
+    !memory_access("LOAD",EA,_,_,_,_,_,_,Offset-4),
+    !pc_reg(Reg1),
+    !pc_reg(BaseReg).
+
+// ldm r1, {r2, r3}
+reg_relative_load(EA,RegNN,0,Size):-
+    load(EA,_,_,_,Reg,_,_,_),
+    reg_nonnull(Reg,RegNN),
+    instruction_get_operation(EA,Operation),
+    contains("LDM",Operation),
+    instruction_get_dest_op(EA,_,RegBitFieldOp),
+    op_register_bitfield(RegBitFieldOp,MaxIndex,_),
+    !op_register_bitfield(RegBitFieldOp,MaxIndex+1,_),
+    RegCnt = MaxIndex + 1,
+    pointer_size(Pt_size),
+    Size = RegCnt * Pt_size.
+
+// vldn.type {dn,...}, r1
+reg_relative_load(EA,RegNN,0,AccessSize):-
+    memory_access_aggregated("LOAD",EA,Reg,_,_,_,AccessSize),
+    reg_nonnull(Reg,RegNN),
+    instruction_get_operation(EA,Operation),
+    match("VLD[1-4].*",Operation).
+
 }

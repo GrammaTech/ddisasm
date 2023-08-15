@@ -390,70 +390,17 @@ known_block(Block,"code",Size,"arm: THM_CALL relocation"):-
 //////////////////////////////////////////////////////////////////////////
 // literal pools
 
-/**
-Data is loaded from a register-relative address.
-
-Used to construct litpool_ref
-*/
-.decl reg_relative_load(LoadEA:address,Reg:register,Offset:unsigned,Size:unsigned)
-
-// ldr Reg1, [BaseReg, Offset]  or ldrd Reg1, Reg2, [BaseReg, Offset]
-reg_relative_load(EA,BaseRegNN,as(Offset,unsigned),Size):-
-    arch.load(EA,_,_,Reg1,BaseReg,"NONE",_,Offset),
-    reg_nonnull(BaseReg,BaseRegNN),
-    instruction_memory_access_size(EA,_,Size),
-    !invalid(EA,_),
-    Offset >= 0,
-    !arch.memory_access("LOAD",EA,_,_,_,_,_,_,Offset-4),
-    !arch.pc_reg(Reg1),
-    !arch.pc_reg(BaseReg).
-
-// ldm r1, {r2, r3}
-reg_relative_load(EA,RegNN,0,Size):-
-    arch.load(EA,_,_,_,Reg,_,_,_),
-    reg_nonnull(Reg,RegNN),
-    instruction_get_operation(EA,Operation),
-    !invalid(EA,_),
-    contains("LDM",Operation),
-    instruction_get_dest_op(EA,_,RegBitFieldOp),
-    op_register_bitfield(RegBitFieldOp,MaxIndex,_),
-    !op_register_bitfield(RegBitFieldOp,MaxIndex+1,_),
-    RegCnt = MaxIndex + 1,
-    arch.pointer_size(Pt_size),
-    Size = RegCnt * Pt_size.
-
-// vldn.type {dn,...}, r1
-reg_relative_load(EA,RegNN,0,AccessSize):-
-    arch.memory_access_aggregated("LOAD",EA,Reg,_,_,_,AccessSize),
-    reg_nonnull(Reg,RegNN),
-    !invalid(EA,_),
-    instruction_get_operation(EA,Operation),
-    match("VLD[1-4].*",Operation).
-
-// LDR or LDRD, e.g.:
-// ldr Reg, [pc, off]   or   ldrd Reg1, Reg2, [pc, off]
 litpool_ref(EA,EA,RefAddr,0,Size,OpIndex):-
     !invalid(EA,_),
-    arch.pc_reg(PC),
-    arch.load(EA,_,_,Reg,PC,"NONE",_,Offset),
-    !arch.memory_access("LOAD",EA,_,_,_,_,_,_,Offset-4),
-    instruction_memory_access_size(EA,OpIndex,Size),
-    arch.pc_relative_disp(EA,Disp),
-    align_addr(EA_aligned,EA),
-    RefAddr = EA_aligned + as(Disp+Offset,address),
-    !arch.pc_reg(Reg).
+    arch.simple_data_load(EA,RefAddr,Size),
+    instruction_memory_access_size(EA,OpIndex,Size).
 
-/**
-PC-relative address is used
-*/
-.decl used_pc_relative_addr(EA:address,Reg:register,RefAddr:address)
-
-litpool_ref(EA,EA_load,RefAddr,Offset,AccessSize,OpIndex),
-used_pc_relative_addr(EA,Reg,RefAddr):-
-    arch.pc_relative_addr(EA,Reg,RefAddr),
+litpool_ref(EA,EA_load,RefAddr,Offset,Size,OpIndex):-
+    arch.pc_relative_addr(EA,_,RefAddr),
+    composite_data_access(EA,EA_load,Data,Size),
+    Offset = Data - RefAddr,
     !invalid(EA,_),
-    straight_line_def_used(EA,Reg,EA_load,_),
-    reg_relative_load(EA_load,Reg,Offset,AccessSize),
+    !invalid(EA_load,_),
     instruction_immediate_offset(EA,OpIndex,_,_).
 
 /**
@@ -481,10 +428,9 @@ References to potential litpools with indeterminate sizes.
 // If there's no known use of a pc-relative register,
 // it may be a reference to data that is getting passed to a function.
 indefinite_litpool_ref(RefAddr,Size):-
-    arch.pc_relative_addr(EA,Reg,RefAddr),
+    arch.pc_relative_addr(EA,_,RefAddr),
     code_in_block_candidate(EA,_),
-    !invalid(EA,_),
-    !used_pc_relative_addr(EA,Reg,RefAddr),
+    !composite_data_access(EA,_,_,_),
     NextLimit = min Limit : {
         data_block_limit(Limit),
         Limit > RefAddr
@@ -502,25 +448,6 @@ Collect all literal pool addresses computed from `litpool_ref`s.
 litpool_boundaries(LitPoolAddr,LitPoolAddr+Size):-
     litpool_ref(_,_,RefAddr,Offset,Size,_),
     LitPoolAddr = RefAddr+Offset.
-
-must_access_data(EA,Dest,Size):-
-    litpool_ref(EA,EA,Dest,_,Size,_).
-
-/**
-Create data block candidate for each valid literal pool.
-*/
-data_block_candidate(LitPoolAddr,Size):-
-    litpool_ref(EA,_,RefAddr,LitPoolOffset,Size,_),
-    LitPoolAddr = RefAddr + LitPoolOffset,
-    code_in_block_candidate(EA,_).
-
-data_block_candidate(LitPoolAddr,Pt_size*2):-
-    arch.pc_relative_addr(EA,Reg,LitPoolAddr),
-    straight_line_def_used(EA,Reg,EA_ldrd,_),
-    instruction_get_operation(EA_ldrd,Operation),
-    contains("LDRD",Operation),
-    !arch.dangling_thumb_instr(EA),
-    arch.pointer_size(Pt_size).
 
 /**
 Check if the given block overlaps with a possible literal pool.

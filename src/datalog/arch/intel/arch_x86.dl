@@ -233,4 +233,23 @@ extend_load(EA,Signed,8*SizeAccess):-
     ),
     instruction_memory_access_size(EA,SrcOpIndex,SizeAccess).
 
+pc_relative_addr(EA,Reg,Base):-
+    instruction_get_operation(EA,"LEA"),
+    instruction_get_dest_op(EA,_,DestOp),
+    op_regdirect_contains_reg(DestOp,Reg),
+    instruction_get_src_op(EA,SrcOpIndex,_),
+    pc_relative_operand(EA,SrcOpIndex,Base).
+
+reg_relative_load(EA,BaseRegNN,Offset,Size):-
+    load(EA,MemOp,_,_,BaseReg,"NONE",_,Offset),
+    reg_nonnull(BaseReg,BaseRegNN),
+    !pc_reg(BaseReg),
+    instruction_memory_access_size(EA,MemOp,Size).
+
+simple_data_load(EA,Data,Size):-
+    pc_relative_operand(EA,MemIndex,Data),
+    load(EA,MemIndex,_,_,_,_,_,_),
+    instruction_memory_access_size(EA,MemIndex,Size),
+    Size != 0.
+
 }

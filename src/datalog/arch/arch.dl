@@ -421,6 +421,22 @@ instruction_op_access (Enable = 0).
 op_access_override(0,0,"",0):-
     false.
 
+/**
+Data is loaded from a register-relative address.
+*/
+.decl reg_relative_load(LoadEA:address,Reg:register,Offset:number,Size:unsigned)
+
+reg_relative_load(0,"",0,0):-
+    false.
+
+/**
+A single instruction reads data with a predetermined size and location
+*/
+.decl simple_data_load(EA:address,Data:address,Size:unsigned)
+
+simple_data_load(0,0,0):-
+    false.
+
 // ===========================================================================
 // Registers
 // ===========================================================================
