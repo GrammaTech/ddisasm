@@ -121,8 +121,9 @@ jobs:
         uses: actions/checkout@v3
       - name: Generate API documentation
         run: |
-          python3  doc/build_index.py
-          python3 -m sphinx  doc public
+          cd doc
+          pip3 install -r requirements-docs.txt
+          BUILDDIR=../public make -e
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v1.0.8
         with:

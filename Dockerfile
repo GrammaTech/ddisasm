@@ -180,6 +180,11 @@ RUN cmake --build /usr/local/src/ddisasm/build -j$(nproc) --target all install
 # ------------------------------------------------------------------------------
 FROM ubuntu:20.04
 
+# gcc is needed to rebuild binaries with gtirb-pprinter
+RUN apt-get update -y && apt-get install -y --no-install-recommends \
+        gcc \
+        libc6-dev
+
 COPY --from=ddisasm /lib/x86_64-linux-gnu/libboost_filesystem.so.1.71.0 /lib/x86_64-linux-gnu/libboost_filesystem.so.1.71.0
 COPY --from=ddisasm /lib/x86_64-linux-gnu/libboost_program_options.so.1.71.0 /lib/x86_64-linux-gnu/libboost_program_options.so.1.71.0
 COPY --from=ddisasm /lib/libcapstone.so.5 /lib/libcapstone.so.5

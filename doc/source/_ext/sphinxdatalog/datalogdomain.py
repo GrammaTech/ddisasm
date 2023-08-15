@@ -17,8 +17,8 @@ from pathlib import Path
 import networkx as nx
 
 THIS_DIRECTORY = Path(__file__).resolve().parent
+MAIN_DIRECTORY = THIS_DIRECTORY.parent.parent.parent.parent
 
-MAIN_DIRECTORY = THIS_DIRECTORY.parent.parent.parent
 
 # Dictionaries with dependencies between
 # predicates computed by souffle
@@ -352,7 +352,12 @@ def load_dependence_graph():
     """
     global SCC_GRAPH
     dependencies = (
-        (THIS_DIRECTORY.parent.parent / "src_docs/dependencies.csv")
+        (
+            THIS_DIRECTORY.parent.parent
+            / "DATALOG-API"
+            / "src_docs"
+            / "dependencies.csv"
+        )
         .read_text()
         .splitlines()
     )

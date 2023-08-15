@@ -1,3 +1,5 @@
+# AuxData Documentation
+
 GTIRB [Auxiliary Data][1] (`AuxData`) tables are a value-store for arbitrary
 user-defined analysis data. GTIRB defines a number of `AuxData` tables with
 stable schemata that are recommended for all GTIRB users as [Sanctioned][2]
@@ -14,7 +16,6 @@ tables:
 [2]: https://grammatech.github.io/gtirb/md__aux_data.html#sanctioned-auxdata-tables
 [3]: https://grammatech.github.io/gtirb/md__aux_data.html#provisional-auxdata-tables
 
-## General
 
 ## ddisasmVersion
 

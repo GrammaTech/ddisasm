@@ -1,12 +1,9 @@
-
-Source files
+Tutorials
 =============================
 
 .. toctree::
     :glob:
     :titlesonly:
+    :numbered:
 
-    src_docs/**/*
-    src_docs/*
-
-:ref:`predicateindex`
+    TUTORIALS/**/*

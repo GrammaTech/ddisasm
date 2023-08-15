@@ -1,16 +1,19 @@
-all: ddisasm.html ddisasm.1.gz
+SPHINXOPTS    ?=
+SPHINXBUILD   ?= sphinx-build
+SOURCEDIR     = source
+BUILDDIR      = build
 
-datalog-docs:
+default:
 	python3  build_index.py
-	python3 -m sphinx  . datalog-docs
+	@$(SPHINXBUILD) "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+
+
+help:
+	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+
+%:
+	python3  build_index.py
+	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+
 clean:
-	rm -f *.html *.gz
-
-%.html: %.md
-	pandoc -s -t html $< -o $@
-
-%.md.tmp: %.md
-	pandoc -s -t man $< -o $@
-
-%.1.gz: %.md.tmp
-	gzip -9 < $< > $@
+	rm -rf build
