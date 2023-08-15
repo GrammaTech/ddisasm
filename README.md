@@ -104,15 +104,15 @@ See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ```
 @inproceedings {flores-montoya2020,
-author = {Antonio Flores-Montoya and Eric Schulte},
-title = {Datalog Disassembly},
-booktitle = {29th USENIX Security Symposium (USENIX Security 20)},
-year = {2020},
-isbn = {978-1-939133-17-5},
-pages = {1075--1092},
-url = {https://www.usenix.org/conference/usenixsecurity20/presentation/flores-montoya},
-publisher = {USENIX Association},
-month = aug,
+    author = {Antonio Flores-Montoya and Eric Schulte},
+    title = {Datalog Disassembly},
+    booktitle = {29th USENIX Security Symposium (USENIX Security 20)},
+    year = {2020},
+    isbn = {978-1-939133-17-5},
+    pages = {1075--1092},
+    url = {https://www.usenix.org/conference/usenixsecurity20/presentation/flores-montoya},
+    publisher = {USENIX Association},
+    month = aug,
 }
 ```
 
@@ -120,11 +120,11 @@ month = aug,
 
 ```
 @misc{schulte2020gtirb,
-      title={GTIRB: Intermediate Representation for Binaries},
-      author={Eric Schulte and Jonathan Dorn and Antonio Flores-Montoya and Aaron Ballman and Tom Johnson},
-      year={2020},
-      eprint={1907.02859},
-      archivePrefix={arXiv},
-      primaryClass={cs.PL}
+    title={GTIRB: Intermediate Representation for Binaries},
+    author={Eric Schulte and Jonathan Dorn and Antonio Flores-Montoya and Aaron Ballman and Tom Johnson},
+    year={2020},
+    eprint={1907.02859},
+    archivePrefix={arXiv},
+    primaryClass={cs.PL}
 }
 ```
