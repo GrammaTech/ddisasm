@@ -20,7 +20,7 @@ That means that in order to run the test, you need to install a few dependencies
 
 3. Wine and mingw and uasm
 
-Take a look at [how we build our testing evironment](https://github.com/GrammaTech/ddisasm/blob/main/.ci/Dockerfile.ubuntu20#L88) for an exhaustive list.
+Take a look at [how we build our testing environment](https://github.com/GrammaTech/ddisasm/blob/main/.ci/Dockerfile.ubuntu20#L88) for an exhaustive list.
 
 
 ### Running the Tests
