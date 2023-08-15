@@ -139,6 +139,10 @@ def make(target="") -> List[str]:
         raise Exception(f"Unsupported platform {platform.system()}")
 
 
+def quote_args(*args):
+    return " ".join(shlex.quote(arg) for arg in args)
+
+
 def compile(
     compiler,
     cxx_compiler,
@@ -152,10 +156,6 @@ def compile(
     'compiler', the cxx compiler 'cxx_compiler' and the flags in
     'optimizations' and 'extra_flags'
     """
-
-    def quote_args(*args):
-        return " ".join(shlex.quote(arg) for arg in args)
-
     # Copy the current environment and modify the copy.
     env = dict(os.environ)
     env["CC"] = compiler
@@ -213,24 +213,33 @@ def disassemble(
         return False, time_spent
 
 
-def skip_reassemble(compiler, binary, extra_flags):
-    print(bcolors.warning(" No reassemble"))
+def run_reassembler(binary, reassemble_cmd_env) -> bool:
+    if not reassemble_cmd_env:
+        print(bcolors.warning(" No reassemble"))
+        return True
+
+    reassemble_cmd, env = reassemble_cmd_env
+
+    print("# Reassembling", binary + ".s", "into", binary)
+    print("compile command:", reassemble_cmd)
+
+    proc = subprocess.run(reassemble_cmd, env=env)
+
+    if proc.returncode != 0:
+        print(bcolors.fail("# Reassembly failed\n"))
+        return False
+    print(bcolors.okgreen("# Reassembly succeed"))
     return True
 
 
-# compiler, exec_wrapper, and makefile_target are not used in this function.
-def reassemble(
-    compiler, assembler, binary, extra_flags, exec_wrapper, makefile_target
-):
+def reassemble(assembler, binary, extra_flags):
     """
-    Reassemble the assembly file binary+'.s' into a new binary
+    Build a reassembler command for reassembling the assembly file
+    binary+'.s' into a new binary
     """
-    print("# Reassembling", binary + ".s", "into", binary)
-
     if "uasm" in assembler:
         obj = Path(binary).with_suffix(".o")
         cmd = [assembler, *extra_flags, "-Fo", obj, binary + ".s"]
-        proc = subprocess.run(cmd)
     elif platform.system() == "Linux":
         cmd = (
             build_chroot_wrapper()
@@ -251,36 +260,22 @@ def reassemble(
         if "/safeseh" in extra_flags:
             cmd.insert(1, "/safeseh")
 
-    print("compile command:", *cmd)
-    proc = subprocess.run(cmd)
-    if proc.returncode != 0:
-        print(bcolors.fail("# Reassembly failed\n"))
-        return False
-    print(bcolors.okgreen("# Reassembly succeed"))
-    return True
+    return (cmd, dict(os.environ))
 
 
 def reassemble_using_makefile(
-    compiler, assembler, binary, extra_flags, exec_wrapper, makefile_target
+    assembler,
+    makefile_target,
+    extra_assembler_flags,
 ):
-    def quote_args(*args):
-        return " ".join(shlex.quote(arg) for arg in args)
-
+    """
+    Build a reassembler command using Makefile with makefile_target
+    """
     # Copy the current environment and modify the copy.
     env = dict(os.environ)
-    env["CC"] = compiler
     env["AS"] = assembler
-    env["ASFLAGS"] = quote_args(*extra_flags)
-    env["EXEC"] = exec_wrapper
-    print("# Reassembling", binary + ".s", "into", binary)
-    completedProcess = subprocess.run(
-        make(makefile_target), env=env, stdout=subprocess.DEVNULL
-    )
-    if completedProcess.returncode != 0:
-        print(bcolors.fail("# Reassembly failed\n"))
-        return False
-    print(bcolors.okgreen("# Reassembly succeed"))
-    return True
+    env["ASFLAGS"] = quote_args(*extra_assembler_flags)
+    return (make(makefile_target), env)
 
 
 def link(
@@ -331,6 +326,7 @@ def disassemble_reassemble_test(
     extra_reassemble_flags=["-no-pie"],
     extra_link_flags=[],
     reassembly_compiler="gcc",
+    reassemble_cmd_env=None,
     c_compilers=["gcc", "clang"],
     cxx_compilers=["g++", "clang++"],
     optimizations=["-O0", "-O1", "-O2", "-O3", "-Os"],
@@ -338,9 +334,8 @@ def disassemble_reassemble_test(
     strip_exe="strip",
     strip=False,
     sstrip=False,
-    reassemble_function=reassemble,
-    reassemble_makefile_target="reassemble",
     skip_test=False,
+    skip_reassemble=False,
     exec_wrapper=None,
     arch=None,
     extra_ddisasm_flags=[],
@@ -412,14 +407,28 @@ def disassemble_reassemble_test(
                 if not success:
                     disassembly_errors += 1
                     continue
-                if not reassemble_function(
-                    compiler,
-                    reassembly_compiler,
-                    binary,
-                    extra_reassemble_flags,
-                    exec_wrapper,
-                    reassemble_makefile_target,
-                ):
+
+                if not skip_reassemble:
+                    if reassemble_cmd_env:
+                        reasm_cmd, reasm_env = reassemble_cmd_env
+                        reasm_env["CC"] = compiler
+                        reasm_env["CXX"] = cxx_compiler
+                        reasm_env["CFLAGS"] = quote_args(
+                            optimization, *extra_compile_flags
+                        )
+                        reasm_env["CXXFLAGS"] = quote_args(
+                            optimization, *extra_compile_flags
+                        )
+                        if exec_wrapper:
+                            reasm_env["EXEC"] = exec_wrapper
+                        if arch:
+                            reasm_env["TARGET_ARCH"] = arch
+                        reassemble_cmd_env = (reasm_cmd, reasm_env)
+                    else:
+                        reassemble_cmd_env = reassemble(
+                            reassembly_compiler, binary, extra_reassemble_flags
+                        )
+                if not run_reassembler(binary, reassemble_cmd_env):
                     reassembly_errors += 1
                     continue
                 if linker and not link(
@@ -430,7 +439,7 @@ def disassemble_reassemble_test(
                 ):
                     link_errors += 1
                     continue
-                if skip_test or reassemble_function == skip_reassemble:
+                if skip_test or skip_reassemble:
                     print(bcolors.warning(" No testing"))
                     continue
                 if not test(exec_wrapper):
