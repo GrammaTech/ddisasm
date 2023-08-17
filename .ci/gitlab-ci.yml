@@ -153,8 +153,6 @@ check-format:
   - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
   - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
-  # regular build is manual and optional
-  # This only works with gitlab 13.12 or higher
   - if: $CI_COMMIT_BRANCH
     when: manual
     allow_failure: true
@@ -162,8 +160,6 @@ check-format:
 .publish-rules: &publish-rules
   - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
-  # regular build is manual and optional
-  # This only works with gitlab 13.12 or higher
   - if: $CI_COMMIT_BRANCH
     when: manual
     allow_failure: true
@@ -821,8 +817,7 @@ docker-image-vars:
   stage: prebuild
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20:$IMAGE_TAG
   rules:
-    - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
-    - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
+    *publish-rules
   script:
     - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
     - GTIRB_PPRINTER_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_PPRINTER_VERSION" || echo "master")
@@ -855,8 +850,7 @@ docker-image:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]  # Override the image's entrypoint so we can specify our own script
   rules:
-    - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
-    - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
+    *publish-rules
   script:
     - echo "GTIRB_COMMIT=$GTIRB_COMMIT"
     - echo "GTIRB_PPRINTER_COMMIT=$GTIRB_PPRINTER_COMMIT"
