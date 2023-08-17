@@ -817,7 +817,7 @@ docker-image-vars:
   stage: prebuild
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20:$IMAGE_TAG
   rules:
-    *publish-rules
+    *run-only-main
   script:
     - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
     - GTIRB_PPRINTER_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_PPRINTER_VERSION" || echo "master")
@@ -828,12 +828,13 @@ docker-image-vars:
     - echo "GTIRB_PPRINTER_COMMIT=$(git ls-remote https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/rewriting/gtirb-pprinter | grep "refs/heads/$GTIRB_PPRINTER_BRANCH\$" | awk '{print $1}')" >> .env
     - >-
       if [[ $CI_COMMIT_REF_NAME =~ ^release-.* ]]; then
-        echo "DOCKER_IMAGE_BASE_TAG=latest" >> .env
         echo "DOCKER_LOCAL_VERSION_DEST=--destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:$VERSION" >> .env
         echo "DOCKER_HUB_VERSION_DEST=--destination=grammatech/ddisasm:$VERSION" >> .env
+      elif [[ $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH ]]; then
+        echo "DOCKER_LOCAL_VERSION_DEST=--destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:unstable" >> .env
+        echo "DOCKER_HUB_VERSION_DEST=--destination=grammatech/ddisasm:unstable" >> .env
       else
-        echo "DOCKER_IMAGE_BASE_TAG=unstable" >> .env
-        echo "DOCKER_LOCAL_VERSION_DEST=" >> .env
+        echo "DOCKER_LOCAL_VERSION_DEST=--destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:${CI_COMMIT_BRANCH}" >> .env
         echo "DOCKER_HUB_VERSION_DEST=" >> .env
       fi
     - cat .env
@@ -850,7 +851,7 @@ docker-image:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]  # Override the image's entrypoint so we can specify our own script
   rules:
-    *publish-rules
+    *run-only-main
   script:
     - echo "GTIRB_COMMIT=$GTIRB_COMMIT"
     - echo "GTIRB_PPRINTER_COMMIT=$GTIRB_PPRINTER_COMMIT"
@@ -873,8 +874,6 @@ docker-image:
       --build-arg GTIRB_PPRINTER_BRANCH=$GTIRB_PPRINTER_BRANCH
       --build-arg GTIRB_PPRINTER_CACHE_KEY=$GTIRB_PPRINTER_COMMIT
       --dockerfile=$CI_PROJECT_DIR/Dockerfile
-      --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:${DOCKER_IMAGE_BASE_TAG}
-      --destination=grammatech/ddisasm:${DOCKER_IMAGE_BASE_TAG}
       $DOCKER_LOCAL_VERSION_DEST
       $DOCKER_HUB_VERSION_DEST
 
