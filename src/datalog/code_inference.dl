@@ -430,6 +430,7 @@ This is analagous to code_in_block_candidate, but for blocks of type "padding".
 .decl nop_in_padding_candidate(EA:address,Start:address)
 
 nop_in_padding_candidate(EA,EA):-
+    !code_in_block_candidate_refined(EA,_),
     is_padding(EA),
     next(Prev,EA),
     !is_padding(Prev).
@@ -442,6 +443,7 @@ nop_in_padding_candidate(Next,Start):-
     nop_in_padding_candidate(EA,Start),
     next(EA,Next),
     is_padding(Next),
+    !code_in_block_candidate_refined(Next,_),
     !padding_block_limit(Next).
 
 /**
