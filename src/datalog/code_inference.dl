@@ -436,6 +436,7 @@ nop_in_padding_candidate(EA,EA):-
     !is_padding(Prev).
 
 nop_in_padding_candidate(EA,EA):-
+    !code_in_block_candidate_refined(EA,_),
     padding_block_limit(EA),
     is_padding(EA).
 
