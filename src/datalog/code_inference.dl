@@ -1466,6 +1466,17 @@ block_points(Block,"data",AccessSize,0,Points,"composite data access"):-
         Points = 2
     ).
 
+block_points(Block,"code",Size,0,-1,"debug block"):-
+    (
+        binary_isa("X86");
+        binary_isa("X64")
+    ),
+    unresolved_block(Block,"code",Size),
+    block_candidate_boundaries(Block,"code",_,End),
+    next(EA,End),
+    code_in_block_candidate_refined(EA,Block),
+    instruction_get_operation(EA,"INT3").
+
 ////////////////////////////////////////////////////////////////////////////
 
 
