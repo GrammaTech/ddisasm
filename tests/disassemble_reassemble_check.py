@@ -6,7 +6,7 @@ import shlex
 import subprocess
 from pathlib import Path
 from timeit import default_timer as timer
-from typing import List
+from typing import List, Tuple
 
 import platform
 
@@ -232,7 +232,7 @@ def run_reassembler(binary, reassemble_cmd_env) -> bool:
     return True
 
 
-def reassemble(assembler, binary, extra_flags):
+def build_reassemble_cmd(assembler, binary, extra_flags) -> Tuple[List, dict]:
     """
     Build a reassembler command for reassembling the assembly file
     binary+'.s' into a new binary
@@ -263,11 +263,11 @@ def reassemble(assembler, binary, extra_flags):
     return (cmd, dict(os.environ))
 
 
-def reassemble_using_makefile(
+def build_reassemble_make_call(
     assembler,
     makefile_target,
     extra_assembler_flags,
-):
+) -> Tuple[List, dict]:
     """
     Build a reassembler command using Makefile with makefile_target
     """
@@ -326,7 +326,7 @@ def disassemble_reassemble_test(
     extra_reassemble_flags=["-no-pie"],
     extra_link_flags=[],
     reassembly_compiler="gcc",
-    reassemble_cmd_env=None,
+    makefile_target=None,
     c_compilers=["gcc", "clang"],
     cxx_compilers=["g++", "clang++"],
     optimizations=["-O0", "-O1", "-O2", "-O3", "-Os"],
@@ -346,6 +346,17 @@ def disassemble_reassemble_test(
     Disassemble, reassemble and test an example with the given compilers and
     optimizations.
     """
+    reassemble_cmd_env = ([], {})
+    if not skip_reassemble:
+        if makefile_target:
+            reassemble_cmd_env = build_reassemble_make_call(
+                reassembly_compiler, makefile_target, extra_reassemble_flags
+            )
+        else:
+            reassemble_cmd_env = build_reassemble_cmd(
+                reassembly_compiler, binary, extra_reassemble_flags
+            )
+
     assert len(c_compilers) == len(cxx_compilers)
     compile_errors = 0
     disassembly_errors = 0
@@ -424,10 +435,6 @@ def disassemble_reassemble_test(
                         if arch:
                             reasm_env["TARGET_ARCH"] = arch
                         reassemble_cmd_env = (reasm_cmd, reasm_env)
-                    else:
-                        reassemble_cmd_env = reassemble(
-                            reassembly_compiler, binary, extra_reassemble_flags
-                        )
                 if not run_reassembler(binary, reassemble_cmd_env):
                     reassembly_errors += 1
                     continue

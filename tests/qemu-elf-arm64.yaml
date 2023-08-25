@@ -16,7 +16,7 @@ default: &default
     compiler: "aarch64-linux-gnu-gcc"
     flags: ["-nostartfiles"]
     skip: false
-    using_makefile: false
+    makefile_target: false
 
   # Test configuration.
   test: &default-test
@@ -210,5 +210,4 @@ tests:
       compiler: "aarch64-linux-gnu-gcc"
       flags: ["-nostartfiles"]
       skip: false
-      using_makefile: true
       makefile_target: "reassemble_bar"

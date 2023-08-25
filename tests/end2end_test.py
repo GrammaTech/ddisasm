@@ -9,8 +9,6 @@ import yaml
 
 from disassemble_reassemble_check import (
     disassemble_reassemble_test as drt,
-    reassemble,
-    reassemble_using_makefile,
 )
 
 
@@ -88,6 +86,9 @@ class TestExamples(unittest.TestCase):
             "extra_link_flags": config.get("link", {}).get("flags", []),
             "linker": config.get("link", {}).get("linker"),
             "reassembly_compiler": config["reassemble"]["compiler"],
+            "makefile_target": config["reassemble"].get(
+                "makefile_target", None
+            ),
             "c_compilers": config["build"]["c"],
             "cxx_compilers": config["build"]["cpp"],
             "optimizations": config["build"]["optimizations"],
@@ -103,19 +104,6 @@ class TestExamples(unittest.TestCase):
                 "flags", []
             ),
         }
-        if not args.get("skip_reassemble"):
-            if config["reassemble"].get("using_makefile", False):
-                args["reassemble_cmd_env"] = reassemble_using_makefile(
-                    config["reassemble"]["compiler"],
-                    config["reassemble"]["makefile_target"],
-                    config["reassemble"].get("flags", []),
-                )
-            else:
-                args["reassemble_cmd_env"] = reassemble(
-                    config["reassemble"]["compiler"],
-                    binary,
-                    config["reassemble"].get("flags", []),
-                )
         self.assertTrue(drt(path, binary, **args))
 
 
