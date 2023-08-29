@@ -649,7 +649,9 @@ block_implies_block(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB):-
         // currently imply other blocks.
         BlockA != BlockB;
         TypeA != TypeB
-    ).
+    ),
+    !overlapping_instruction(BlockB, BlockA),
+    !overlapping_instruction(BlockA, BlockB).
 
 block_implies_block(BlockA,TypeA,SizeA,BlockC,TypeC,SizeC):-
     block_implies_block(BlockB,TypeB,SizeB,BlockC,TypeC,SizeC),
@@ -657,7 +659,9 @@ block_implies_block(BlockA,TypeA,SizeA,BlockC,TypeC,SizeC):-
     (
         BlockA != BlockC;
         TypeA != TypeC
-    ).
+    ),
+    !overlapping_instruction(BlockC, BlockA),
+    !overlapping_instruction(BlockA, BlockC).
 
 /**
 Known blocks are blocks that must exist due to metadata.

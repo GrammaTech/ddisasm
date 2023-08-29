@@ -1,0 +1,65 @@
+
+    .text
+
+    .align 16
+    .globl  main
+    .type   main, @function
+main:
+.LFB6:
+    pushq   %rbp
+    movq    %rsp, %rbp
+
+    movq    $1, %rax
+    movq    $1, %rcx
+    movq    $1, %rdx
+.L0:
+    subq    $1, %rcx
+    cmpl    $0, %ecx
+    jz      .L1+1
+.L1:
+    lock    cmpxchgq %rcx,mydata(%rip)
+    cmpq    %rdx,%rcx
+    je      .L0
+    leaq    .LC0(%rip),%rdi
+    movq    $7,%rsi
+    call    printf@PLT
+.L2:
+    leaq    .LC0(%rip),%rdi
+    movq    $8,%rsi
+    call    printf@PLT
+    movl    $0, %eax
+    popq    %rbp
+    ret
+
+.LFE6:
+    .size   main, .-main
+
+    .section .rodata
+.LC0:
+    .string "%d\n"
+
+    .section .data
+
+    .type mydata,@object
+    .size mydata,8
+mydata:
+    .byte 0x1
+    .byte 0x0
+    .byte 0x0
+    .byte 0x0
+    .byte 0x0
+    .byte 0x0
+    .byte 0x0
+    .byte 0x0
+    .byte 0x0
+    .byte 0x0
+    .byte 0x0
+    .byte 0x0
+    .byte 0x0
+    .byte 0x0
+    .byte 0x0
+    .byte 0x0
+    .byte 0x0
+    .byte 0x0
+    .byte 0x0
+    .byte 0x0
