@@ -346,17 +346,6 @@ def disassemble_reassemble_test(
     Disassemble, reassemble and test an example with the given compilers and
     optimizations.
     """
-    reassemble_cmd_env = ([], {})
-    if not skip_reassemble:
-        if makefile_target:
-            reassemble_cmd_env = build_reassemble_make_call(
-                reassembly_compiler, makefile_target, extra_reassemble_flags
-            )
-        else:
-            reassemble_cmd_env = build_reassemble_cmd(
-                reassembly_compiler, binary, extra_reassemble_flags
-            )
-
     assert len(c_compilers) == len(cxx_compilers)
     compile_errors = 0
     disassembly_errors = 0
@@ -365,6 +354,18 @@ def disassemble_reassemble_test(
     test_errors = 0
     gtirb_errors = 0
     with cd(make_dir):
+        reassemble_cmd_env = ([], {})
+        if not skip_reassemble:
+            if makefile_target:
+                reassemble_cmd_env = build_reassemble_make_call(
+                    reassembly_compiler,
+                    makefile_target,
+                    extra_reassemble_flags,
+                )
+            else:
+                reassemble_cmd_env = build_reassemble_cmd(
+                    reassembly_compiler, binary, extra_reassemble_flags
+                )
         for compiler, cxx_compiler in zip(c_compilers, cxx_compilers):
             for optimization in optimizations:
                 print(
