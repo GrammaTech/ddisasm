@@ -156,6 +156,7 @@ class OverlappingInstructionTests(unittest.TestCase):
         examples = (
             "ex_overlapping_instruction",
             "ex_overlapping_instruction_2",
+            "ex_overlapping_instruction_3",
         )
 
         for example in examples:
