@@ -651,7 +651,7 @@ block_implies_block(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB):-
         TypeA != TypeB
     ),
     !overlapping_instruction(BlockB, BlockA),
-    !overlapping_instruction(BlockA, BlockA).
+    !overlapping_instruction(BlockA, BlockB).
 
 block_implies_block(BlockA,TypeA,SizeA,BlockC,TypeC,SizeC):-
     block_implies_block(BlockB,TypeB,SizeB,BlockC,TypeC,SizeC),
