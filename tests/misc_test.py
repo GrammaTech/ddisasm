@@ -7,7 +7,8 @@ from disassemble_reassemble_check import (
     compile,
     cd,
     disassemble,
-    reassemble,
+    build_reassemble_cmd,
+    run_reassembler,
     test,
     make,
 )
@@ -75,17 +76,16 @@ class IFuncSymbolsTests(unittest.TestCase):
         with cd(ex_asm_dir / "ex_ifunc"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
             self.assertTrue(disassemble(binary, format="--asm")[0])
-            self.assertTrue(
-                reassemble(
-                    "gcc",
-                    binary,
-                    extra_flags=[
-                        "-shared",
-                        "-Wl,--version-script=ex.map",
-                        "-nostartfiles",
-                    ],
-                )
+            reassemble_cmd_env = build_reassemble_cmd(
+                "gcc",
+                binary,
+                extra_flags=[
+                    "-shared",
+                    "-Wl,--version-script=ex.map",
+                    "-nostartfiles",
+                ],
             )
+            self.assertTrue(run_reassembler(binary, reassemble_cmd_env))
 
             binlief = lief.parse(binary)
             for relocation in binlief.relocations:
@@ -424,10 +424,10 @@ class RawGtirbTests(unittest.TestCase):
 
             # Disassemble GTIRB input file.
             self.assertTrue(disassemble("ex.gtirb", format="--asm")[0])
-
-            self.assertTrue(
-                reassemble("gcc", "ex.gtirb", extra_flags=["-nostartfiles"])
+            reassemble_cmd_env = build_reassemble_cmd(
+                "gcc", "ex.gtirb", extra_flags=["-nostartfiles"]
             )
+            self.assertTrue(run_reassembler(binary, reassemble_cmd_env))
             self.assertTrue(test())
 
 
@@ -501,18 +501,17 @@ class PeResourcesTests(unittest.TestCase):
             ml, entry = "ml64", "__EntryPoint"
             if os.environ.get("VSCMD_ARG_TGT_ARCH") == "x86":
                 ml, entry = "ml", "_EntryPoint"
-            self.assertTrue(
-                reassemble(
-                    ml,
-                    "ex.exe",
-                    extra_flags=[
-                        "/link",
-                        "ex.res",
-                        "/entry:" + entry,
-                        "/subsystem:console",
-                    ],
-                )
+            reassemble_cmd_env = build_reassemble_cmd(
+                ml,
+                "ex.exe",
+                extra_flags=[
+                    "/link",
+                    "ex.res",
+                    "/entry:" + entry,
+                    "/subsystem:console",
+                ],
             )
+            self.assertTrue(run_reassembler("ex.exe", reassemble_cmd_env))
 
             proc = subprocess.run(make("check"), stdout=subprocess.DEVNULL)
             self.assertEqual(proc.returncode, 0)

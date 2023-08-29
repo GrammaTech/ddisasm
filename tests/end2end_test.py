@@ -9,7 +9,6 @@ import yaml
 
 from disassemble_reassemble_check import (
     disassemble_reassemble_test as drt,
-    skip_reassemble,
 )
 
 
@@ -54,7 +53,7 @@ class TestExamples(unittest.TestCase):
                 "examples/ex1",
                 "ex",
                 skip_test=True,
-                reassemble_function=skip_reassemble,
+                skip_reassemble=True,
                 optimizations=[],
             )
         )
@@ -87,6 +86,9 @@ class TestExamples(unittest.TestCase):
             "extra_link_flags": config.get("link", {}).get("flags", []),
             "linker": config.get("link", {}).get("linker"),
             "reassembly_compiler": config["reassemble"]["compiler"],
+            "makefile_target": config["reassemble"].get(
+                "makefile_target", None
+            ),
             "c_compilers": config["build"]["c"],
             "cxx_compilers": config["build"]["cpp"],
             "optimizations": config["build"]["optimizations"],
@@ -94,6 +96,7 @@ class TestExamples(unittest.TestCase):
             "strip": config["test"].get("strip", False),
             "sstrip": config["test"].get("sstrip", False),
             "skip_test": config["test"].get("skip", False),
+            "skip_reassemble": config["reassemble"].get("skip", False),
             "cfg_checks": config["test"].get("cfg_checks"),
             "exec_wrapper": config["test"].get("wrapper"),
             "arch": config.get("arch"),
@@ -101,8 +104,6 @@ class TestExamples(unittest.TestCase):
                 "flags", []
             ),
         }
-        if config["reassemble"].get("skip", False):
-            args["reassemble_function"] = skip_reassemble
         self.assertTrue(drt(path, binary, **args))
 
 

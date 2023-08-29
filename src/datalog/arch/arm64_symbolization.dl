@@ -232,6 +232,7 @@ symbolic_operand_attribute(EA_ldr,1,"LO12"):-
 
 symbolic_operand_attribute(EA,1,"LO12"):-
     split_load_for_symbolization(EA0,EA,Dest,"LDR/STR"),
+    !relocation(EA,_,_,_,_,_,_),
     (
         !relocation(Dest,_,_,_,_,_,_),
         UNUSED(EA0)
@@ -242,12 +243,42 @@ symbolic_operand_attribute(EA,1,"LO12"):-
         (
             Beg > Dest, UNUSED(End);
             Dest >= End, UNUSED(Beg)
-        )
+        ),
+        UNUSED(EA0)
     ).
 
 symbolic_operand_attribute(EA,2,"LO12"):-
     split_load_for_symbolization(_,EA,Dest,"ADD"),
+    !relocation(EA,_,_,_,_,_,_),
     !relocation(as(Dest,address),"GLOB_DAT",_,_,_,_,_).
+
+/**
+OpIndex: operand index for the corresponding relocation
+*/
+.decl lo_reloc_index(RelocType:symbol, OpIndex:unsigned)
+
+lo_reloc_index("ADD_ABS_LO12_NC", 2).
+lo_reloc_index("LDST8_ABS_LO12_NC", 1).
+lo_reloc_index("LDST16_ABS_LO12_NC", 1).
+lo_reloc_index("LDST32_ABS_LO12_NC", 1).
+lo_reloc_index("LDST64_ABS_LO12_NC", 1).
+lo_reloc_index("LDST128_ABS_LO12_NC", 1).
+
+symbolic_operand_attribute(EA,OpIndex,"LO12"),
+symbolic_expr_from_relocation(EA,4,Symbol,Addend,Dest):-
+    relocation(EA,RelocType,Symbol,Addend,SymbolIndex,_,"RELA"),
+    lo_reloc_index(RelocType,OpIndex),
+    symbol(SymAddr,_,_,_,_,_,_,SymbolIndex,Symbol),
+    Dest = as(as(SymAddr,number)+Addend,address).
+
+symbolic_expr_from_relocation(EA,4,Symbol,Addend,Dest):-
+    relocation(EA,RelocType,Symbol,Addend,SymbolIndex,_,"RELA"),
+    (
+        RelocType = "ADR_PREL_PG_HI21";
+        RelocType = "ADR_PREL_PG_HI21_NC"
+    ),
+    symbol(SymAddr,_,_,_,_,_,_,SymbolIndex,Symbol),
+    Dest = as(as(SymAddr,number)+Addend,address).
 
 value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     split_load_for_symbolization(_,EA,RefAddr,_),
