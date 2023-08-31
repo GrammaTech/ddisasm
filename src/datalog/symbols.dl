@@ -99,14 +99,28 @@ symbol_type_score(Type,1):-
 
 /**
 Auxiliary predicate to define `symbol_score`
-Prefer symbols with GLOBAL scope.
 */
 .decl symbol_scope_score(Scope:symbol,Score:unsigned)
 
-symbol_scope_score("GLOBAL",1).
+/**
+Prefer symbols with LOCAL scope for non-MIPS.
+*/
+symbol_scope_score("LOCAL",2):-
+    !binary_isa("MIPS").
+symbol_scope_score("GLOBAL",1):-
+    !binary_isa("MIPS").
+
+/**
+Prefer symbols with GLOBAL scope for MIPS.
+*/
+symbol_scope_score("LOCAL",1):-
+    binary_isa("MIPS").
+symbol_scope_score("GLOBAL",2):-
+    binary_isa("MIPS").
 
 symbol_scope_score(Scope,0):-
     symbol(_,_,_,Scope,_,_,_,_,_),
+    Scope != "LOCAL",
     Scope != "GLOBAL".
 
 /**
@@ -151,8 +165,8 @@ symbol_score(EA,SymbolName,Type,Pos,Score):-
         DynSymScore = 0
     ),
     // Encode lexicographic ordering into a single score.
-    Score = (RelocScore bshl 36)
-            bor (TypeScore bshl 35)
+    Score = (RelocScore bshl 37)
+            bor (TypeScore bshl 36)
             bor (ScopeScore bshl 34)
             bor (VisibilityScore bshl 33)
             bor (DynSymScore bshl 32)
