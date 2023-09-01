@@ -1365,6 +1365,10 @@ block_points(Block,"data",Size,0,10,"repeated byte"):-
     !is_padding(Block).
 
 negative_block_points(Block,"code",Size,0,-10,"null region"):-
+    (
+        binary_isa("X86");
+        binary_isa("X64")
+    ),
     unresolved_block(Block,"code",Size),
     repeated_byte(EA,0,Count),
     Count > 8, EA >= Block, EA < Block+Size.
