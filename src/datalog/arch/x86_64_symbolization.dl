@@ -51,3 +51,12 @@ symbolic_operand_attribute(EA,Index,"PCREL"):-
         relocation(EA+Offset,"GOTPCRELX",_,_,_,_,_);
         relocation(EA+Offset,"REX_GOTPCRELX",_,_,_,_,_)
     ).
+
+symbolic_operand_candidate(EA,Index,Dest,Type):-
+    code(EA),
+    instruction_get_operation(EA, "XBEGIN"),
+    instruction_get_op(EA, Index, ImmOp),
+    op_immediate(ImmOp, Imm),
+    Dest = as(Imm,address),
+    code(Dest),
+    Type="code".
