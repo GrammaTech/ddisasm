@@ -1244,6 +1244,12 @@ block_points(Block,"code",Size,0,2,"unresolved-may-fallthrough"):-
     !candidate_block_is_padding(BlockPred),
     unresolved_block(BlockPred,"code",_).
 
+block_points(Block,"code",Size,0,3,"incremental linking target"):-
+    unresolved_block(Block,"code",Size),
+    direct_jump(EA,Block),
+    incremental_linking(First,Last),
+    EA >= First, EA < Last.
+
 /**
 Points for reachability
 
@@ -1357,6 +1363,11 @@ block_points(Block,"data",Size,0,10,"repeated byte"):-
     unresolved_block(Block,"data",Size),
     repeated_byte(Block,_,Count), Count >= 8,
     !is_padding(Block).
+
+negative_block_points(Block,"code",Size,0,-10,"null region"):-
+    unresolved_block(Block,"code",Size),
+    repeated_byte(EA,0,Count),
+    Count > 8, EA >= Block, EA < Block+Size.
 
 /**
 Give penalty on the dangling block where one or two instructions are enclosed
