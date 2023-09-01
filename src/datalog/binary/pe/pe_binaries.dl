@@ -183,10 +183,11 @@ of PE binaries built with "incremental linking".
 */
 .decl incremental_linking_candidate(EA:address)
 
-incremental_linking_candidate(First):-
+incremental_linking_candidate(EA+Count):-
     binary_format("PE"),
-    First = min EA: { instruction(EA,_,_,_,_,_,_,_,_,_), !is_padding(EA) },
-    unconditional_jump(First).
+    loaded_section(EA,_,".text"),
+    repeated_byte(EA,0xCC,Count),
+    unconditional_jump(EA+Count).
 
 incremental_linking_candidate(Next):-
     incremental_linking_candidate(EA),
