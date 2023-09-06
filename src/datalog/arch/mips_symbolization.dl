@@ -414,7 +414,7 @@ symbolic_operand_mips_candidate(EA,1,Dest):-
 // E.g., lw t9, %got(puts)(gp)
 symbolic_operand_attribute(EA,Index,"GOT"):-
     symbolic_operand_mips_candidate(EA,Index,Got_entry),
-    got_reference(Got_entry,Symbol).
+    got_reference(Got_entry,_).
 
 symbolic_operand(EA,1,Dest_addr,"data"):-
     base_addr_offset_operand(EA,_,Dest_addr).
