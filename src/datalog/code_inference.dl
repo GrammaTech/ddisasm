@@ -1278,7 +1278,6 @@ resolved_reaches(Block,Size,Points):-
         jump_table_candidate(EA,_,_,Block), Adjust = 1
     ),
     code_in_block_candidate_refined(EA,BlockPred),
-    !unresolved_block(BlockPred,"data",_),
     resolved_reaches(BlockPred,_,Points0),
     Points = Points0 - Adjust,
     Points0 > Adjust.
