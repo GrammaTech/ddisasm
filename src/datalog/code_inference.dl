@@ -1355,7 +1355,7 @@ block_points(Block,"code",Size,0,2,"padding nop block"):-
     arch.is_nop(Block).
 
 block_points(Block,"data",Size,0,10,"repeated byte"):-
-    unresolved_block_overlap(Block,"data",Size,_,"code",_),
+    unresolved_block(Block,"data",Size),
     repeated_byte(Block,_,Count), Count >= 8,
     !is_padding(Block).
 
