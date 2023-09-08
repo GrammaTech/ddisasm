@@ -253,20 +253,11 @@ invalid(EA,"arm64-udf"):-
     binary_isa("ARM64"),
     instruction_get_operation(EA,"UDF").
 
-/**
-Exclude instructions from code inference.
-
-Unlike 'invalid' this predicate does not propagate with backwards traversal and
-instead provides an explicit exclusion by address 'EA'.
-*/
-.decl discarded_instruction(EA:address,Type:symbol)
-.output discarded_instruction
-
-discarded_instruction(EA+1,"INT3"):-
+invalid(EA+1,"INT3"):-
     binary_format("PE"),
     (
-     binary_isa("X86");
-     binary_isa("X64")
+         binary_isa("X86");
+         binary_isa("X64")
     ),
     instruction_get_operation(EA,"INT3"),
     instruction_get_operation(EA+1,"INT3").
@@ -275,8 +266,7 @@ discarded_instruction(EA+1,"INT3"):-
 
 possible_ea(EA):-
     instruction(EA,_,_,_,_,_,_,_,_,_),
-    !invalid(EA,_),
-    !discarded_instruction(EA,_).
+    !invalid(EA,_).
 
 .decl basic_target(ea:address)
 
