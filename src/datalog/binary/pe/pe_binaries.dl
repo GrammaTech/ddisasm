@@ -116,9 +116,10 @@ symbol(0,0,"NONE","EXTERN","DEFAULT",0,"none",0,Function):-
 symbol(EA,0,"NOTYPE","GLOBAL","DEFAULT",0,"export",as(Ordinal,unsigned),Function):-
     pe_export_entry(EA,Ordinal,Function).
 
-is_padding(EA):-
+is_padding(EA+1):-
     binary_format("PE"),
-    instruction_get_operation(EA,"INT3").
+    instruction_get_operation(EA,"INT3"),
+    instruction_get_operation(EA+1,"INT3").
 
 /**
 Non-destructive multi-byte NOPs used by the MSVC compiler. (See `listing.inc'.)

@@ -214,4 +214,10 @@ namespace souffle
         return T;
     }
 
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::RepeatedByte& RepeatedByte)
+    {
+        T << RepeatedByte.Addr << static_cast<uint64_t>(RepeatedByte.Byte) << RepeatedByte.Count;
+        return T;
+    }
+
 } // namespace souffle

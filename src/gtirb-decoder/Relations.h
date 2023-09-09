@@ -277,6 +277,13 @@ namespace relations
         std::string Value;
     };
 
+    struct RepeatedByte
+    {
+        gtirb::Addr Addr;
+        uint8_t Byte;
+        uint64_t Count;
+    };
+
 } // namespace relations
 
 namespace souffle
@@ -353,6 +360,8 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::InstructionOpAccess& OpAccess);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::ArchInfo& ArchInfo);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::RepeatedByte& RepeatedByte);
 
 } // namespace souffle
 

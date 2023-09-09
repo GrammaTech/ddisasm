@@ -253,13 +253,14 @@ invalid(EA,"arm64-udf"):-
     binary_isa("ARM64"),
     instruction_get_operation(EA,"UDF").
 
-invalid(EA,"INT3"):-
+invalid(EA+1,"INT3"):-
     binary_format("PE"),
     (
-        binary_isa("X86");
-        binary_isa("X64")
+         binary_isa("X86");
+         binary_isa("X64")
     ),
-    instruction_get_operation(EA,"INT3").
+    instruction_get_operation(EA,"INT3"),
+    instruction_get_operation(EA+1,"INT3").
 
 .decl possible_ea(EA:address) inline
 
@@ -467,6 +468,12 @@ after_end(Next,End):-
     data_block_candidate(EA,Size),
     Next = Next0 + Size.
 
+after_end(Next,End):-
+    binary_format("PE"),
+    instruction_get_operation(End,"INT3"),
+    next(End,Next),
+    !instruction_get_operation(Next,"INT3").
+
 possible_target(EA):-
     after_end(EA,_),
     (
@@ -534,6 +541,10 @@ data_block_candidate(Block,AccessSize):-
     composite_data_access(EA,EA_load,Block,AccessSize),
     code_in_block_candidate(EA,_),
     code_in_block_candidate(EA_load,_).
+
+data_block_candidate(EA,Size):-
+    repeated_byte(EA,_,Size), Size > 8,
+    !is_padding(EA).
 
 /**
 The block candidate defined by address 'Block' extends from 'BegAddr' to 'EndAddr'.
@@ -1226,7 +1237,7 @@ block_points(Block,"code",Size,BlockPred,Points,"unresolved-direct-call"):-
     unresolved_block(BlockPred,"code",_),
     Points = 2.
 
-block_points(Block,"code",Size,0,2,"unresovled-may-fallthrough"):-
+block_points(Block,"code",Size,0,2,"unresolved-may-fallthrough"):-
     unresolved_block(Block,"code",Size),
     may_fallthrough(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
@@ -1342,6 +1353,11 @@ block_points(Block,"code",Size,0,2,"padding nop block"):-
     fde_addresses(_,Block),
     arch.is_nop(Block).
 
+block_points(Block,"data",Size,0,10,"repeated byte"):-
+    unresolved_block(Block,"data",Size),
+    repeated_byte(Block,_,Count), Count >= 8,
+    !is_padding(Block).
+
 /**
 Give penalty on the dangling block where one or two instructions are enclosed
 in a bigger instruction.
@@ -1438,6 +1454,17 @@ block_points(Block,"data",AccessSize,0,Points,"composite data access"):-
         unresolved_block(CodeBlock2,"code",_),
         Points = 2
     ).
+
+block_points(Block,"code",Size,0,-1,"debug block"):-
+    (
+        binary_isa("X86");
+        binary_isa("X64")
+    ),
+    unresolved_block(Block,"code",Size),
+    block_candidate_boundaries(Block,"code",_,End),
+    next(EA,End),
+    code_in_block_candidate_refined(EA,Block),
+    instruction_get_operation(EA,"INT3").
 
 ////////////////////////////////////////////////////////////////////////////
 
