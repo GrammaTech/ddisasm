@@ -546,9 +546,22 @@ data_block_candidate(EA,Size):-
     repeated_byte(EA,_,Size), Size > 8,
     !is_padding(EA).
 
-data_block_candidate(EA,4):-
-    code_in_block_candidate(EA,_),
-    seh_handler_entry(EA,_).
+data_block_candidate(Block,Size),
+known_block(Block,"data",Size,"object symbol"):-
+    defined_symbol(Block,Size,"OBJECT",_,_,_,_,_,_),
+    Size > 0.
+
+data_block_candidate(Block,4):-
+    code_in_block_candidate(Block,_),
+    seh_handler_entry(Block,_).
+
+data_block_candidate(Block,4),
+known_block(Block,"data",4,"relocation"):-
+    binary_format("PE"),
+    code_in_block_candidate(Block,_),
+    relocation(Block,"HIGHLOW",_,_,_,_,_),
+    !instruction_has_relocation(_,Block),
+    address_in_data(Block,_).
 
 /**
 The block candidate defined by address 'Block' extends from 'BegAddr' to 'EndAddr'.
@@ -1371,15 +1384,6 @@ block_points(Block,"data",Size,0,10,"repeated byte"):-
     repeated_byte(Block,_,Count), Count >= 8,
     !is_padding(Block).
 
-negative_block_points(Block,"code",Size,0,-10,"null region"):-
-    (
-        binary_isa("X86");
-        binary_isa("X64")
-    ),
-    unresolved_block(Block,"code",Size),
-    repeated_byte(EA,0,Count),
-    Count > 8, EA >= Block, EA < Block+Size.
-
 /**
 Give penalty on the dangling block where one or two instructions are enclosed
 in a bigger instruction.
@@ -1416,11 +1420,6 @@ negative_block_points(Block,"code",Size,0,-2,"conditional jump/return: fallthrou
     ),
     next(EA,Invalid),
     invalid(Invalid,_).
-
-data_block_candidate(Block,Size),
-known_block(Block,"data",Size,"object symbol"):-
-    defined_symbol(Block,Size,"OBJECT",_,_,_,_,_,_),
-    Size > 0.
 
 negative_block_points(Block,"code",Size,0,-1,"jump to string"):-
     ascii_string(Beg,End),
