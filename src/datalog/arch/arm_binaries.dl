@@ -69,9 +69,11 @@ instruction sequences.
 
 plausible_block(0,0,"",0):- false.
 
-block_points(Block,"code",Size,0,Weight,cat("plausible_block: ", Why)):-
+block_points(Block,"code",Size,0,Weight,Heuristic):-
     unresolved_block(Block,"code",Size),
-    plausible_block(Block,Weight,Why,_).
+    plausible_block(Block,_,Why,_),
+    Heuristic = cat("plausible_block: ", Why),
+    heuristic_weight(Weight,Heuristic).
 
 avoid_symbols("$d").
 

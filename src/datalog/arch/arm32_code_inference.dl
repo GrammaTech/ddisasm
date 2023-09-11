@@ -426,19 +426,30 @@ References to potential litpools with indeterminate sizes.
 */
 .decl indefinite_litpool_ref(Start:address,Size:unsigned)
 
+// litpool that looks like a string
+indefinite_litpool_ref(RefAddr,Size):-
+    arch.pc_relative_addr(EA,_,RefAddr),
+    code_in_block_candidate(EA,_),
+    !composite_data_access(EA,_,_,_),
+    ascii_string(RefAddr,End),
+    Size = End - RefAddr.
+
 // If there's no known use of a pc-relative register,
 // it may be a reference to data that is getting passed to a function.
 indefinite_litpool_ref(RefAddr,Size):-
     arch.pc_relative_addr(EA,_,RefAddr),
     code_in_block_candidate(EA,_),
     !composite_data_access(EA,_,_,_),
+    !ascii_string(RefAddr,_),
     NextLimit = min Limit : {
         data_block_limit(Limit),
         Limit > RefAddr
     },
     Size = NextLimit - RefAddr.
 
+block_points(RefAddr,"data",Size,0,Weight,Heuristic),
 data_block_candidate(RefAddr,Size):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "indefinite litpool ref",
     indefinite_litpool_ref(RefAddr,Size).
 
 /*
@@ -480,26 +491,27 @@ adr r2, .L_xxx
 ldm r2, { r2, r3 }
 .L_xxx: 8 byte data
 */
-litpool_confidence(EA,LitPoolAddr,Confidence,"adr/ldm"):-
+litpool_confidence(EA,LitPoolAddr,Weight,Heuristic):-
     arch.pc_relative_addr(EA,Reg,LitPoolAddr),
     straight_line_def_used(EA,Reg,EA_ldm,_),
     instruction_get_operation(EA_ldm,Operation),
     contains("LDM",Operation),
     code_in_block_candidate_refined(EA,Block),
+    heuristic_weight(Weight,Heuristic),
     (
         unresolved_block(Block,"code",_),
-        Confidence = 3
+        Heuristic = "litpool ref block: adr/ldm unresolved"
         ;
         !unresolved_block(Block,"code",_),
         !impossible_block(Block,"code",_,_),
-        Confidence = 5
+        Heuristic = "litpool ref block: adr/ldm"
     ).
 
 /**
 Give more points in case of ldr/ldrd or adr/ldrd, which is likely a valid
 instruction sequence.
 */
-litpool_confidence(EA,LitPoolAddr,Confidence,"ldr/ldrd"):-
+litpool_confidence(EA,LitPoolAddr,Weight,Heuristic):-
     litpool_ref(EA,EA_ldr,RefAddr,LitPoolOffset,_,_),
     LitPoolAddr = RefAddr + LitPoolOffset,
     straight_line_def_used(EA_ldr,_,EA_ldrd,_),
@@ -507,57 +519,57 @@ litpool_confidence(EA,LitPoolAddr,Confidence,"ldr/ldrd"):-
     contains("LDRD",Operation),
     !arch.dangling_thumb_instr(EA),
     code_in_block_candidate_refined(EA,Block),
+    heuristic_weight(Weight,Heuristic),
     (
         unresolved_block(Block,"code",_),
-        Confidence = 3
+        Heuristic = "litpool ref block: ldr/ldrd unresolved"
         ;
         !unresolved_block(Block,"code",_),
         !impossible_block(Block,"code",_,_),
-        Confidence = 5
+        Heuristic = "litpool ref block: ldr/ldrd"
     ).
 
 
 /**
 If the ref block is not overlapping, it is likely a true literal pool.
 */
-litpool_confidence(EA,LitPoolAddr,Confidence,"ref by non-overlapping block"):-
+litpool_confidence(EA,LitPoolAddr,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "litpool ref block: ref by non-overlapping block",
     litpool_ref(EA,_,RefAddr,LitPoolOffset,_,_),
     LitPoolAddr = RefAddr + LitPoolOffset,
     code_in_block_candidate_refined(EA,Block),
     !unresolved_block(Block,"code",_),
-    !impossible_block(Block,"code",_,_),
-    Confidence = 12.
+    !impossible_block(Block,"code",_,_).
 
 /**
 Even if the ref block is overlapping, if the literal pool block is not
 overlapping, give 1 point.
 */
-litpool_confidence(EA,LitPoolAddr,Confidence,"not overlapping"),
-block_points(Block,"code",Size,0,Confidence,"litpool ref block: not overlapping"):-
+litpool_confidence(EA,LitPoolAddr,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "litpool ref block: not overlapping",
     litpool_ref(EA,_,RefAddr,LitPoolOffset,LitPoolSize,_),
     LitPoolAddr = RefAddr + LitPoolOffset,
     code_in_block_candidate_refined(EA,Block),
-    unresolved_block(Block,"code",Size),
+    unresolved_block(Block,"code",_),
     !overlap_with_litpool(Block),
     !code_in_block_candidate_refined(LitPoolAddr+(EA band 1),_),
     !unresolved_block(LitPoolAddr,"data",LitPoolSize),
-    !impossible_block(LitPoolAddr,"data",LitPoolSize,_),
-    Confidence = 1.
+    !impossible_block(LitPoolAddr,"data",LitPoolSize,_).
 
 /**
 Even if the ref block is overlapping, if the loaded register is used somewhere,
 it is likely a literal pool.
 NOTE: We can't use `def_used` here.
 */
-litpool_confidence(EA,LitPoolAddr,Confidence,"loaded register used somewhere"):-
+litpool_confidence(EA,LitPoolAddr,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "litpool ref block: loaded register used somewhere",
     litpool_ref(EA,EA_ldr,RefAddr,LitPoolOffset,_,_),
     LitPoolAddr = RefAddr + LitPoolOffset,
     code_in_block_candidate_refined(EA,Block),
     unresolved_block(Block,"code",_),
     !overlap_with_litpool(Block),
     arch.load(EA_ldr,_,_,Reg,_,_,_,_),
-    straight_line_def_used(EA_ldr,Reg,_,_),
-    Confidence = 3.
+    straight_line_def_used(EA_ldr,Reg,_,_).
 
 /**
 Even if the ref block is overlapping and there is no known use of the loaded
@@ -566,7 +578,8 @@ pool.
 Note that the use of r may not be explicit when r is only used as an argument
 of a function call.
 */
-litpool_confidence(EA,LitPoolAddr,Confidence,"possibly register param"):-
+litpool_confidence(EA,LitPoolAddr,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "litpool ref block: possibly register param",
     litpool_ref(EA,EA_ldr,RefAddr,LitPoolOffset,_,_),
     LitPoolAddr = RefAddr + LitPoolOffset,
     code_in_block_candidate_refined(EA,Block),
@@ -577,14 +590,14 @@ litpool_confidence(EA,LitPoolAddr,Confidence,"possibly register param"):-
     arch.call(CallEA,_),
     arch.load(EA_ldr,_,_,Reg,_,_,_,_),
     arch.integer_reg_param(Reg,_),
-    CallEA <= EA + 12,
-    Confidence = 3.
+    CallEA <= EA + 12.
 
 /**
 If there are multiple litpool references in a block, it is likely a real code.
 */
-litpool_confidence(EA,LitPoolAddr,1,"multiple litpool refs in a block"),
-block_points(Block,"code",Size,0,1,"multiple litpool refs in a block"):-
+litpool_confidence(EA,LitPoolAddr,Weight,Heuristic),
+block_points(Block,"code",Size,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "multiple litpool refs in a block",
     litpool_ref(EA,_,RefAddr,LitPoolOffset,_,_),
     LitPoolAddr = RefAddr + LitPoolOffset,
     code_in_block_candidate_refined(EA,Block),
@@ -604,7 +617,8 @@ Even if the ref block is overlapping and there is no known use of the loaded
 register, if the instruction appears to be a valid VLDR, it is likely a
 literal.
 */
-litpool_confidence(EA,LitPoolAddr,Confidence,"valid VLDR"):-
+litpool_confidence(EA,LitPoolAddr,Weight,Reason):-
+    heuristic_weight(Weight,Reason),Reason="litpool ref block: valid VLDR",
     litpool_ref(EA,EA_ldr,RefAddr,LitPoolOffset,Size,_),
     LitPoolAddr = RefAddr + LitPoolOffset,
     code_in_block_candidate_refined(EA,Block),
@@ -613,10 +627,10 @@ litpool_confidence(EA,LitPoolAddr,Confidence,"valid VLDR"):-
     instruction_get_operation(EA_ldr,"VLDR"),
     instruction_get_dest_op(EA_ldr,_,DestRegOp),
     op_regdirect_contains_reg(DestRegOp,Reg),
-    arch.float_reg(Reg,Size),
-    Confidence = 4.
+    arch.float_reg(Reg,Size).
 
-litpool_confidence(EA,LitPoolAddr,9,"ldr_add_pc"):-
+litpool_confidence(EA,LitPoolAddr,Weight,Reason):-
+    heuristic_weight(Weight,Reason),Reason="litpool ref block: ldr_add_pc",
     init_ldr_add_pc(EA,_,_,LitPoolAddr,_,_).
 
 //////////////////////////////////////////////////////////////////////////
@@ -761,15 +775,18 @@ plausible_block(Block,1,cat("transitive: ",Note),Block2):-
 //////////////////////////////////////////////////////////////////////////
 // block points
 
-block_points(EA_entry,"code",Size,0,7,"arm: plt-block"):-
+block_points(EA_entry,"code",Size,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "arm: plt-block",
     unresolved_block(EA_entry,"code",Size),
     plt_entry_arm_candidate(EA_entry,_,_,_).
 
-block_points(EA,"code",End-Start,0,7,"arm: plt-block: bx pc"):-
+block_points(EA,"code",End-Start,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "arm: plt-block: bx pc",
     plt_bx_pc(EA,_),
     block_candidate_boundaries(EA,"code",Start,End).
 
-block_points(Block,"code",Size,0,1,"arm: plt call"):-
+block_points(Block,"code",Size,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "arm: plt call",
     plt_entry_arm_candidate(BlockDest,_,_,_),
     direct_call(EA,BlockDest),
     code_in_block_candidate_refined(EA,Block),
@@ -780,7 +797,8 @@ Similarly to the above rule, if the enclosed Thumb instruction does not have
 any predecessor and the outer instruction has one, give penalty to the dangling
 Thumb block.
 */
-negative_block_points(Block,"code",Size,0,-1,"arm: dangling thumb instruction"):-
+negative_block_points(Block,"code",Size,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "arm: dangling thumb instruction",
     unresolved_block(Block,"code",Size),
     (Block band 1) = 1, // Thumb mode only
     arch.dangling_thumb_instr(Block).
@@ -789,7 +807,8 @@ negative_block_points(Block,"code",Size,0,-1,"arm: dangling thumb instruction"):
 It was observed that a valid ARM mode block often overlaps with a bad, small
 Thumb block consisting of ADDS/SUBS/ASRS and B instrutions.
 */
-negative_block_points(Block,"code",Size,0,-1,"arm: possibly invalid thumb block"):-
+negative_block_points(Block,"code",Size,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "arm: possibly invalid thumb block",
     unresolved_block(Block,"code",Size),
     (Block band 1) = 1, // Thumb mode only
     instruction(Block,2,_,Operation,_,_,_,_,_,_),
@@ -804,72 +823,51 @@ There can be false positives of literal pools.
 Give more points to the literal pool (data) and the ref block (code)
 when it is more likely to be an actual literal pool.
 */
-block_points(Block,"code",Size,0,Confidence-2,cat("litpool ref block: ",Reason)):-
+
+
+block_points(Block,"code",Size,0,Confidence,Reason):-
     litpool_ref(EA,_,RefAddr,LitPoolOffset,_,_),
     LitPoolAddr = RefAddr + LitPoolOffset,
     code_in_block_candidate_refined(EA,Block),
     block_candidate_boundaries(Block,"code",Start,End),
     Size = End - Start,
-    litpool_confidence(EA,LitPoolAddr,Confidence,Reason),
-    Confidence > 2.
+    litpool_confidence(EA,LitPoolAddr,Confidence,Reason).
 
-/**
-This rule is used for transmitting the points given to a literal pool data
-block to the corresponding literal-pool reference code block.
-*/
-.decl code_to_litpool_ref_point_transfer(Reason:symbol,Adjust:number)
-
-code_to_litpool_ref_point_transfer("litpool ref block: adr/ldm",1).
-code_to_litpool_ref_point_transfer("litpool ref block: ldr/ldrd",2).
-code_to_litpool_ref_point_transfer("litpool ref block: adr/ldrd",2).
-code_to_litpool_ref_point_transfer("litpool ref block: ref by non-overlapping block",2).
-code_to_litpool_ref_point_transfer("litpool ref block: loaded register used somewhere",3).
-code_to_litpool_ref_point_transfer("litpool ref block: possibly register param",2).
-code_to_litpool_ref_point_transfer("litpool ref block: multiple litpool refs in a block",0).
-code_to_litpool_ref_point_transfer("litpool ref block: valid VLDR", 2).
-code_to_litpool_ref_point_transfer("litpool ref block: ldr_add_pc", 2).
-code_to_litpool_ref_point_transfer("start point",0).
-code_to_litpool_ref_point_transfer("function symbol",0).
-code_to_litpool_ref_point_transfer("direct jump",0).
-code_to_litpool_ref_point_transfer("direct call",0).
-code_to_litpool_ref_point_transfer("may-fallthrough",0).
-code_to_litpool_ref_point_transfer("must-fallthrough",0).
-
-block_points(LitPoolAddr,"data",Size,0,Points,cat("litpool: ",Reason)):-
+block_points(LitPoolAddr,"data",Size,0,Points,Litpool_reason):-
     litpool_ref(EA,_,RefAddr,LitPoolOffset,Size,_),
     code_in_block_candidate_refined(EA,Block),
-    block_points(Block,"code",_,0,Points0,Reason),
+    block_points(Block,"code",_,0,_,Reason),
+    Litpool_reason = cat("litpool: ",Reason),
     LitPoolAddr = RefAddr + LitPoolOffset,
-    code_to_litpool_ref_point_transfer(Reason,Adjust),
-    Points = Points0 + Adjust,
-    Points > 0.
+    heuristic_weight(Points,Litpool_reason).
 
 /**
 Even if the ref block is overlapping, if it contains a plausible instruction
 sequence, it is likely a true literal pool.
 */
-block_points(LitPoolAddr,"data",Size,0,Confidence,"arm: litpool: ref by block containing plausible instr seq"):-
-    litpool_ref(EA,_,RefAddr,LitPoolOffset,Size,_),
-    LitPoolAddr = RefAddr + LitPoolOffset,
-    code_in_block_candidate_refined(EA,Block),
-    unresolved_block(Block,"code",_),
-    !overlap_with_litpool(Block),
-    Confidence = sum X:{plausible_block(Block,X,_,_)},
-    Confidence > 0.
+//block_points(LitPoolAddr,"data",Size,0,Confidence,"arm: litpool: ref by block containing plausible instr seq"):-
+//    litpool_ref(EA,_,RefAddr,LitPoolOffset,Size,_),
+//    LitPoolAddr = RefAddr + LitPoolOffset,
+//    code_in_block_candidate_refined(EA,Block),
+//    unresolved_block(Block,"code",_),
+//    !overlap_with_litpool(Block),
+//    Confidence = sum X:{plausible_block(Block,X,_,_)},
+//    Confidence > 0.
 
 /**
 Literal pools are often placed together.
 Check if there's another literal pool before or after this one.
 */
-block_points(Block,"code",CodeSize,0,Points,"arm: litpool ref block: consecutive literal pools"),
-block_points(LitPoolAddr,"data",Size,0,Points,"arm: litpool: consecutive literal pools"):-
+block_points(Block,"code",CodeSize,0,Weight,Heuristic),
+block_points(LitPoolAddr,"data",Size,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic),
     litpool_ref(EA,_,RefAddr,LitPoolOffset,Size,_),
     LitPoolAddr = RefAddr + LitPoolOffset,
     code_in_block_candidate_refined(EA,Block),
     unresolved_block(Block,"code",CodeSize),
     !overlap_with_litpool(Block),
-    (Size2 = 4; Size2 = 8),
     (
+        (Size2 = 4; Size2 = 8),
         // There is a literal pool before this one.
         litpool_boundaries(LitPoolAddr-Size2,LitPoolAddr),
         litpool_total_confidence(LitPoolAddr-Size2,Confidence),
@@ -877,38 +875,42 @@ block_points(LitPoolAddr,"data",Size,0,Points,"arm: litpool: consecutive literal
         (
             // There is no literal pool after this one.
             !litpool_boundaries(LitPoolAddr+Size,_),
-            Points = 1
+            Heuristic = "arm: litpool: consecutive literal pools"
             ;
             // There is a literal pool after this one.
             litpool_boundaries(LitPoolAddr+Size,_),
             litpool_total_confidence(LitPoolAddr+Size,Confidence2),
             Confidence2 > 2,
-            Points = 3
+            Heuristic = "arm: litpool: consecutive literal pools 2"
         )
         ;
         // There is no literal pool before this one, but, there is one after.
-        !litpool_boundaries(LitPoolAddr-Size2,_),
+        !litpool_boundaries(LitPoolAddr-4,LitPoolAddr),
+        !litpool_boundaries(LitPoolAddr-8,LitPoolAddr),
         litpool_boundaries(LitPoolAddr+Size,_),
         litpool_total_confidence(LitPoolAddr+Size,Confidence1),
         Confidence1 > 1,
-        Points = 1
+        Heuristic = "arm: litpool: consecutive literal pools"
     ).
 
-block_points(Block,"data",Size,0,10,"arm: $d symbol"):-
+block_points(Block,"data",Size,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "arm: $d symbol",
     defined_symbol(Block,0,_,_,_,_,_,_,"$d"),
     data_block_candidate(Block,Size).
 
 /**
 If litpool overlaps with a function symbol or $t or $a, give penalty.
 */
-negative_block_points(LitPoolAddr,"data",Size,0,-20,"arm: litpool: overlapped with code symbol"):-
+negative_block_points(LitPoolAddr,"data",Size,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "arm: litpool: overlapped with code symbol",
     litpool_boundaries(LitPoolAddr,End),
     Size = End-LitPoolAddr,
     symbol(LitPoolAddr,_,_,_,_,_,_,_,Name),
     (thumb_sym(Name); arm_sym(Name)).
 
-block_points(Block,"data",Size,0,8,"possible string: symbol"),
+block_points(Block,"data",Size,0,Weight,Heuristic),
 data_block_candidate(Block,Size):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "possible string: symbol",
     !arm_jump_table_candidate(_,_,Block,_,_,_,_,_,_),
     ascii_string(Block,End),
     Size = End-Block,
@@ -917,7 +919,8 @@ data_block_candidate(Block,Size):-
     !thumb_sym(Name),
     !arm_sym(Name).
 
-block_points(Block,"data",Size,0,-5,"possible string: symbol is target"):-
+block_points(Block,"data",Size,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "possible string: symbol is target",
     block_points(Block,"data",Size,0,8,"possible string: symbol"),
     data_block_candidate(Block,Size),
     direct_jump(_,Target), Target >= Block, Target < Block+Size.
@@ -926,8 +929,9 @@ block_points(Block,"data",Size,0,-5,"possible string: symbol is target"):-
 Strings are often placed together.
 Check if there's another string before or after this one.
 */
-block_points(Block,"data",Size,0,5,"possible string: string pred exists"),
+block_points(Block,"data",Size,0,Weight,Heuristic),
 data_block_candidate(Block,Size):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "possible string: string pred exists",
     !arm_jump_table_candidate(_,_,Block,_,_,_,_,_,_),
     ascii_string(Block,End),
     Size = End-Block,
@@ -947,8 +951,9 @@ data_block_candidate(Block,Size):-
         End2 = Block - 3
     ).
 
-block_points(Block,"data",Size,0,5,"possible string: string succ exists"),
+block_points(Block,"data",Size,0,Weight,Heuristic),
 data_block_candidate(Block,Size):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "possible string: string succ exists",
     !arm_jump_table_candidate(_,_,Block,_,_,_,_,_,_),
     ascii_string(Block,End),
     Size = End-Block,
@@ -977,8 +982,9 @@ LitPoolAddr: Block
 ...
 Block: .string "..."
 */
-block_points(Block,"data",Size,0,4,"possible string: string param for string library"),
+block_points(Block,"data",Size,0,Weight,Heuristic),
 data_block_candidate(Block,Size):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "possible string: string param for string library",
     litpool_ref(EA,EA_ldr,RefAddr,LitPoolOffset,_,_),
     LitPoolAddr = RefAddr + LitPoolOffset,
     address_in_data(LitPoolAddr,Block),
@@ -1009,7 +1015,8 @@ To give more confidence to the real block with strb,
 give points 2 to the enclosing block when the enclosing block has
 a must-fallthrough even if the block is overlapping.
 */
-negative_block_points(InnerBlock,"code",Size,0,-3,"arm: bogus sub-instruction"):-
+negative_block_points(InnerBlock,"code",Size,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "arm: bogus sub-instruction",
     unresolved_block(InnerBlock,"code",Size),
     code_in_block_candidate_refined(EnclosingEA,_),
     must_fallthrough(_,EnclosingEA),
@@ -1021,7 +1028,8 @@ negative_block_points(InnerBlock,"code",Size,0,-3,"arm: bogus sub-instruction"):
 /**
 A return block followed by a function symbol is likely real code.
 */
-block_points(Block,"code",Size,0,2,"arm: return followed by a function"):-
+block_points(Block,"code",Size,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "arm: return followed by a function",
     unresolved_block(Block,"code",Size),
     code_in_block_candidate_refined(EA,Block),
     arch.return(EA),
@@ -1038,7 +1046,8 @@ E.g.,
 >  ldmdaeq r7, { r0, r3, r6, r7, r8, sb, fp, ip }
 >  ldmdaeq r5, { r1, r3, r4, r5, r7, r8 }
 */
-negative_block_points(Block,"code",Size,0,-7,"arm: ldmdaeq"):-
+negative_block_points(Block,"code",Size,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "arm: ldmdaeq",
     code_in_block_candidate_refined(EA,Block),
     block_candidate_boundaries(Block,"code",Start,End),
     Size = End-Start,
@@ -1058,7 +1067,8 @@ negative_block_points(Block,"code",Size,0,-7,"arm: ldmdaeq"):-
 /**
 00 00 00 00 (ARM: andeq r0, r0, r0) or 00 00 (Thumb: mov r0, r0) is unlikely a real instruction.
 */
-negative_block_points(Block,"code",Size,0,-2,"arm: contains unplausible instr"):-
+negative_block_points(Block,"code",Size,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic ="arm: contains unplausible instr",
     code_in_block_candidate_refined(Inst,Block),
     arch.instruction_at(EA,Inst),
     instruction(Inst,InstSize,_,_,_,_,_,_,_,_),
@@ -1067,7 +1077,8 @@ negative_block_points(Block,"code",Size,0,-2,"arm: contains unplausible instr"):
     Size = End-Start.
 
 // A code block that must fall through to a function start is highly likely false.
-negative_block_points(Block,"code",Size,0,-10,"arm: must-fallthrough to function symbol"):-
+negative_block_points(Block,"code",Size,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "arm: must-fallthrough to function symbol",
     function_symbol(BlockSucc,_),
     must_fallthrough(EA,BlockSucc),
     code_in_block_candidate_refined(EA,Block),
@@ -1076,7 +1087,8 @@ negative_block_points(Block,"code",Size,0,-10,"arm: must-fallthrough to function
     Size = End-Start.
 
 // Same as above, but with an exidx boundary
-negative_block_points(Block,"code",Size,0,-10,"arm: must-fallthrough to exidx boundary"):-
+negative_block_points(Block,"code",Size,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "arm: must-fallthrough to exidx boundary",
     arm_exidx_entry(EASucc,0),
     arch.instruction_at(EASucc,BlockSucc),
     must_fallthrough(EA,BlockSucc),
@@ -1086,7 +1098,8 @@ negative_block_points(Block,"code",Size,0,-10,"arm: must-fallthrough to exidx bo
     Size = End-Start.
 
 // Same as above, but without an explicit function symbol
-negative_block_points(Block,"code",Size,0,-8,"arm: must-fallthrough to known function start"):-
+negative_block_points(Block,"code",Size,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "arm: must-fallthrough to known function start",
     direct_call(CallFrom,BlockSucc),
     code_in_block_candidate_refined(CallFrom,CallFromBlock),
     known_block(CallFromBlock,"code",_,_),
@@ -1102,7 +1115,8 @@ data_block_candidate(Block,Pt_size):-
     ascii_string(Addr,_),
     arch.pointer_size(Pt_size).
 
-block_points(Block,"data",Size,0,2,"arm: pointer to string in data"):-
+block_points(Block,"data",Size,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "arm: pointer to string in data",
     aligned_address_in_data(Block,Addr),
     arch.pointer_size(Size),
     ascii_string(Addr,_),
@@ -1113,7 +1127,8 @@ block_points(Block,"data",Size,0,2,"arm: pointer to string in data"):-
 /**
 On top of the above, if there's another string nearby, give more points.
 */
-block_points(Block,"data",Size,0,3,"arm: pointer to string adjacent to another strings in data"):-
+block_points(Block,"data",Size,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "arm: pointer to string adjacent to another strings in data",
     block_points(Block,"data",Size,0,2,"arm: pointer to string in data"),
     aligned_address_in_data(Block,Addr),
     (
@@ -1125,28 +1140,32 @@ block_points(Block,"data",Size,0,3,"arm: pointer to string adjacent to another s
 
 // First data_block of the jump table gets lots of points,
 // since the tbh instruction must have some corresponding entries.
-block_points(TableStart,"data",Size,0,Points,"arm: jump table"):-
+block_points_proportional(TableStart,"data",Size,Mult,"arm: jump table"):-
     arm_jump_table_data_block(_,TableStart,TableStart,Size),
     unresolved_block(TableStart,"data",Size),
+    heuristic_weight(Mult,Heuristic),
     (
-        !defined_symbol(TableStart,_,_,_,_,_,_,_,"$d"), Mult = 15
+        !defined_symbol(TableStart,_,_,_,_,_,_,_,"$d"),
+        Heuristic = "arm: jump table: no symbol"
         ;
         // If it's a defined symbol, the points 10 are already given.
-        defined_symbol(TableStart,_,_,_,_,_,_,_,"$d"), Mult = 5
-    ),
-    Points = Mult * as(Size,number).
+        defined_symbol(TableStart,_,_,_,_,_,_,_,"$d"),
+        Heuristic = "arm: jump table"
+    ).
 
 // Subsequent data blocks compete with code blocks.
 // Give a few points to encourage selection unless there's a compelling reason
 // to select the code.
-block_points(Block,"data",Size,0,2 * as(Size,number),"arm: jump table"):-
+block_points_proportional(Block,"data",Size,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "arm: jump table: no start",
     arm_jump_table_data_block(_,TableStart,Block,Size),
     unresolved_block(Block,"data",Size),
     Block != TableStart.
 
 // Give points to a jump table data block and all prior blocks if its end
 // aligns with the jump table's limit (derived from targets).
-block_points(Block,"data",BlockSize,0,10 * as(Size,number),"arm: jump table fits target"):-
+block_points_proportional(Block,"data",BlockSize,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "arm: jump table fits target",
     // Find LastBlock where the active limit aligns with the end of the block.
     arm_jump_table_data_block(EA_jump,TableStart,LastBlock,LastBlockSize),
     arm_jump_table_candidate_start(_,EA_jump,_,_,TableStart,Size,_,_,_),
@@ -1172,7 +1191,8 @@ block_points(Block,"data",BlockSize,0,10 * as(Size,number),"arm: jump table fits
     // Don't apply this rule to first block of entries - it already gets 15 points.
     Block != TableStart.
 
-block_points(TargetEA,"code",CodeSize,0,3,"arm: jump table target"):-
+block_points(TargetEA,"code",CodeSize,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic), Heuristic = "arm: jump table target",
     arm_jump_table_data_block(EA_jmp,TableStart,Block,BlockSize),
     arm_jump_table_candidate(EA_jmp,_,TableStart,DataEA,Size,TargetEA,_,_,_),
     Block <= DataEA, DataEA+Size <= Block+BlockSize,
@@ -1234,15 +1254,16 @@ branch_to_calculated_pc_rel_addr(EA,Dest):-
     code_in_block_candidate(Dest,_),
     EA band 1 = Dest band 1.
 
-block_points(Block,"code",Size,0,Points,"arm: calculated dest"):-
+block_points(Block,"code",Size,0,Weight,Heuristic):-
+    heuristic_weight(Weight,Heuristic),
     branch_to_calculated_pc_rel_addr(EA,Block),
     unresolved_block(Block,"code",Size),
     code_in_block_candidate_refined(EA,BlockPred),
     (
         !unresolved_block(BlockPred,"code",_),
         !impossible_block(BlockPred,"code",_,_),
-        Points = 6
+        Heuristic = "arm: calculated dest: resolved"
         ;
         unresolved_block(BlockPred,"code",_),
-        Points = 2
+        Heuristic = "arm: calculated dest"
     ).
