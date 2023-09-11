@@ -131,3 +131,8 @@ seh_handler_entry(EA+4,ImageBase+RVA):-
     data_word(EA+4,4,Val), Val != 0,
     seh_handler_table(_,End), EA < End,
     RVA = as(Val,address).
+
+symbol_minus_symbol(EA,4,ImageBase,Dest,1,0):-
+    base_address(ImageBase),
+    seh_handler_entry(EA,Dest),
+    possible_ea(Dest).

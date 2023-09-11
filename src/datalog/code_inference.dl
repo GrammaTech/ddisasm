@@ -546,6 +546,10 @@ data_block_candidate(EA,Size):-
     repeated_byte(EA,_,Size), Size > 8,
     !is_padding(EA).
 
+data_block_candidate(EA,4):-
+    code_in_block_candidate(EA,_),
+    seh_handler_entry(EA,_).
+
 /**
 The block candidate defined by address 'Block' extends from 'BegAddr' to 'EndAddr'.
 In most cases 'BegAddr' and 'Block' coincide, but there are exceptions such as
@@ -721,6 +725,9 @@ known_block(Block,"code",Size,"pointer array section"):-
 known_block(BlockB,TypeB,SizeB,"propagated"):-
     known_block(BlockA,TypeA,SizeA,_),
     block_candidate_dependency_edge(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB).
+
+known_block(EA,"data",4,"seh handler entry"):-
+    seh_handler_entry(EA,_).
 
 /**
 Logically impossible blocks.
