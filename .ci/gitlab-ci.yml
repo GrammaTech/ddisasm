@@ -821,7 +821,7 @@ docker-image-vars:
   script:
     - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
     - GTIRB_PPRINTER_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_PPRINTER_VERSION" || echo "master")
-    - echo "VERSION=$(awk '{s=(NR==1?s:s".")$2}END{print s}' version.txt)" >> .env
+    - VERSION=$(awk '{s=(NR==1?s:s".")$2}END{print s}' version.txt)
     - echo "GTIRB_BRANCH=$GTIRB_BRANCH" >> .env
     - echo "GTIRB_PPRINTER_BRANCH=$GTIRB_PPRINTER_BRANCH" >> .env
     - echo "GTIRB_COMMIT=$(git ls-remote https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/rewriting/gtirb | grep "refs/heads/$GTIRB_BRANCH\$" | awk '{print $1}')" >> .env
