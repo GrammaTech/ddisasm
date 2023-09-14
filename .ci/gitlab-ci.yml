@@ -828,8 +828,8 @@ docker-image-vars:
     - echo "GTIRB_PPRINTER_COMMIT=$(git ls-remote https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/rewriting/gtirb-pprinter | grep "refs/heads/$GTIRB_PPRINTER_BRANCH\$" | awk '{print $1}')" >> .env
     - >-
       if [[ $CI_COMMIT_REF_NAME =~ ^release-.* ]]; then
-        echo "DOCKER_LOCAL_VERSION_DEST=--destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:$VERSION\ --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:latest" >> .env
-        echo "DOCKER_HUB_VERSION_DEST=--destination=grammatech/ddisasm:$VERSION\ --destination=grammatech/ddisasm:latest" >> .env
+        echo "DOCKER_LOCAL_VERSION_DEST=\"--destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:$VERSION --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:latest\"" >> .env
+        echo "DOCKER_HUB_VERSION_DEST=\"--destination=grammatech/ddisasm:$VERSION --destination=grammatech/ddisasm:latest\"" >> .env
       elif [[ $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH ]]; then
         echo "DOCKER_LOCAL_VERSION_DEST=--destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:unstable" >> .env
         echo "DOCKER_HUB_VERSION_DEST=--destination=grammatech/ddisasm:unstable" >> .env
