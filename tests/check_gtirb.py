@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import argparse
-from typing import List, Union
 import sys
+from typing import List, Union
+import uuid
 
 import capstone_gt
 import gtirb
@@ -462,6 +463,29 @@ def check_cfg_completeness(module: gtirb.Module) -> int:
     return err_count
 
 
+def check_dangling_auxdata(module: gtirb.Module) -> int:
+    """
+    Check for dangling UUIDs in elfSymbolTabIdxInfo auxdata
+    """
+    err_count = 0
+
+    for k, v in module.aux_data["elfSymbolTabIdxInfo"].data.items():
+        if not isinstance(k, gtirb.Symbol):
+            if isinstance(k, uuid.UUID):
+                print(
+                    "ERROR: expected elfSymbolTabInfo key to be Symbol, but "
+                    f"it is a dangling UUID: {k}, {v}"
+                )
+            else:
+                print(
+                    "ERROR: expected elfSymbolTabInfo key to be Symbol, but "
+                    f"it is {type(k)}: {k}, {v}"
+                )
+            err_count += 1
+
+    return err_count
+
+
 CHECKS = {
     "unreachable": check_unreachable,
     "unresolved_branch": check_unresolved_branch,
@@ -471,6 +495,7 @@ CHECKS = {
     "outgoing_edges": check_outgoing_edges,
     "edge_instruction_group": check_edge_instruction_group,
     "cfg_completeness": check_cfg_completeness,
+    "dangling_auxdata": check_dangling_auxdata,
 }
 
 

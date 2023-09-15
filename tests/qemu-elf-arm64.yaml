@@ -31,6 +31,7 @@ default: &default
       - main_is_code
       - decode_mode_matches_arch
       - outgoing_edges
+      - dangling_auxdata
 
 assembly: &assembly
   <<: *default
