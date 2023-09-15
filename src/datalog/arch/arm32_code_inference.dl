@@ -365,9 +365,10 @@ known_block(Block,"code",Size,"$a"):-
     block_candidate_boundaries(Block,"code",Start,End),
     Size = End - Start.
 
-known_block(Block bor 1,"code",Size,"$t"):-
+known_block(Block,"code",Size,"$t"):-
     thumb_sym(Name),
-    defined_symbol(Block,_,_,_,_,_,_,_,Name),
+    defined_symbol(SymAddr,_,_,_,_,_,_,_,Name),
+    Block = SymAddr bor 1,
     block_candidate_boundaries(Block,"code",Start,End),
     Size = End - Start.
 
