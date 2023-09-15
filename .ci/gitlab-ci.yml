@@ -270,7 +270,7 @@ python-manylinux-2010-publish-internal:
         python3 delete_remote_packages.py $GL_PKG_API_TOKEN ddisasm-*.whl;
       fi
     - twine check ddisasm-*.whl
-    - twine upload --verbose --repository repypi ddisasm-*.whl
+    - twine upload --verbose --repository repypi ddisasm-*.whl --skip-existing
 
 python-manylinux-2010-publish-external:
   stage: deploy
@@ -283,7 +283,7 @@ python-manylinux-2010-publish-external:
     - VERSION=$(python3 -c "import ddisasm; print(ddisasm.__version__)")
     # Do not publish .dev versions on the public pypi
     - if [[ "$VERSION" =~ \.dev[[:digit:]]*.*$ ]]; then exit 1; fi
-    - python3 -m twine upload --verbose ddisasm-*.whl -u __token__ -p $PYPI_API_KEY
+    - python3 -m twine upload --verbose ddisasm-*.whl -u __token__ -p $PYPI_API_KEY --skip-existing
   rules:
     - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
 
