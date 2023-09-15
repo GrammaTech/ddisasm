@@ -147,6 +147,9 @@ tests:
       compiler: "arm-linux-gnueabihf-gcc"
       flags: ["-no-pie", "-nostartfiles"]
 
+  - name: ex_zero_size_object_sym
+    <<: *assembly
+
   - name: ex1
     <<: *default
 
