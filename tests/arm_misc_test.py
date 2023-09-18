@@ -4,6 +4,8 @@ from disassemble_reassemble_check import compile, cd, disassemble
 from pathlib import Path
 import gtirb
 
+from snippets import parse_souffle_output
+
 ex_arm_asm_dir = Path("./examples/arm_asm_examples")
 
 
@@ -199,6 +201,43 @@ class ArmMiscTest(unittest.TestCase):
                     break
             else:
                 self.fail("Expected block not found")
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_arm_known_block(self):
+        """
+        Ensure $a and $t symbols create known_block on ARM.
+        """
+        binary = "ex"
+        dir = ex_arm_asm_dir / "ex_bx_pc"
+        with cd(dir):
+            self.assertTrue(
+                compile(
+                    "arm-linux-gnueabihf-gcc",
+                    "arm-linux-gnueabihf-g++",
+                    "",
+                    [],
+                    "qemu-arm -L /usr/arm-linux-gnueabihf",
+                )
+            )
+
+            self.assertTrue(
+                disassemble(
+                    binary,
+                    format="--ir",
+                    extra_args=["--with-souffle-relations"],
+                )[0]
+            )
+
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            module = ir_library.modules[0]
+
+            known_blocks = parse_souffle_output(module, "known_block")
+
+            reasons = set(kb[3] for kb in known_blocks)
+            self.assertIn("$a", reasons)
+            self.assertIn("$t", reasons)
 
 
 if __name__ == "__main__":
