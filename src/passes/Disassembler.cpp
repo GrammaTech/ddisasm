@@ -304,6 +304,7 @@ void removeEntryPoint(gtirb::Module &Module)
 void removeSectionSymbols(gtirb::Context &Context, gtirb::Module &Module)
 {
     auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
+    auto *SymbolTabIdxInfo = Module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfo>();
     if(!SymbolInfo)
     {
         return;
@@ -323,6 +324,12 @@ void removeSectionSymbols(gtirb::Context &Context, gtirb::Module &Module)
         {
             Module.removeSymbol(Symbol);
             SymbolInfo->erase(Uuid);
+        }
+
+        // Remove auxdata that refer to the symbol.
+        if(SymbolTabIdxInfo)
+        {
+            SymbolTabIdxInfo->erase(Uuid);
         }
     }
 }
@@ -389,6 +396,12 @@ void buildInferredSymbols(gtirb::Context &Context, gtirb::Module &Module,
     {
         Module.removeSymbol(Symbol);
         SymbolInfo->erase(Symbol->getUUID());
+
+        // Remove auxdata that refer to the symbol.
+        if(SymbolTabIdxInfo)
+        {
+            SymbolTabIdxInfo->erase(Symbol->getUUID());
+        }
     }
 }
 

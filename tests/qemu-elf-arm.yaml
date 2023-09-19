@@ -23,6 +23,8 @@ default: &default
     strip_exe: "arm-linux-gnueabihf-strip"
     strip: false
     skip: false
+    cfg_checks:
+      - dangling_auxdata
 
 assembly: &assembly
   <<: *default

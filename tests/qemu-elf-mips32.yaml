@@ -24,6 +24,8 @@ default: &default
     sstrip: false
     strip: false
     skip: false
+    cfg_checks:
+      - dangling_auxdata
 
 test-strip-default: &test-strip-default
   test:

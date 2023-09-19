@@ -32,6 +32,7 @@ default: &default
       - outgoing_edges
       - edge_instruction_group
       - cfg_completeness
+      - dangling_auxdata
 
 cpp: &default-cpp
   <<: *default
