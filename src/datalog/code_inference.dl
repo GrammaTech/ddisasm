@@ -1397,7 +1397,8 @@ negative_block_points(Block,"code",Size,0,-2,"conditional jump/return: fallthrou
 
 data_block_candidate(Block,Size),
 known_block(Block,"data",Size,"object symbol"):-
-    defined_symbol(Block,Size,"OBJECT",_,_,_,_,_,_).
+    defined_symbol(Block,Size,"OBJECT",_,_,_,_,_,_),
+    Size > 0.
 
 negative_block_points(Block,"code",Size,0,-1,"jump to string"):-
     ascii_string(Beg,End),
