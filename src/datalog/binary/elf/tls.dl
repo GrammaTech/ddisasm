@@ -230,6 +230,7 @@ Reg: the register loaded with 'Dest'.
 .decl call_tls_get_addr(Call:address,Reg:register,Dest:address)
 
 call_tls_get_addr(Call,Reg,Dest):-
+    binary_format("ELF"),
     // Call __tls_get_addr to resolve, either the:
     //   1. Address of TLS variable (GD), or
     //   2. Address of the TLS block (LD).
