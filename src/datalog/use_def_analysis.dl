@@ -105,7 +105,7 @@ block_next(Block,EA,Block2):-
 */
 .decl call_uses_reg(Call:address,Reg:register)
 
-call_uses_reg(0,"NONE").
+call_uses_reg(0,"NONE"):- false.
 
 //////////////////////////////////////////////////////////////////////////////
 // Main definitions
