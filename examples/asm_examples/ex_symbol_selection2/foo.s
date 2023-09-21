@@ -26,9 +26,9 @@ foo_fun:
     pushq   %rbp
     movq    %rsp, %rbp
     movq    $8, %rsi
-    leaq    .LC0_foo(%rip), %rdi
-    call    printf@PLT
-    leaq    mydata(%rip), %rdi
+    leaq    mydata_global(%rip), %rdi
+    call    *(%rdi)
+    leaq    mydata_local(%rip), %rdi
     call    *(%rdi)
     movq    $0, %rax
     popq    %rbp
@@ -38,6 +38,7 @@ foo_fun:
 
 .section .data.rel.ro ,"wa",@progbits
 
-mydata:
-    #.quad __fun
+mydata_global:
+    .quad __fun
+mydata_local:
     .quad fun
