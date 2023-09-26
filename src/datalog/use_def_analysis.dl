@@ -99,6 +99,14 @@ block_next(Block,EA,Block2):-
     EA >= Beg, EA < End,
     block(Block2).
 
+
+/**
+'Call' implicitly uses 'Reg', such as register parameters.
+*/
+.decl call_uses_reg(Call:address,Reg:register)
+
+call_uses_reg(0,"NONE"):- false.
+
 //////////////////////////////////////////////////////////////////////////////
 // Main definitions
 
@@ -343,6 +351,9 @@ analysis for both registers and stack variables.
         return_block_end(Callee,_,RetBlock,RetBlockEnd),
         !block_last_def(RetBlockEnd,_,Reg),
         return_val_used(_,Callee,Reg,EA_used,Index).
+
+    used(EA,Reg,0):-
+        call_uses_reg(EA,Reg).
 
     /**
     A <T> is defined in 'EA_def' and used in 'EA_used' in the operand with index 'Index_used'

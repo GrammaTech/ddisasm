@@ -220,6 +220,37 @@ tls_index(EA,as(Offset,unsigned)):-
     data_word(EA+Size,Size,Offset).
 
 /**
+Identify Call to the builtin function '__tls_get_addr'.
+
+The resolved address 'Dest' is either the beginning of the TLS segment for
+@TLSLD relocations, or the address of the variable for @TLSGD relocations.
+
+Reg: the register loaded with 'Dest'.
+*/
+.decl call_tls_get_addr(Call:address,Reg:register,Dest:address)
+
+call_tls_get_addr(Call,Reg,Dest):-
+    binary_format("ELF"),
+    // Call __tls_get_addr to resolve, either the:
+    //   1. Address of TLS variable (GD), or
+    //   2. Address of the TLS block (LD).
+    direct_call(Call,Dest),
+    plt_block(Dest,Name),
+    (
+        binary_isa("X64"),
+        Reg = "RDI",
+        Prefix = "__tls_get_addr" // double underscore
+        ;
+        binary_isa("X86"),
+        Reg = "EAX",
+        Prefix = "___tls_get_addr" // triple underscore
+    ),
+    substr(Name,0,strlen(Prefix)) = Prefix.
+
+call_uses_reg(Call,Reg):-
+    call_tls_get_addr(Call,Reg,_).
+
+/**
 A TLS address is resolved dynamically with a call to the builtin
 '__tls_get_addr(struct *ti_index)' function at address 'Call'.
 
@@ -235,24 +266,15 @@ tls_get_addr(Load,Call,Start+Offset):-
     binary_format("ELF"),
     (
         binary_isa("X64"),
-        pc_relative_operand(Load,_,EA),
-        Reg = "RDI",
-        Prefix = "__tls_get_addr" // double underscore
+        pc_relative_operand(Load,_,EA)
         ;
         binary_isa("X86"),
-        got_relative_operand(Load,_,EA),
-        Reg = "EAX",
-        Prefix = "___tls_get_addr" // triple underscore
+        got_relative_operand(Load,_,EA)
     ),
     // Load address of tls_index structure in GOT.
     tls_index(EA,Offset),
-    reg_def_use.block_last_def(Call,Load,Reg),
-    // Call __tls_get_addr to resolve, either the:
-    //   1. Address of TLS variable (GD), or
-    //   2. Address of the TLS block (LD).
-    direct_call(Call,Dest),
-    plt_block(Dest,Name),
-    substr(Name,0,strlen(Prefix)) = Prefix,
+    reg_def_use.def_used(Load,Reg,Call,_),
+    call_tls_get_addr(Call,Reg,Dest),
     tls_segment(Start,_,_).
 
 /**

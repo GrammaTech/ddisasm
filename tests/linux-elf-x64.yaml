@@ -538,6 +538,14 @@ tests:
   - name: ex_boundary_sym_expr2
     <<: *assembly
 
+  - name: ex_tls
+    <<: *assembly
+    binary: fun.so
+    reassemble:
+      compiler: "gcc"
+      flags: ["-shared", "-nostartfiles"]
+      skip: false
+
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
   # ----------------------------------------------------------------------------
@@ -605,6 +613,15 @@ tests:
   - name: ex_boundary_sym_expr2
     <<: *assembly
     <<: *test-strip-default
+
+  - name: ex_tls
+    <<: *assembly
+    <<: *test-strip-default
+    binary: fun.so
+    reassemble:
+      compiler: "gcc"
+      flags: ["-shared", "-nostartfiles"]
+      skip: false
 
   # ----------------------------------------------------------------------------
   # Relocatable ELF objects (.o).
