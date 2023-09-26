@@ -2,6 +2,8 @@
 .LC0_bar:
     .string "bar: %d\n"
 
+fun_ptr:
+    .quad fun
     .section .text
 
 .weak  fun
@@ -24,7 +26,8 @@ fun:
 bar_fun:
     pushq   %rbp
     movq    %rsp, %rbp
-    call    fun@PLT
+    movq    fun_ptr(%rip),%rdi
+    call    *%rdi
     movq    $0, %rax
     popq    %rbp
     ret
