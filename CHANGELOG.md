@@ -8,6 +8,8 @@
   and branches using value analysis, data accesses, and relocations.
 * ELF: Infer `SHARED` or `PIE` for `DYN` binary type
 * ELF: Generate `elfDynamicInit` and `elfDynamicFini` auxdata
+* Prefer LOCAL symbols over GLOBAL ones in symbol selection for ISAs
+  other than MIPS.
 
 # 1.6.0
 * ARM: Improve code inference using unwind information from .ARM.exidx section

@@ -557,7 +557,7 @@ class SymbolSelectionTests(unittest.TestCase):
             ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
 
-            self.check_first_sym_expr(m, "Block_hello", "hello_not_hidden")
+            self.check_first_sym_expr(m, "Block_hello", "hello_local")
             self.check_first_sym_expr(m, "Block_how", "how_global")
             self.check_first_sym_expr(m, "Block_bye", "bye_obj")
 
