@@ -34,7 +34,7 @@ bar:
     movq    %rsp, %rbp
     movl    $20, %esi
     movl    $10, %edi
-    call    foo
+    call    foo@PLT
     leaq    _TLS_MODULE_BASE_@TLSLD(%rip),%rdi
     callq   __tls_get_addr@PLT
     xorq    %rsi,%rsi

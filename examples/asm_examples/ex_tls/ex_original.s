@@ -6,7 +6,7 @@ main:
 .LFB6:
     pushq   %rbp
     movq    %rsp, %rbp
-    call    bar
+    call    bar@PLT
     movl    $0, %eax
     popq    %rbp
     ret
