@@ -297,6 +297,16 @@ tests:
       compiler: "g++"
       flags: ["-no-pie", "-lpthread", "-nostartfiles"]
 
+  - name: ex_data_limit
+    <<: *default
+    binary: ex
+    reassemble:
+      compiler: "gcc"
+      # 0x500000 is to make the addresses of .text and .data changed from the
+      # original.
+      flags: ["-no-pie", "fun.so", "-nostartfiles", "-Wl,-Ttext=0x500000"]
+      skip: false
+
   # ----------------------------------------------------------------------------
   # Static examples
   # ----------------------------------------------------------------------------
@@ -452,6 +462,16 @@ tests:
       flags: ["-shared", "-nostartfiles"]
       skip: false
 
+  - name: ex_data_limit
+    <<: *default
+    <<: *test-strip-default
+    binary: ex
+    reassemble:
+      compiler: "gcc"
+      # 0x500000 is to make the addresses of .text and .data changed from the
+      # original.
+      flags: ["-no-pie", "fun.so", "-nostartfiles", "-Wl,-Ttext=0x500000"]
+      skip: false
 
   # ----------------------------------------------------------------------------
   # Assembly examples.
