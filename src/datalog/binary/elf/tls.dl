@@ -227,9 +227,9 @@ The resolved address 'Dest' is either the beginning of the TLS segment for
 
 Reg: the register loaded with 'Dest'.
 */
-.decl call_tls_get_addr(Call:address,Reg:register,Dest:address)
+.decl call_tls_get_addr(Call:address,Reg:register)
 
-call_tls_get_addr(Call,Reg,Dest):-
+call_tls_get_addr(Call,Reg):-
     binary_format("ELF"),
     // Call __tls_get_addr to resolve, either the:
     //   1. Address of TLS variable (GD), or
@@ -248,7 +248,7 @@ call_tls_get_addr(Call,Reg,Dest):-
     substr(Name,0,strlen(Prefix)) = Prefix.
 
 call_uses_reg(Call,Reg):-
-    call_tls_get_addr(Call,Reg,_).
+    call_tls_get_addr(Call,Reg).
 
 /**
 A TLS address is resolved dynamically with a call to the builtin
@@ -274,7 +274,7 @@ tls_get_addr(Load,Call,Start+Offset):-
     // Load address of tls_index structure in GOT.
     tls_index(EA,Offset),
     reg_def_use.def_used(Load,Reg,Call,_),
-    call_tls_get_addr(Call,Reg,_),
+    call_tls_get_addr(Call,Reg),
     tls_segment(Start,_,_).
 
 /**
