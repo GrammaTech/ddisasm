@@ -222,9 +222,6 @@ tls_index(EA,as(Offset,unsigned)):-
 /**
 Identify Call to the builtin function '__tls_get_addr'.
 
-The resolved address 'Dest' is either the beginning of the TLS segment for
-@TLSLD relocations, or the address of the variable for @TLSGD relocations.
-
 Reg: the register loaded with 'Dest'.
 */
 .decl call_tls_get_addr(Call:address,Reg:register)
