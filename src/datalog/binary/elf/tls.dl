@@ -274,7 +274,7 @@ tls_get_addr(Load,Call,Start+Offset):-
     // Load address of tls_index structure in GOT.
     tls_index(EA,Offset),
     reg_def_use.def_used(Load,Reg,Call,_),
-    call_tls_get_addr(Call,Reg,Dest),
+    call_tls_get_addr(Call,Reg,_),
     tls_segment(Start,_,_).
 
 /**
