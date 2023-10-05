@@ -827,7 +827,16 @@ void buildDataBlocks(gtirb::Context &Context, gtirb::Module &Module,
             else
             {
                 std::cerr << "ByteInterval at address " << CurrentAddr << " not found" << std::endl;
-                exit(1);
+                gtirb::Addr PrevAddr = CurrentAddr;
+                CurrentAddr = End;
+                for(auto &Bi : Module.findByteIntervalsAt(PrevAddr, CurrentAddr))
+                {
+                    if(*Bi.getAddress() < CurrentAddr)
+                    {
+                        CurrentAddr = *Bi.getAddress();
+                    }
+                }
+                std::cerr << "Skipping to " << CurrentAddr << std::endl;
             }
 
             if(DataBlock && Alignment)
@@ -1582,11 +1591,27 @@ void buildArchInfo(gtirb::Module &Module, souffle::SouffleProgram &Program)
     }
 }
 
+void removePreviousBlocks(gtirb::Module &Module)
+{
+    for(auto &Bi : Module.byte_intervals())
+    {
+        std::vector<gtirb::CodeBlock *> ToRemove;
+        for(auto &Block : Bi.code_blocks())
+        {
+            ToRemove.push_back(&Block);
+        }
+        for(auto Block : ToRemove)
+        {
+            Bi.removeBlock(Block);
+        }
+    }
+}
 void disassembleModule(gtirb::Context &Context, gtirb::Module &Module,
                        souffle::SouffleProgram &Program, bool SelfDiagnose)
 {
     removeSectionSymbols(Context, Module);
     removeEntryPoint(Module);
+    removePreviousBlocks(Module);
     buildInferredSymbols(Context, Module, Program);
     buildSymbolForwarding(Context, Module, Program);
     buildCodeBlocks(Context, Module, Program);
