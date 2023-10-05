@@ -335,6 +335,22 @@ data_limit(EA):-
     data_segment(EA,_).
 
 /**
+Data arrays are typically initialized with a same value.
+To avoid false positives here, only consider the case where
+the repeated value is 0, and the array is not singleton, and
+the array size is a multiple of the access size.
+*/
+data_limit(EA):-
+    data_access_pattern_non_zero(EA_labeled,Size,Size,_),
+    repeated_byte(EA0,0,Count),
+    EA = EA0 + Count,
+    EA_labeled >= EA0,
+    EA_labeled < EA,
+    Len = EA - EA_labeled,
+    Len > Size * 2,
+    Len % Size = 0.
+
+/**
 The next data limit after 'EA' is at 'Next'.
 */
 .decl next_data_limit(EA:address,Next:address)
