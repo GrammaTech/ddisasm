@@ -72,7 +72,7 @@ segment_target_range(Beg,End,MaxTgt):-
 segment_target_range(Beg,End,MaxTgt):-
     segment_target_range(Beg,PrevEnd,PrevMaxTgt),
     block_boundaries(PrevBlock,_,PrevEnd),
-    next_block_in_section(PrevBlock,Block),
+    next_block_in_byte_interval(PrevBlock,Block),
     block_boundaries(Block,_,End),
     !incomplete_block(Block),
     !function_inference.function_entry_initial(Block),

@@ -125,7 +125,7 @@ in_function(Function,Function):-
 in_function(Block,Function):-
     in_function(Block_prev,Function),
     function_without_callframe(Function),
-    next_refined_block_in_section(Block_prev,Block),
+    next_refined_block_in_byte_interval(Block_prev,Block),
     not_in_function_initial(Block),
     !function_without_callframe(Block).
 

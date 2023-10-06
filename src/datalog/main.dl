@@ -163,6 +163,9 @@ Convert between input_reg and register with arch.reg_map
 .decl section_type(Name:symbol,Type:unsigned)
 .input section_type
 
+.decl byte_interval(BegAddr:address,EndAddr:address)
+.input byte_interval
+
 .decl relocation(EA:address,Type:symbol,Name:symbol,Addend:number,SymbolIndex:unsigned,Section:symbol,RelType:symbol)
 .input relocation
 

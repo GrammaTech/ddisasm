@@ -152,6 +152,12 @@ namespace relations
         uint64_t Index;
     };
 
+    struct ByteInterval
+    {
+        gtirb::Addr BegAddr;
+        gtirb::Addr EndAddr;
+    };
+
     struct SectionProperty
     {
         std::string Name;
@@ -297,6 +303,8 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::DynamicEntry& D);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Section& S);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::ByteInterval& B);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::SectionProperty& S);
 
