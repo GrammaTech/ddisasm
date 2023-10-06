@@ -47,5 +47,5 @@ void RawEntryLoader(const gtirb::Module &Module, souffle::SouffleProgram &Progra
             Targets.push_back(*Addr);
         }
     }
-    relations::insert(Program, "basic_target", std::move(Targets));
+    relations::insert(Program, "known_code", std::move(Targets));
 }
