@@ -49,17 +49,21 @@ class RawBinaryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as dir:
             with cd(dir):
                 ir, s = create_basic_gtirb()
-                # pushq   %rbp
-                # movq    %rsp, %rbp
-                # pop     %rbp
-                # ret
                 bi1 = gtirb.ByteInterval(
-                    contents=b"\x55\x48\x89\xEC\x5D\xC3", address=0x40000
+                    contents=b"\x55"  # pushq   %rbp
+                    b"\x48\x89\xEC"  # movq    %rsp, %rbp
+                    b"\x5D"  # pop     %rbp
+                    b"\xC3",  # ret
+                    address=0x40000,
                 )
                 bi1.section = s
 
                 bi2 = gtirb.ByteInterval(
-                    contents=b"\x55\x48\x89\xEC\x5D\xC3", address=0x80000
+                    contents=b"\x55"  # pushq   %rbp
+                    b"\x48\x89\xEC"  # movq    %rsp, %rbp
+                    b"\x5D"  # pop     %rbp
+                    b"\xC3",  # ret
+                    address=0x80000,
                 )
                 bi2.section = s
 
@@ -78,35 +82,38 @@ class RawBinaryTests(unittest.TestCase):
         """
         Test that we can correctly handle a GTIRB
         with holes within a section.
+
+        For raw binaries ddisasm allows calls or jumps
+        to undefined destinations.
         """
 
         with tempfile.TemporaryDirectory() as dir:
             with cd(dir):
                 ir, s = create_basic_gtirb()
-                # 0e (invalid)
-                # pushq   %rbp
-                # movq    %rsp, %rbp
-                # pop     %rbp
-                # ret
-                # pushq   %rbp
-                # movq    %rsp, %rbp
-                # pop     %rbp
-                # ret
+
                 bi1 = gtirb.ByteInterval(
-                    contents=b"\x0e\x55\x48\x89\xEC\x5D"
-                    b"\xC3\x55\x48\x89\xEC\x5D\xC3",
+                    contents=b"\x0e"  # Invalid
+                    b"\x55"  # pushq   %rbp
+                    b"\x48\x89\xEC"  # movq    %rsp, %rbp
+                    b"\x5D"  # pop     %rbp
+                    b"\xC3"  # ret
+                    b"\x55"  # pushq   %rbp
+                    b"\x48\x89\xEC"  # movq    %rsp, %rbp
+                    b"\x5D"  # pop     %rbp
+                    b"\xE8\x03\x00\x00\x00"  # call RIP+3
+                    b"\xC3",  # ret
                     address=0x40000,
                 )
                 bi1.section = s
                 gtirb.CodeBlock(size=6, offset=1, byte_interval=bi1)
 
-                # 0e (invalid)
-                # pushq   %rbp
-                # movq    %rsp, %rbp
-                # pop     %rbp
-                # ret
                 bi2 = gtirb.ByteInterval(
-                    contents=b"\x0e\x55\x48\x89\xEC\x5D\xC3", address=0x80000
+                    contents=b"\x0e"  # Invalid
+                    b"\x55"  # pushq   %rbp
+                    b"\x48\x89\xEC"  # movq    %rsp, %rbp
+                    b"\x5D"  # pop     %rbp
+                    b"\xC3",  # ret
+                    address=0x80000,
                 )
                 bi2.section = s
 
@@ -117,9 +124,11 @@ class RawBinaryTests(unittest.TestCase):
 
                 ir_disassembled = gtirb.IR.load_protobuf("ex_raw.gtirb")
                 m = ir_disassembled.modules[0]
-                # the resulting gtirb has 3 blocks
-                # the two previous one and one additionally discovered
+                # the resulting gtirb has 4 blocks
+                # the two previous ones and two additionally discovered
                 code_addresses = sorted(
                     [block.address for block in m.code_blocks]
                 )
-                self.assertEqual(code_addresses, [0x40001, 0x40007, 0x80001])
+                self.assertEqual(
+                    code_addresses, [0x40001, 0x40007, 0x40011, 0x80001]
+                )
