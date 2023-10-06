@@ -128,6 +128,22 @@ load_operation("LWXC1").
 load_operation("LWXS").
 load_operation("LI").
 
+data_access_size("LB",as(DestReg,register),1):-
+    op_regdirect(_,DestReg).
+data_access_size("LBU",as(DestReg,register),1):-
+    op_regdirect(_,DestReg).
+
+data_access_size("LH",as(DestReg,register),2):-
+    op_regdirect(_,DestReg).
+data_access_size("LHU",as(DestReg,register),2):-
+    op_regdirect(_,DestReg).
+
+data_access_size("SB",as(DestReg,register),1):-
+    op_regdirect(_,DestReg).
+
+data_access_size("SH",as(DestReg,register),2):-
+    op_regdirect(_,DestReg).
+
 // Do not treat nop in delay_slot as padding:
 // see the usage of is_nop in code_inference*.dl
 is_nop(EA):-
