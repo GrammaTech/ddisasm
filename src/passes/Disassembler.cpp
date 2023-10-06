@@ -827,16 +827,7 @@ void buildDataBlocks(gtirb::Context &Context, gtirb::Module &Module,
             else
             {
                 std::cerr << "ByteInterval at address " << CurrentAddr << " not found" << std::endl;
-                gtirb::Addr PrevAddr = CurrentAddr;
-                CurrentAddr = End;
-                for(auto &Bi : Module.findByteIntervalsAt(PrevAddr, CurrentAddr))
-                {
-                    if(*Bi.getAddress() < CurrentAddr)
-                    {
-                        CurrentAddr = *Bi.getAddress();
-                    }
-                }
-                std::cerr << "Skipping to " << CurrentAddr << std::endl;
+                exit(1);
             }
 
             if(DataBlock && Alignment)
