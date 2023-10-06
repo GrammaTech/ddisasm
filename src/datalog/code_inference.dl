@@ -269,16 +269,23 @@ possible_ea(EA):-
     instruction(EA,_,_,_,_,_,_,_,_,_),
     !invalid(EA,_).
 
+
+/**
+The address EA is known to be definitely code.
+*/
+.decl known_code(EA:address)
+.input known_code
+
 /**
 Starting addresses for code exploration.
-This is inferred internally but additional targets
-can be provided as an input.
 */
 .decl basic_target(ea:address)
 .input basic_target
 
 basic_target(Val):-
     (
+        known_code(Val)
+        ;
         relative_address(_,_,_,_,Val,_)
         ;
         binary_type("DYN"),
@@ -711,6 +718,11 @@ Known blocks are blocks that must exist due to metadata.
 known_block(Block,"code",Size,"entry point"):-
     !binary_type("REL"),
     entry_point(Block),
+    block_candidate_boundaries(Block,"code",Beg,End),
+    Size = End - Beg.
+
+known_block(Block,"code",Size,"known code"):-
+    known_code(Block),
     block_candidate_boundaries(Block,"code",Beg,End),
     Size = End - Beg.
 
