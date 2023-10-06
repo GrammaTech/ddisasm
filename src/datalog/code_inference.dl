@@ -301,8 +301,10 @@ basic_target(Val):-
         Val = as(Addr,address)
         ;
         code_section(Name),
-        loaded_section(Addr,_,Name),
-        arch.instruction_at(Addr,Val)
+        loaded_section(BegSect,EndSect,Name),
+        byte_interval(BegByteInterval,_),
+        BegSect <= BegByteInterval, BegByteInterval < EndSect,
+        arch.instruction_at(BegByteInterval,Val)
         ;
         !binary_isa("ARM"),
         defined_symbol(Val,_,Type,_,_,_,_,_,_),
