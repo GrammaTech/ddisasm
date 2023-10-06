@@ -322,7 +322,6 @@ python-manylinux-2010-publish-external:
     - tar -xf conan_home.tar.gz
     - tar -xf conan_aux.tar.gz -C $(cygpath -u C:\\)
     # Install packages needed for the tests
-    - python -m pip install psycopg2
     - python -m pip install -r requirements-dev.txt --extra-index-url=$EXTRA_INDEX_URL --pre
     - export PYTHONPATH="$PYTHONPATH;$(cygpath -w $(pwd))"
     - export CONAN_USER_HOME=$(cygpath -w $(pwd))

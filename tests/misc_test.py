@@ -16,7 +16,8 @@ from pathlib import Path
 from typing import Optional, Tuple
 from gtirb.cfg import EdgeType
 import gtirb
-import tempfile
+
+from tests.snippets import parse_souffle_output
 
 if platform.system() == "Linux":
     import lief
@@ -845,37 +846,37 @@ class IncrementalLinkingTests(unittest.TestCase):
     )
     def test_incremental_linking_boundaries(self):
         with cd(ex_dir / "ex1"):
-            with tempfile.TemporaryDirectory() as dbg:
-                self.assertTrue(
-                    compile("cl", "cl", "/O0", ["/link", "/incremental"], [])
-                )
-                self.assertTrue(
-                    disassemble(
-                        "ex.exe",
-                        format="--ir",
-                        extra_args=["--debug-dir", dbg],
-                    )[0]
-                )
+            self.assertTrue(
+                compile("cl", "cl", "/O0", ["/link", "/incremental"], [])
+            )
+            self.assertTrue(
+                disassemble(
+                    "ex.exe",
+                    format="--ir",
+                )[0]
+            )
 
-                # Read first and last address in incremental linking code.
-                output = Path(dbg) / "disassembly" / "incremental_linking.csv"
-                first, last = [int(v, 16) for v in output.read_text().split()]
+            ir = gtirb.IR.load_protobuf("ex.exe.gtirb")
+            module = ir.modules[0]
 
-                # Load GTIRB file and locate the .text section byte interval.
-                ir = gtirb.IR.load_protobuf("ex.exe.gtirb")
-                module = ir.modules[0]
-                section = next(s for s in module.sections if s.name == ".text")
-                bi = next(section.byte_intervals_at(section.address))
+            # Read first and last address in incremental linking code.
+            first, last = next(
+                parse_souffle_output(module, "disassemly.incremental_linking")
+            )
 
-                # Pattern match INT3 + JMP sequence prepended to .text section.
-                match = re.match(b"^\xCC+(\xe9....)+", bi.contents, re.DOTALL)
-                self.assertTrue(match)
+            # locate the .text section byte interval.
+            section = next(s for s in module.sections if s.name == ".text")
+            bi = next(section.byte_intervals_at(section.address))
 
-                # Test boundaries of the inferred span against matched code.
-                code = bi.contents[match.start() : match.end()].lstrip(b"\xCC")
-                offset = match.end() - len(code)
-                self.assertEqual(section.address + offset, first)
-                self.assertEqual(last - first + 5, len(code))
+            # Pattern match INT3 + JMP sequence prepended to .text section.
+            match = re.match(b"^\xCC+(\xe9....)+", bi.contents, re.DOTALL)
+            self.assertTrue(match)
+
+            # Test boundaries of the inferred span against matched code.
+            code = bi.contents[match.start() : match.end()].lstrip(b"\xCC")
+            offset = match.end() - len(code)
+            self.assertEqual(section.address + offset, first)
+            self.assertEqual(last - first + 5, len(code))
 
 
 if __name__ == "__main__":
