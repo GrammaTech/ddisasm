@@ -551,14 +551,15 @@ known_block(Block,"data",Size,"object symbol"):-
     defined_symbol(Block,Size,"OBJECT",_,_,_,_,_,_),
     Size > 0.
 
-data_block_candidate(Block,4):-
-    code_in_block_candidate(Block,_),
-    seh_handler_entry(Block,_).
+data_block_candidate(BegAddr,Size),
+known_block(BegAddr,"data",Size,"seh handler table"):-
+    seh_handler_table(BegAddr,EndAddr),
+    Size = EndAddr - BegAddr.
 
 data_block_candidate(Block,4),
 known_block(Block,"data",4,"relocation"):-
     binary_format("PE"),
-    code_in_block_candidate(Block,_),
+    // a relocation that does not match any instruction operand
     relocation(Block,"HIGHLOW",_,_,_,_,_),
     !instruction_has_relocation(_,Block),
     address_in_data(Block,_).
@@ -738,9 +739,6 @@ known_block(Block,"code",Size,"pointer array section"):-
 known_block(BlockB,TypeB,SizeB,"propagated"):-
     known_block(BlockA,TypeA,SizeA,_),
     block_candidate_dependency_edge(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB).
-
-known_block(EA,"data",4,"seh handler entry"):-
-    seh_handler_entry(EA,_).
 
 /**
 Logically impossible blocks.
@@ -1267,7 +1265,7 @@ block_points(Block,"code",Size,0,2,"unresolved-may-fallthrough"):-
 block_points(Block,"code",Size,0,3,"incremental linking target"):-
     incremental_linking(First,Last),
     direct_jump(EA,Block),
-    EA >= First, EA < Last,
+    EA >= First, EA <= Last,
     unresolved_block(Block,"code",Size).
 
 /**
