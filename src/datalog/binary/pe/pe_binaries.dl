@@ -181,9 +181,9 @@ is_padding(EA):-
 Identify series of jump trampolines prepended to the .text section
 of PE binaries built with "incremental linking".
 */
-.decl incremental_linking_candidate(EA:address)
+.decl incremental_linking_candidate(First:address,Last:address)
 
-incremental_linking_candidate(EA+Count):-
+incremental_linking_candidate(EA+Count,EA+Count):-
     binary_format("PE"),
     code_section(Section),
     loaded_section(EA,End,Section),
@@ -194,9 +194,9 @@ incremental_linking_candidate(EA+Count):-
     next(Jmp,JmpEnd),
     JmpEnd <= End.
 
-incremental_linking_candidate(Next):-
-    incremental_linking_candidate(EA),
-    next(EA,Next),
+incremental_linking_candidate(First,Next):-
+    incremental_linking_candidate(First,Last),
+    next(Last,Next),
     unconditional_jump(Next),
     direct_jump(Next,_).
 
@@ -208,9 +208,10 @@ incremental linking.
 .decl incremental_linking(First:address,Last:address)
 
 incremental_linking(First,Last):-
-    Count = count : { incremental_linking_candidate(_) }, Count > 5,
-    First = min X : { incremental_linking_candidate(X) },
-    Last = max X : { incremental_linking_candidate(X) }.
+    incremental_linking_candidate(First,Last),
+    next(Last,Next),
+    !incremental_linking_candidate(First,Next),
+    Count = count : { incremental_linking_candidate(First,_) }, Count > 5.
 
 /**
 Locate data directory and debug data merged with the text section. Note that
