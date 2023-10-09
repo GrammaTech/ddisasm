@@ -853,6 +853,7 @@ class IncrementalLinkingTests(unittest.TestCase):
                 disassemble(
                     "ex.exe",
                     format="--ir",
+                    extra_args=["--with-souffle-relations"],
                 )[0]
             )
 
