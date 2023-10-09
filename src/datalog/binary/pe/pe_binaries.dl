@@ -191,13 +191,14 @@ incremental_linking_candidate(EA+Count):-
     Jmp = EA + Count,
     unconditional_jump(Jmp),
     direct_jump(Jmp,_),
-    instruction(Jmp,InstSize,_,_,_,_,_,_,_,_),
-    Jmp + InstSize <= End.
+    next(Jmp,JmpEnd),
+    JmpEnd <= End.
 
 incremental_linking_candidate(Next):-
     incremental_linking_candidate(EA),
     next(EA,Next),
-    unconditional_jump(Next).
+    unconditional_jump(Next),
+    direct_jump(Next,_).
 
 /**
 Select the 'First' address and 'Last' address of candidate jump trampolines,
