@@ -17,6 +17,8 @@ from typing import Optional, Tuple
 from gtirb.cfg import EdgeType
 import gtirb
 
+from tests.snippets import parse_souffle_output
+
 if platform.system() == "Linux":
     import lief
 
@@ -836,6 +838,46 @@ class NpadTests(unittest.TestCase):
             )
             sizes = [n for _, n in padding]
             self.assertEqual(sizes, list(range(1, 16)))
+
+
+class IncrementalLinkingTests(unittest.TestCase):
+    @unittest.skipUnless(
+        platform.system() == "Windows", "This test is Windows only."
+    )
+    def test_incremental_linking_boundaries(self):
+        with cd(ex_dir / "ex1"):
+            self.assertTrue(
+                compile("cl", "cl", "/O0", ["/link", "/incremental"], [])
+            )
+            self.assertTrue(
+                disassemble(
+                    "ex.exe",
+                    format="--ir",
+                    extra_args=["--with-souffle-relations"],
+                )[0]
+            )
+
+            ir = gtirb.IR.load_protobuf("ex.exe.gtirb")
+            module = ir.modules[0]
+
+            # Read first and last address in incremental linking code.
+            first, last = next(
+                parse_souffle_output(module, "incremental_linking")
+            )
+
+            # locate the .text section byte interval.
+            section = next(s for s in module.sections if s.name == ".text")
+            bi = next(section.byte_intervals_at(section.address))
+
+            # Pattern match INT3 + JMP sequence prepended to .text section.
+            match = re.match(b"^\xCC+(\xe9....)+", bi.contents, re.DOTALL)
+            self.assertTrue(match)
+
+            # Test boundaries of the inferred span against matched code.
+            code = bi.contents[match.start() : match.end()].lstrip(b"\xCC")
+            offset = match.end() - len(code)
+            self.assertEqual(section.address + offset, first)
+            self.assertEqual(last - first + 5, len(code))
 
 
 if __name__ == "__main__":

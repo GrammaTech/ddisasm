@@ -82,6 +82,14 @@ function_entry(EA):-
     Src >= Base,
     Src < End.
 
+// Windows PE 'incremental linking' targets.
+function_entry(EA):-
+    incremental_linking(First,Last),
+    code(Src),
+    First <= Src, Src <= Last,
+    direct_jump(Src,EA),
+    code(EA).
+
 function_without_callframe(EA):-
     function_entry(EA),
     !fde_addresses(EA,_).

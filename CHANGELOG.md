@@ -1,5 +1,7 @@
 # 1.7.1 (Unreleased)
 
+* Detect incremental linking regions in PE binaries.
+
 # 1.7.0
 * Update code inference to use weighted interval scheduling to resolve blocks;
   this improves code inference results, especially on ARM.
