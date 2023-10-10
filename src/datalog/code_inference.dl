@@ -271,7 +271,7 @@ possible_ea(EA):-
 
 
 /**
-The address EA is known to be definitely code.
+The address EA is already known to be code in the input GTIRB.
 */
 .decl known_code(EA:address)
 .input known_code
