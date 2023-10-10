@@ -862,7 +862,7 @@ class IncrementalLinkingTests(unittest.TestCase):
 
             # Read first and last address in incremental linking code.
             first, last = next(
-                parse_souffle_output(module, "disassemly.incremental_linking")
+                parse_souffle_output(module, "incremental_linking")
             )
 
             # locate the .text section byte interval.
