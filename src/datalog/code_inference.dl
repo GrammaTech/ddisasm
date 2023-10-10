@@ -280,7 +280,6 @@ The address EA is known to be definitely code.
 Starting addresses for code exploration.
 */
 .decl basic_target(ea:address)
-.input basic_target
 
 basic_target(Val):-
     (
