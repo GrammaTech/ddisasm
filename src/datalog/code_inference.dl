@@ -1551,6 +1551,11 @@ block_still_overlap(Block1,Type1,Size1,Block2,Type2,Size2):-
         Priority1 < Priority2
     ).
 
+/**
+Auxiliary predicate to compute `data_in_code`. It propagates through
+the holes between code blocks and between the last code block of
+a byte interval and the end of the interval
+*/
 .decl data_in_code_propagate(Current:address,Initial:address,EndByteInterval:address)
 
 data_in_code_propagate(BlockEndAddr,BlockEndAddr,EndByteInterval):-
@@ -1564,6 +1569,21 @@ data_in_code_propagate(EA+1,Begin,EndByteInterval):-
     !block_boundaries(_,EA+1,_),
     EA+1 < EndByteInterval.
 
+/**
+Auxiliary predicate to compute `data_in_code`.
+`BlockBeg` contains the address of the first code block in the
+byte interval defined by the addresses [Begin,End).
+If a code byte interval has no code, no predicate will be generated.
+*/
+.decl first_block_in_byte_interval(Begin:address,End:address,BlockBeg:address)
+
+first_block_in_byte_interval(Begin,End,BlockBeg):-
+    code_section(Name),
+    loaded_section(BegSect,EndSect,Name),
+    byte_interval(Begin,End),
+    BegSect <= Begin, End <= EndSect,
+    BlockBeg = min EA:{ block_boundaries(_,EA,_), EA >= Begin, EA < End}.
+
 // Data in between code blocks or between a code block and
 // the end of a byte interval.
 data_in_code(Begin,End+1):-
@@ -1571,19 +1591,26 @@ data_in_code(Begin,End+1):-
     !data_in_code_propagate(End+1,Begin,_).
 
 // Data before the first code-block in a byte interval with code.
-data_in_code(Begin,Block-1):-
+// If the byte interval has no code, the `data_in_code` predicate
+// corresponds to the whole byte interval.
+data_in_code(Begin,EndData):-
     code_section(Name),
     loaded_section(BegSect,EndSect,Name),
     byte_interval(Begin,End),
     BegSect <= Begin, End <= EndSect,
-    Block = min EA:{ block_boundaries(_,EA,_), EA >= Begin, EA < End},
-    Block > Begin.
+    (
+        first_block_in_byte_interval(Begin,End,EndData)
+    ;
+        !first_block_in_byte_interval(Begin,End,_),
+        EndData = End
+    ),
+    EndData > Begin.
 
 .decl next_block_in_byte_interval(Block:address,NextBlock:address)
 // This assumes there are no remaining overlapping blocks.
 
 // This rule optimizes for the common case of contiguous blocks
- next_block_in_byte_interval(Block,NextBlock):-
+next_block_in_byte_interval(Block,NextBlock):-
     block_boundaries(Block,_,NextBlockBeg),
     block_boundaries(NextBlock,NextBlockBeg,_).
 
