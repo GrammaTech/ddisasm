@@ -132,3 +132,35 @@ class RawBinaryTests(unittest.TestCase):
                 self.assertEqual(
                     code_addresses, [0x40001, 0x40007, 0x40011, 0x80001]
                 )
+                data_addresses = sorted(
+                    [block.address for block in m.data_blocks]
+                )
+                self.assertEqual(data_addresses, [0x40000, 0x80000])
+                self.assertEqual({block.size for block in m.data_blocks}, {1})
+
+    def test_code_section_without_code(self):
+        """
+        Test that a gtirb executable section without code
+        generates a data object covering all the section
+        """
+
+        with tempfile.TemporaryDirectory() as dir:
+            with cd(dir):
+                ir, s = create_basic_gtirb()
+
+                bi1 = gtirb.ByteInterval(
+                    contents=b"\x0e\x0e\x0e\x0e\x0e",  # Invalid
+                    address=0x40000,
+                )
+                bi1.section = s
+                ir.save_protobuf("ex_raw")
+
+                self.assertTrue(disassemble("ex_raw", format="--ir")[0])
+
+                ir_disassembled = gtirb.IR.load_protobuf("ex_raw.gtirb")
+                m = ir_disassembled.modules[0]
+                # the code section has one data block
+                dblocks = list(m.data_blocks)
+                self.assertEqual(len(dblocks), 1)
+                self.assertEqual(dblocks[0].address, 0x40000)
+                self.assertEqual(dblocks[0].size, 5)
