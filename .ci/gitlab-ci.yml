@@ -535,6 +535,8 @@ build-static:
     - !reference [.install-capstone]
     # setup ccache
     - !reference [.setup-ccache]
+    # upgrade pip
+    - python3 -m pip install pip --upgrade
     # build GTIRB
     - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
     - git clone https://git.grammatech.com/rewriting/gtirb.git -b $GTIRB_BRANCH
@@ -542,7 +544,7 @@ build-static:
     - cd gtirb/build
     - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_BUILD_SHARED_LIBS=OFF
     - make
-    - cd python; python3 setup.py develop; cd ..
+    - cd python; python3 -m pip install .; cd ..
     - cd ../..
     # build gtirb-pprinter
     - GTIRB_PPRINTER_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_PPRINTER_VERSION" || echo "master")
@@ -560,7 +562,6 @@ build-static:
     # Report ccache stats.
     - ccache --show-stats
     # Run the regression tests.
-    - python3 -m pip install pip --upgrade
     - python3 -m pip install -r ../requirements-dev.txt --extra-index-url=$EXTRA_INDEX_URL --pre
     - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
 
@@ -620,6 +621,8 @@ static-drivers:
     - !reference [.install-capstone]
     # set up ccache
     - !reference [.setup-ccache]
+    # upgrade pip
+    - python3 -m pip install pip --upgrade
     # build GTIRB
     - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
     - git clone https://git.grammatech.com/rewriting/gtirb.git -b $GTIRB_BRANCH
@@ -627,7 +630,7 @@ static-drivers:
     - mkdir build && cd build
     - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Debug -DGTIRB_BUILD_SHARED_LIBS=OFF
     - make
-    - cd python; python3 setup.py develop; cd ..
+    - cd python; python3 -m pip install .; cd ..
     - cd ../..
     # build gtirb-pprinter
     - GTIRB_PPRINTER_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_PPRINTER_VERSION" || echo "master")
@@ -642,7 +645,6 @@ static-drivers:
     - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Debug -DDDISASM_STATIC_DRIVERS=ON -DDDISASM_GENERATE_MANY=ON
     - make -j8
     # Run the regression tests.
-    - python3 -m pip install pip --upgrade
     - python3 -m pip install -r ../requirements-dev.txt --extra-index-url=$EXTRA_INDEX_URL --pre
     - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
     # For verification purposes, print ldd of the driver here.
