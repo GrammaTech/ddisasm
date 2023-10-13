@@ -1582,11 +1582,45 @@ void buildArchInfo(gtirb::Module &Module, souffle::SouffleProgram &Program)
     }
 }
 
+void removePreviousModuleContent(gtirb::Module &Module)
+{
+    for(auto &Bi : Module.byte_intervals())
+    {
+        std::vector<gtirb::CodeBlock *> CodeToRemove;
+        for(auto &Block : Bi.code_blocks())
+        {
+            CodeToRemove.push_back(&Block);
+        }
+        for(auto Block : CodeToRemove)
+        {
+            Bi.removeBlock(Block);
+        }
+        std::vector<gtirb::DataBlock *> DataToRemove;
+        for(auto &Block : Bi.data_blocks())
+        {
+            DataToRemove.push_back(&Block);
+        }
+        for(auto Block : DataToRemove)
+        {
+            Bi.removeBlock(Block);
+        }
+        std::vector<uint64_t> SymExprOffset;
+        for(auto SymExpr : Bi.symbolic_expressions())
+        {
+            SymExprOffset.push_back(SymExpr.getOffset());
+        }
+        for(auto Offset : SymExprOffset)
+        {
+            Bi.removeSymbolicExpression(Offset);
+        }
+    }
+}
 void disassembleModule(gtirb::Context &Context, gtirb::Module &Module,
                        souffle::SouffleProgram &Program, bool SelfDiagnose)
 {
     removeSectionSymbols(Context, Module);
     removeEntryPoint(Module);
+    removePreviousModuleContent(Module);
     buildInferredSymbols(Context, Module, Program);
     buildSymbolForwarding(Context, Module, Program);
     buildCodeBlocks(Context, Module, Program);

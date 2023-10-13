@@ -56,6 +56,12 @@ namespace souffle
         return T;
     }
 
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::ByteInterval& ByteInterval)
+    {
+        T << ByteInterval.BegAddr << ByteInterval.EndAddr;
+        return T;
+    }
+
     souffle::tuple& operator<<(souffle::tuple& T, const relations::SectionProperty& Property)
     {
         T << Property.Name << Property.Property;

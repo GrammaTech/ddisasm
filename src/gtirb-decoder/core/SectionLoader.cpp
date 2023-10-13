@@ -30,6 +30,7 @@ void SectionLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program
     std::vector<relations::Section> Sections;
     std::vector<relations::SectionProperty> SectionProperty;
     std::vector<relations::SectionType> SectionType;
+    std::vector<relations::ByteInterval> ByteIntervals;
 
     auto* SectProperties = Module.getAuxData<gtirb::schema::SectionProperties>();
 
@@ -122,9 +123,19 @@ void SectionLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program
 
         Sections.push_back(
             {Section.getName(), *Section.getSize(), *Section.getAddress(), Align, Index});
+
+        for(auto& BI : Section.byte_intervals())
+        {
+            auto BIAddr = BI.getAddress();
+            if(BIAddr)
+            {
+                ByteIntervals.push_back({*BIAddr, *BIAddr + BI.getSize()});
+            }
+        }
     }
 
     relations::insert(Program, "section", std::move(Sections));
     relations::insert(Program, "section_property", std::move(SectionProperty));
     relations::insert(Program, "section_type", std::move(SectionType));
+    relations::insert(Program, "byte_interval", std::move(ByteIntervals));
 }

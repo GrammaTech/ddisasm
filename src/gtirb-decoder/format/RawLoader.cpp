@@ -38,4 +38,14 @@ void RawEntryLoader(const gtirb::Module &Module, souffle::SouffleProgram &Progra
         }
     }
     relations::insert(Program, "entry_point", std::move(Entries));
+    std::vector<gtirb::Addr> Targets;
+    for(auto &CodeBlock : Module.code_blocks())
+    {
+        std::optional<gtirb::Addr> Addr = CodeBlock.getAddress();
+        if(Addr)
+        {
+            Targets.push_back(*Addr);
+        }
+    }
+    relations::insert(Program, "known_code", std::move(Targets));
 }
