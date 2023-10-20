@@ -1,4 +1,4 @@
 capstone-gt
 gtirb
 gtirb-capstone
-lief
+lief==0.13.0
