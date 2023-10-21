@@ -16,11 +16,9 @@ from pathlib import Path
 from typing import Optional, Tuple
 from gtirb.cfg import EdgeType
 import gtirb
+import lief
 
 from tests.snippets import parse_souffle_output
-
-if platform.system() == "Linux":
-    import lief
 
 ex_dir = Path("./examples/")
 ex_asm_dir = ex_dir / "asm_examples"
@@ -878,6 +876,44 @@ class IncrementalLinkingTests(unittest.TestCase):
             offset = match.end() - len(code)
             self.assertEqual(section.address + offset, first)
             self.assertEqual(last - first + 5, len(code))
+
+
+class MalformedPEBinaries(unittest.TestCase):
+    @unittest.skipUnless(
+        platform.system() == "Windows", "This test is Windows only."
+    )
+    def test_repeated_import(self):
+        """
+        Test a binary with repeated import entries
+        """
+        with cd(ex_dir / "ex1"):
+            self.assertTrue(compile("cl", "cl", "/O0", ["/link"], []))
+
+            # We add a duplicate import entry
+            bin = lief.PE.parse("ex.exe")
+            lib = bin.add_library("KERNEL32.dll")
+            lib.add_entry("WriteConsoleW")
+            builder = lief.PE.Builder(bin)
+            builder.build_imports(True).patch_imports(True)
+            builder.build()
+            builder.write("ex_mod.exe")
+
+            self.assertTrue(
+                disassemble(
+                    "ex_mod.exe",
+                    format="--ir",
+                )[0]
+            )
+
+            # No duplicate import symbols
+            ir = gtirb.IR.load_protobuf("ex_mod.exe.gtirb")
+            module = ir.modules[0]
+            self.assertEqual(
+                len(list(module.symbols_named("WriteConsoleW"))), 1
+            )
+            # LIEF does non-standard things with the IAT.
+            # This makes reassembling into a working binary challenging
+            # so we don't check that here.
 
 
 if __name__ == "__main__":
