@@ -405,6 +405,54 @@ class AuxDataTests(unittest.TestCase):
             self.assertEqual(int(init_match.group(1), 16), init.address)
             self.assertEqual(int(fini_match.group(1), 16), fini.address)
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_stack_size(self):
+        """
+        Test that a PT_GNU_STACK segment with size populates elfStackSize
+        """
+        binary = "ex"
+        with cd(ex_dir / "ex1"):
+            stack_size = 0x200000
+            self.assertTrue(
+                compile(
+                    "gcc", "g++", "-O0", [f"-Wl,-z,stack-size={stack_size}"]
+                )
+            )
+            self.assertTrue(disassemble(binary, format="--ir")[0])
+
+            ir = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir.modules[0]
+
+            self.assertEqual(m.aux_data["elfStackSize"].data, stack_size)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_stack_exec(self):
+        """
+        Test that a PT_GNU_STACK segment populates correct executable flags
+        """
+        cases = (
+            ("execstack", True),
+            ("noexecstack", False),
+        )
+
+        for ld_keyword, is_exec in cases:
+            binary = "ex"
+            with self.subTest(keyword=ld_keyword), cd(ex_dir / "ex1"):
+                self.assertTrue(
+                    compile("gcc", "g++", "-O0", [f"-Wl,-z,{ld_keyword}"])
+                )
+                self.assertTrue(disassemble(binary, format="--ir")[0])
+
+                ir = gtirb.IR.load_protobuf(binary + ".gtirb")
+                m = ir.modules[0]
+
+                # verify executable bit
+                self.assertEqual(m.aux_data["elfStackExec"].data, is_exec)
+
 
 class RawGtirbTests(unittest.TestCase):
     @unittest.skipUnless(

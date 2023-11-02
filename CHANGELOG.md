@@ -4,6 +4,7 @@
 * Use pre-existing code blocks as hints when disassembling a RAW binary.
 * Better data access computation for MIPS binaries.
 * Detect incremental linking regions in PE binaries.
+* Create elfStackSize and elfStackExec auxdata from ELF PT_GNU_STACK segments.
 
 # 1.7.0
 * Update code inference to use weighted interval scheduling to resolve blocks;

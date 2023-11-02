@@ -600,7 +600,6 @@ void ElfReader::buildSections()
         relocateSections();
     }
 
-    bool GnuStackSectionExist = false;
     uint64_t Index = 0;
     for(auto &Section : Elf->sections())
     {
@@ -712,11 +711,6 @@ void ElfReader::buildSections()
         SectionProperties[S->getUUID()] = {static_cast<uint64_t>(Section.type()),
                                            static_cast<uint64_t>(Section.flags())};
 
-        if(Section.name() == ".note.GNU-stack")
-        {
-            GnuStackSectionExist = true;
-        }
-
         // In case of ARM32, inspect .ARM.attributes section to see
         // if the binary is Microcontroller.
         if(Module->getISA() == gtirb::ISA::ARM && Section.name() == ".ARM.attributes")
@@ -728,53 +722,6 @@ void ElfReader::buildSections()
             }
         }
         Index++;
-    }
-
-    // If .note.GNU-stack section does not exist and there is a segment
-    // type of PT_GNU_STACK, create an artificial section for it.
-    if(!GnuStackSectionExist)
-    {
-        auto GnuStackSegment = std::find_if(
-            Elf->segments().begin(), Elf->segments().end(),
-            [](auto &S) { return S.type() == LIEF::ELF::SEGMENT_TYPES::PT_GNU_STACK; });
-
-        if(GnuStackSegment != Elf->segments().end())
-        {
-            gtirb::Section *S = Module->addSection(*Context, ".note.GNU-stack");
-            S->addFlag(gtirb::SectionFlag::Loaded);
-            S->addFlag(gtirb::SectionFlag::Readable);
-            S->addFlag(gtirb::SectionFlag::Initialized);
-            uint64_t Addr = GnuStackSegment->virtual_address();
-            // If Addr is 0, create an address after TLS.
-            if(Addr == 0)
-            {
-                uint64_t TlsSize = 0;
-                std::optional<std::pair<uint64_t, uint64_t>> TlsAddr = getTls();
-                if(TlsAddr)
-                {
-                    TlsSize = TlsAddr->second - TlsAddr->first;
-                }
-                Addr = tlsBaseAddress() + TlsSize;
-                // Use the next available page.
-                Addr = (Addr & ~(0x1000 - 1)) + 0x1000;
-
-                SectionRelocations[S->getName()] = Addr;
-            }
-
-            uint64_t Size = GnuStackSegment->virtual_size();
-            auto Bytes = Elf->get_content_from_virtual_address(Addr, Size);
-            gtirb::ByteInterval *BI = S->addByteInterval(*Context, gtirb::Addr(Addr), Bytes.begin(),
-                                                         Bytes.end(), Size, Bytes.size());
-            auto DataBlock = gtirb::DataBlock::Create(*Context, Size);
-            BI->addBlock(0, DataBlock);
-
-            uint64_t Type = static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS);
-            uint64_t Flags = 0;
-
-            Alignment[S->getUUID()] = 0;
-            SectionIndex[Index++] = S->getUUID();
-            SectionProperties[S->getUUID()] = {Type, Flags};
-        }
     }
 
     // Add `overlay` aux data table.
@@ -1272,6 +1219,29 @@ void ElfReader::addAuxData()
         DynamicEntryTuples.insert({it->first, it->second});
     }
     Module->addAuxData<gtirb::schema::DynamicEntries>(std::move(DynamicEntryTuples));
+
+    // Build segment auxdata
+    bool FoundStackSegment = false;
+    for(auto &Segment : Elf->segments())
+    {
+        switch(Segment.type())
+        {
+            case LIEF::ELF::SEGMENT_TYPES::PT_GNU_STACK:
+            {
+                if(FoundStackSegment)
+                {
+                    std::cerr << "\nWARNING: multiple PT_GNU_STACK segments\n";
+                    continue;
+                }
+                Module->addAuxData<gtirb::schema::ElfStackSize>(Segment.virtual_size());
+                Module->addAuxData<gtirb::schema::ElfStackExec>(
+                    Segment.has(LIEF::ELF::ELF_SEGMENT_FLAGS::PF_X));
+            }
+            default:
+                // all other segments types are currently ignored.
+                continue;
+        }
+    }
 }
 
 std::string ElfReader::getRelocationType(const LIEF::ELF::Relocation &Entry)
