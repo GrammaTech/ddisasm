@@ -5,6 +5,7 @@
 * Better data access computation for MIPS binaries.
 * Detect incremental linking regions in PE binaries.
 * Create elfStackSize and elfStackExec auxdata from ELF PT_GNU_STACK segments.
+* Requires gtirb >=1.12.1, gtirb-pprinter >=2.0.0
 
 # 1.7.0
 * Update code inference to use weighted interval scheduling to resolve blocks;

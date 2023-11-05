@@ -8,8 +8,8 @@ that standard such as gcc 9, clang 6, or MSVC 2017.
 
 To build Ddisasm from source, the following requirements should be installed:
 
-- [gtirb](https://github.com/grammatech/gtirb)
-- [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter)
+- [gtirb](https://github.com/grammatech/gtirb) version 1.12.1 or later
+- [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter), version 2.0.0 or later
 - [Capstone](http://www.capstone-engine.org/), version 5.0.0 or later
   - GrammaTech builds and tests using the [GrammaTech/capstone](https://github.com/GrammaTech/capstone) fork.
 - [Souffle](https://souffle-lang.github.io), version 2.4  with support for 64 bit numbers (via `-DSOUFFLE_DOMAIN_64BIT=1` during configuration)
