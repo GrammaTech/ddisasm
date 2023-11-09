@@ -79,6 +79,8 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<Overlay>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfDynamicInit>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfDynamicFini>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfStackSize>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfStackExec>();
 }
 
 void registerDatalogLoaders()
