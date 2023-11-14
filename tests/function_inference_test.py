@@ -405,7 +405,10 @@ class PEFunctionInferenceTests(unittest.TestCase):
             self.assertTrue(disassemble("ex.dll", format="--ir")[0])
             ir = gtirb.IR.load_protobuf("ex.dll.gtirb")
             module = ir.modules[0]
-            functionNames = set(module.aux_data["functionNames"].data.values())
+            functionNames = {
+                sym.name
+                for sym in module.aux_data["functionNames"].data.values()
+            }
             self.assertIn("print_ok1", functionNames)
             self.assertIn("print_ok2", functionNames)
             self.assertIn("print_ok3", functionNames)
