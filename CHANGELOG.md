@@ -5,6 +5,7 @@
 * Better data access computation for MIPS binaries.
 * Detect incremental linking regions in PE binaries.
 * Create elfStackSize and elfStackExec auxdata from ELF PT_GNU_STACK segments.
+* In PE binaries, every exported code symbol is considered a function entry.
 * Requires gtirb >=1.12.1, gtirb-pprinter >=2.0.0
 
 # 1.7.0
