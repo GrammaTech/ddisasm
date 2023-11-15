@@ -52,6 +52,7 @@ function_entry_initial(EA):-
         function_symbol(EA,_);
         start_function(EA);
         loaded_section(EA,_,_);
+        pe_export_entry(EA,_,_);
         // TODO: Fold pc_load_call into generic arch component.
         direct_call(EA_caller,EA), code(EA_caller), !pc_load_call(EA_caller,EA)
     ).
