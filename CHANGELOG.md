@@ -1,11 +1,21 @@
 # 1.7.1 (Unreleased)
 
+* Prefer LOCAL symbols over GLOBAL ones when selecting symbols for symbolic
+  expressions for ISAs other than MIPS.
 * Support GTIRB sections with holes (byte intervals only covering part of the section).
 * Use pre-existing code blocks as hints when disassembling a RAW binary.
 * Better data access computation for MIPS binaries.
 * Detect incremental linking regions in PE binaries.
 * Create elfStackSize and elfStackExec auxdata from ELF PT_GNU_STACK segments.
 * In PE binaries, every exported code symbol is considered a function entry.
+* Fixed bug where `elfSymbolTabIdxInfo` aux data could refer to non-existent UUIDs.
+* Fixed unrecognized `tls_get_addr` pattern that could result in missed
+  symbolic expressions.
+* Binaries with zero-sized `OBJECT` symbols no longer produce missing code
+  blocks.
+* `$t` symbols in ARM binaries now force creation of Thumb-mode code blocks.
+* In PE binaries, duplicate imports no longer create duplicate symbols.
+* Added pattern to match missed symbolic data in pointer arrays.
 * Requires gtirb >=1.12.1, gtirb-pprinter >=2.0.0
 
 # 1.7.0
@@ -16,8 +26,6 @@
   and branches using value analysis, data accesses, and relocations.
 * ELF: Infer `SHARED` or `PIE` for `DYN` binary type
 * ELF: Generate `elfDynamicInit` and `elfDynamicFini` auxdata
-* Prefer LOCAL symbols over GLOBAL ones in symbol selection for ISAs
-  other than MIPS.
 
 # 1.6.0
 * ARM: Improve code inference using unwind information from .ARM.exidx section
