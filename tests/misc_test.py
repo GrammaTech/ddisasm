@@ -639,7 +639,7 @@ class SymbolSelectionTests(unittest.TestCase):
         with cd(ex_dir / "ex_ml_sym_mangling"):
             proc = subprocess.run(make("all"), stdout=subprocess.DEVNULL)
             self.assertEqual(proc.returncode, 0)
-            for extra_args in ["", "-F"]:
+            for extra_args in ([], ["-F"]):
                 with self.subTest(extra_args=extra_args):
                     self.assertTrue(
                         disassemble(
