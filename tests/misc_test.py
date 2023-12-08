@@ -637,6 +637,8 @@ class SymbolSelectionTests(unittest.TestCase):
         """
         library = "baz.dll"
         with cd(ex_dir / "ex_ml_sym_mangling"):
+            proc = subprocess.run(make("clean"), stdout=subprocess.DEVNULL)
+            self.assertEqual(proc.returncode, 0)
             proc = subprocess.run(make("all"), stdout=subprocess.DEVNULL)
             self.assertEqual(proc.returncode, 0)
             for extra_args in ([], ["-F"]):
