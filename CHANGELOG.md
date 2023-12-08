@@ -16,6 +16,8 @@
 * `$t` symbols in ARM binaries now force creation of Thumb-mode code blocks.
 * In PE binaries, duplicate imports no longer create duplicate symbols.
 * Added pattern to match missed symbolic data in pointer arrays.
+* Fix symbols associated to functions (Auxdata functionNames) for PE binaries
+  when Ddisasm is run with option `-F`.
 * Requires gtirb >=1.12.1, gtirb-pprinter >=2.0.0
 
 # 1.7.0
