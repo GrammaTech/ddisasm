@@ -628,6 +628,40 @@ class SymbolSelectionTests(unittest.TestCase):
             self.assertNotIn("_fun", fun_names)
 
     @unittest.skipUnless(
+        platform.system() == "Windows", "This test is Windows only"
+    )
+    def test_pe_function_symbol_selection(self):
+        """
+        Test that function names are correctly selected
+        in PE binaries.
+        """
+        library = "baz.dll"
+        with cd(ex_dir / "ex_ml_sym_mangling"):
+            proc = subprocess.run(make("clean"), stdout=subprocess.DEVNULL)
+            self.assertEqual(proc.returncode, 0)
+            proc = subprocess.run(make("all"), stdout=subprocess.DEVNULL)
+            self.assertEqual(proc.returncode, 0)
+            for extra_args in ([], ["-F"]):
+                with self.subTest(extra_args=extra_args):
+                    self.assertTrue(
+                        disassemble(
+                            library, format="--ir", extra_args=extra_args
+                        )[0]
+                    )
+
+                    ir_library = gtirb.IR.load_protobuf(library + ".gtirb")
+                    m = ir_library.modules[0]
+
+                    # check chosen function names
+                    fun_names = {
+                        sym.name
+                        for sym in m.aux_data["functionNames"].data.values()
+                    }
+                    self.assertIn("Baz", fun_names)
+                    self.assertIn("_Baz", fun_names)
+                    self.assertIn("__Baz", fun_names)
+
+    @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
     def test_boundary_sym_expr(self):

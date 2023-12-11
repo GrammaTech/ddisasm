@@ -203,13 +203,26 @@ elf_avoid_symbols("__TMC_END__").
 // and no pre-existing function symbols.
 
 best_func_symbol(EA,SymbolName):-
-   symbol_score(EA,SymbolName,"FUNC","Beg",Score),
-   Score = max S: {symbol_score(EA,_,"FUNC","Beg",S)}.
+    binary_format("ELF"),
+    symbol_score(EA,SymbolName,"FUNC","Beg",Score),
+    Score = max S: {symbol_score(EA,_,"FUNC","Beg",S)}.
+
+// For non-ELF (e.g. PE), symbols might not have a type
+best_func_symbol(EA,SymbolName):-
+    !binary_format("ELF"),
+    symbol_score(EA,SymbolName,_,"Beg",Score),
+    Score = max S: {symbol_score(EA,_,_,"Beg",S)}.
 
 inferred_symbol(EA,SymbolName,Scope,"DEFAULT","FUNC","Beg"),
 best_func_symbol(EA,SymbolName):-
     function_inference.function_entry(EA),
-    !symbol_score(EA,_,"FUNC","Beg",_),
+    (
+        binary_format("ELF"),
+        !symbol_score(EA,_,"FUNC","Beg",_)
+        ;
+        !binary_format("ELF"),
+        !symbol_score(EA,_,_,"Beg",_)
+    ),
     SymbolName = cat("FUN_",@to_string_hex(EA)),
     (
         binary_isa("MIPS"), Scope = "GLOBAL";

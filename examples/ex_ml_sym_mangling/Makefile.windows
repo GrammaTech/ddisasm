@@ -1,4 +1,4 @@
-CC=
+CC=cl
 CFLAGS=
 EXEC=
 
@@ -16,7 +16,6 @@ clean:
 	rm -f ex *.dll out.txt *.s *.lib *.exp *.o *.err *.obj *.exe
 
 check:
-	$(CC)  ex.c foo.lib baz.lib
 	@ ex > check.txt
 	@ FC out.txt check.txt && echo TEST OK
 
