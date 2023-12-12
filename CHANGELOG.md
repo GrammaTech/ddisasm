@@ -1,4 +1,6 @@
-# 1.7.1 (Unreleased)
+# 1.8.1 (Unreleased)
+
+# 1.8.0
 
 * Prefer LOCAL symbols over GLOBAL ones when selecting symbols for symbolic
   expressions for ISAs other than MIPS.
@@ -18,7 +20,7 @@
 * Added pattern to match missed symbolic data in pointer arrays.
 * Fix symbols associated to functions (Auxdata functionNames) for PE binaries
   when Ddisasm is run with option `-F`.
-* Requires gtirb >=1.12.1, gtirb-pprinter >=2.0.0
+* Requires gtirb >=2.0.0, gtirb-pprinter >=2.0.0
 
 # 1.7.0
 * Update code inference to use weighted interval scheduling to resolve blocks;
