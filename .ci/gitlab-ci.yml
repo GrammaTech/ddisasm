@@ -52,24 +52,31 @@ default:
   - apt-get update -y
 
 .download-deps:
+  - CAPSTONE_VERSION_SUFFIX=$([[ $CAPSTONE_VERSION == "" ]] && echo "" || echo "=$CAPSTONE_VERSION")
+  - GTIRB_VERSION_SUFFIX=$([[ $GTIRB_VERSION == "" ]] && echo "" || echo "=$GTIRB_VERSION")
+  - GTIRB_PPRINTER_VERSION_SUFFIX=$([[ $GTIRB_PPRINTER_VERSION == "" ]] && echo "" || echo "=$GTIRB_PPRINTER_VERSION")
   - >-
     apt-get install --download-only -y
-    libcapstone-dev${CAPSTONE_VERSION:+-$CAPSTONE_VERSION}
-    libgtirb-dev${GTIRB_VERSION:+-$GTIRB_VERSION}
-    libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+-$GTIRB_PPRINTER_VERSION}
-    gtirb-pprinter${GTIRB_PPRINTER_VERSION:+-$GTIRB_PPRINTER_VERSION}
+    libcapstone-dev${CAPSTONE_VERSION_SUFFIX}
+    libgtirb-dev${GTIRB_VERSION_SUFFIX}
+    libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION_SUFFIX}
+    gtirb-pprinter${GTIRB_PPRINTER_VERSION_SUFFIX}
   - mv /var/cache/apt/archives/*.deb .
 
 .install-deps:
+  - CAPSTONE_VERSION_SUFFIX=$([[ $CAPSTONE_VERSION == "" ]] && echo "" || echo "=$CAPSTONE_VERSION")
+  - GTIRB_VERSION_SUFFIX=$([[ $GTIRB_VERSION == "" ]] && echo "" || echo "=$GTIRB_VERSION")
+  - GTIRB_PPRINTER_VERSION_SUFFIX=$([[ $GTIRB_PPRINTER_VERSION == "" ]] && echo "" || echo "=$GTIRB_PPRINTER_VERSION")
   - >-
     apt-get install -y
-    libcapstone-dev${CAPSTONE_VERSION:+-$CAPSTONE_VERSION}
-    libgtirb-dev${GTIRB_VERSION:+-$GTIRB_VERSION}
-    libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+-$GTIRB_PPRINTER_VERSION}
-    gtirb-pprinter${GTIRB_PPRINTER_VERSION:+-$GTIRB_PPRINTER_VERSION}
+    libcapstone-dev${CAPSTONE_VERSION_SUFFIX}
+    libgtirb-dev${GTIRB_VERSION_SUFFIX}
+    libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION_SUFFIX}
+    gtirb-pprinter${GTIRB_PPRINTER_VERSION_SUFFIX}
 
 .install-capstone:
-  - apt-get install -y libcapstone-dev${CAPSTONE_VERSION:+-$CAPSTONE_VERSION}
+  - CAPSTONE_VERSION_SUFFIX=$([[ $CAPSTONE_VERSION == "" ]] && echo "" || echo "=$CAPSTONE_VERSION")
+  - apt-get install -y libcapstone-dev${CAPSTONE_VERSION_SUFFIX}
 
 # Set up ccache and report initial stats.
 .setup-ccache:
@@ -726,16 +733,14 @@ test-make-install:
   script:
     - !reference [.setup-apt]
     - !reference [.install-deps]
-    - "CAPSTONE_PKG_VERSION=$(dpkg -s libcapstone-dev${CAPSTONE_VERSION:+-$CAPSTONE_VERSION} | awk '/Version:/ { print $2 }')"
+    - "CAPSTONE_PKG_VERSION=$(dpkg -s libcapstone-dev | awk '/Version:/ { print $2 }')"
     - cd build
     # Use make to update timestamps on all build targets. The artifacts we
     # pulled in from the dependent job should already be up-to-date, but since
     # this job checked out a new copy of the source, its timestamps are newer.
     - make -t
-    - CPACK_DDISASM_STABLE_PKG_NAME=OFF
-    - '[[ ! $CI_COMMIT_REF_NAME =~ ^release-.* ]] || CPACK_DDISASM_STABLE_PKG_NAME=ON'
-    - cpack -G "DEB" -D CPACK_DDISASM_STABLE_PKG_NAME=$CPACK_DDISASM_STABLE_PKG_NAME -D CPACK_CAPSTONE_PKG_VERSION=$CAPSTONE_PKG_VERSION -D CPACK_DDISASM_PACKAGE=deb-ddisasm
-    - cpack -G "DEB" -D CPACK_DDISASM_STABLE_PKG_NAME=$CPACK_DDISASM_STABLE_PKG_NAME -D CPACK_CAPSTONE_PKG_VERSION=$CAPSTONE_PKG_VERSION -D CPACK_DDISASM_PACKAGE=deb-debug
+    - cpack -G "DEB" -D CPACK_CAPSTONE_PKG_VERSION=$CAPSTONE_PKG_VERSION -D CPACK_DDISASM_PACKAGE=deb-ddisasm
+    - cpack -G "DEB" -D CPACK_CAPSTONE_PKG_VERSION=$CAPSTONE_PKG_VERSION -D CPACK_DDISASM_PACKAGE=deb-debug
 
 build-ubuntu20-packages:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20:$IMAGE_TAG
