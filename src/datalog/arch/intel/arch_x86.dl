@@ -193,6 +193,45 @@ reg_arithmetic_operation(EA,Reg,Reg_origin_nn,1,Offset):-
     reg_nonnull(Reg_origin,Reg_origin_nn),
     op_regdirect_contains_reg(Op2,Reg).
 
+// push and pop modify the stack pointer
+reg_arithmetic_operation(EA,StackReg,StackReg,1,Offset):-
+    arch.stack_pointer(StackReg),
+    (
+        instruction(EA,_,_,"PUSH",Op,0,0,0,_,_),
+        Sign = -1
+        ;
+        instruction(EA,_,_,"POP",Op,0,0,0,_,_),
+        Sign = 1
+    ),
+    (
+        op_regdirect(Op,Reg),
+        arch.register_size_bits(Reg,SizeBits),
+        Offset = Sign * as(SizeBits/8,number)
+        ;
+        op_indirect(Op,_,_,_,_,_,SizeBits),
+        Offset = Sign * as(SizeBits/8,number)
+    ).
+
+// push immediate modifies the stack pointer
+reg_arithmetic_operation(EA,StackReg,StackReg,1,Offset):-
+    arch.stack_pointer(StackReg),
+    instruction(EA,_,_,"PUSH",Op,0,0,0,_,_),
+    op_immediate(Op,_),
+    data_byte(EA,Prefix),
+    // 16-bit pushes and pops are supported by using the 66H operand-size prefix
+    (
+        Prefix = 0x66,
+        Offset = -2
+        ;
+        Prefix != 0x66,
+        arch("X86"),
+        Offset = -4
+                ;
+        Prefix != 0x66,
+        arch("X64"),
+        Offset = -8
+    ).
+
 reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,-1,0):-
     instruction(EA,_,_,"SUB",Op1,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op1,Reg1),

@@ -144,6 +144,13 @@ value_reg(EA,Reg,EA,"NONE",0,Immediate,1):-
         Immediate = as(Address,number)
     ).
 
+// load immediate from stack
+value_reg(EALoad,Reg2,EALoad,"NONE",0,Immediate,1):-
+    arch.store_immediate(EAStore,_,_,Immediate,RegBaseStore,"NONE",_,StackPosStore),
+    stack_def_use.def_used(EAStore,[RegBaseStore,StackPosStore],EALoad,[RegBaseLoad,StackPosLoad],_),
+    arch.load(EALoad,_,_,Reg2,RegBaseLoad,"NONE",_,StackPosLoad),
+    def_used_for_address(EALoad,Reg2,_).
+
 //reset a register
 value_reg(EA,Reg,EA,"NONE",0,0,1):-
     def_used_for_address(EA,Reg,_),

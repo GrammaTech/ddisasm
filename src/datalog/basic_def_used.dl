@@ -69,7 +69,17 @@ track_register(Reg):-
             ;
             arch.register_access_override(EA,Reg,"W",1)
         ),
-        track_register(Reg).
+        track_register(Reg),
+        // Exception for stack pointer in calls.
+        // While the stack pointer gets changed the overall effect
+        // of a call leaves the stack pointer unchanged.
+        (
+            arch.stack_pointer(Reg),
+            !arch.call(EA,_)
+            ;
+            !arch.stack_pointer(Reg)
+        ).
+
 
     // A call "defines" the return value register
     def(EA,Reg):-

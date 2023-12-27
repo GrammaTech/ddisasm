@@ -277,7 +277,7 @@ analysis for both registers and stack variables.
 
     Forms an edge between two used() that depend on the same def.
     */
-    .decl live_var_at_prior_used(EA_used:address,BlockUsed:address,Var:T)
+    .decl live_var_at_prior_used(EA_used:address,BlockUsed:address,Var:T) overridable
 
     live_var_at_prior_used(EA_used,BlockUsed,Var):-
         live_var_at_block_end(Block,BlockUsed,Var),
@@ -429,7 +429,17 @@ stack_base_reg_move(Block,EA,Src,Dst):-
             arch.frame_pointer(BaseReg);
             arch.stack_pointer(BaseReg)
         ),
-        arch.store(EA,_,_,_,BaseReg,"NONE",_,StackPos).
+        (
+            arch.store(EA,_,_,_,BaseReg,"NONE",_,StackPos);
+            arch.store_immediate(EA,_,_,_,BaseReg,"NONE",_,StackPos)
+        ).
+
+    // A push with an indirect operand, e.g. push [addr]
+    // defines a stack value (only possible in x86)
+    def(EA,[StackReg,0]):-
+        arch.stack_pointer(StackReg),
+        instruction(EA,_,_,"PUSH",SrcOp,0,0,0,_,_),
+        op_indirect(SrcOp,_,_,_,_,_,_).
 
     // TODO: flow_def (x86 can have these!)
     flow_def(0,nil,0,0):-
@@ -497,6 +507,10 @@ stack_base_reg_move(Block,EA,Src,Dst):-
     */
     .decl live_var_used_in_block(Block:address,EA:address,LiveVar:stack_var,UsedVar:stack_var,EA_used:address,Index:operand_index,Moves:unsigned)
 
+    .decl moves_limit(Moves:unsigned)
+
+    moves_limit(2).
+
     // Used in this block
     live_var_used_in_block(Block,EA_used,[BaseReg,StackPos],[BaseReg,StackPos],EA_used,Index,0):-
         used_in_block(Block,EA_used,[BaseReg,StackPos],Index).
@@ -510,22 +524,24 @@ stack_base_reg_move(Block,EA,Src,Dst):-
         ),
         live_var_at_block_end(Block,BlockUsed,[BaseReg,StackPos]),
         live_var_used(BlockUsed,[BaseReg,StackPos],VarUsed,EA_used,Index,Moves),
-        Moves <= 1,
+        moves_limit(MovesLimit),
+        Moves <= MovesLimit,
         block_last_instruction(Block,LastEA),
         next(LastEA,NextEA).
 
     // Propagate
-    live_var_used_in_block(Block,EA,[BaseReg,StackPos],[BaseReg,StackPos],EA_used,Index,Moves):-
-        live_var_used_in_block(Block,Next,[BaseReg,StackPos],[BaseReg,StackPos],EA_used,Index,Moves),
+    live_var_used_in_block(Block,EA,[BaseReg,StackPos],[FinalBaseReg,FinalStackPos],EA_used,Index,Moves):-
+        live_var_used_in_block(Block,Next,[BaseReg,StackPos],[FinalBaseReg,FinalStackPos],EA_used,Index,Moves),
         block_instruction_next(Block,EA,Next),
         !reg_def_use.def(EA,BaseReg),
         !def(EA,[BaseReg,StackPos]).
 
-    // Instruction adjusts the stack pointer.
+    // Instruction adjusts the stack pointer
     live_var_used_in_block(Block,EA,[BaseReg,StackPos+Offset],UsedVar,EA_used,Index,Moves):-
         live_var_used_in_block(Block,Next,[BaseReg,StackPos],UsedVar,EA_used,Index,Moves),
         block_instruction_next(Block,EA,Next),
-        adjusts_stack_in_block(_,EA,BaseReg,Offset).
+        adjusts_stack_in_block(_,EA,BaseReg,Offset),
+        !def(EA,[BaseReg,StackPos]).
 
     // Instruction copies the stack pointer.
     // Note: since this *copies* it, there may now be two valid
@@ -540,6 +556,16 @@ stack_base_reg_move(Block,EA,Src,Dst):-
     // If the live var propagates to the beginning of the block, add it to the inter-block relation.
     live_var_used(Block,LiveVar,UsedVar,EA_used,Index,Moves):-
         live_var_used_in_block(Block,Block,LiveVar,UsedVar,EA_used,Index,Moves).
+
+    .override live_var_at_prior_used
+
+    live_var_at_prior_used(EA_used,BlockUsed,Var):-
+        live_var_at_block_end(Block,BlockUsed,Var),
+        used_in_block(Block,EA_used,Var,_),
+        // If there is a stack adjustment, the two uses might
+        // refer to different variables so we should not connect them
+        block_propagates_def(Block,Var),
+        !defined_in_block(Block,Var).
 }
 
 .init stack_def_use = StackVarDefUse
@@ -578,3 +604,10 @@ def_used_for_address(EA_def,Reg,Type):-
 
 def_used_for_address(EA,Reg,"PCRelative"):-
     arch.pc_relative_addr(EA,Reg,_).
+
+def_used_for_address(EA_def,Reg1,Type):-
+    def_used_for_address(EALoad,Reg2,Type),
+    arch.load(EALoad,_,_,Reg2,RegBaseLoad,"NONE",_,StackPosLoad),
+    stack_def_use.def_used(EAStore,[RegBaseStore,StackPosStore],EALoad,[RegBaseLoad,StackPosLoad],_),
+    arch.store(EAStore,_,_,Reg1,RegBaseStore,"NONE",_,StackPosStore),
+    reg_def_use.def_used(EA_def,Reg1,EAStore,_).

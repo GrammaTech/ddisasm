@@ -31,8 +31,33 @@ memory_access("LOAD",EA,1,2,DstReg,BaseReg,IndexReg,Mult,Offset):-
     op_indirect_mapped(SrcOp,"NONE",BaseReg,IndexReg,Mult,Offset,_),
     op_regdirect_contains_reg(DestOp,DstReg).
 
+// We consider the offset w.r.t the stack pointer BEFORE it has been updated.
+memory_access("LOAD",EA,0,1,DstReg,StackReg,"NONE",0,0):-
+    instruction(EA,_,_,"POP",Op,0,0,0,_,_),
+    stack_pointer(StackReg),
+    op_regdirect_contains_reg(Op,DstReg).
+
 memory_access("STORE",EA,1,2,SrcReg,BaseReg,IndexReg,Mult,Offset):-
     instruction(EA,_,_,Operation,SrcOp,DestOp,0,0,_,_),
     move_operation(Operation),
     op_indirect_mapped(DestOp,"NONE",BaseReg,IndexReg,Mult,Offset,_),
     op_regdirect_contains_reg(SrcOp,SrcReg).
+
+// We consider the offset w.r.t the stack pointer AFTER it has been updated.
+memory_access("STORE",EA,1,0,SrcReg,StackReg,"NONE",0,0):-
+    instruction(EA,_,_,"PUSH",Op,0,0,0,_,_),
+    stack_pointer(StackReg),
+    op_regdirect_contains_reg(Op,SrcReg).
+
+
+store_immediate(EA,1,2,Immediate,BaseReg,IndexReg,Mult,Offset):-
+    instruction(EA,_,_,Operation,SrcOp,DestOp,0,0,_,_),
+    move_operation(Operation),
+    op_indirect_mapped(DestOp,"NONE",BaseReg,IndexReg,Mult,Offset,_),
+    op_immediate(SrcOp,Immediate).
+
+// We consider the offset w.r.t the stack pointer AFTER it has been updated.
+store_immediate(EA,1,2,Immediate,StackReg,"NONE",0,0):-
+    instruction(EA,_,_,"PUSH",SrcOp,0,0,0,_,_),
+    stack_pointer(StackReg),
+    op_immediate(SrcOp,Immediate).

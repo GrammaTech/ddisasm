@@ -271,7 +271,7 @@ AccesSize: The size of the entire consecutive memory that the given
 memory_access_aggregated("",0,"","",0,0,0):- false.
 
 /**
-Represents a load or store.
+Represents a load or store of a register.
 
 The address of the accessed memory is of the form:
 
@@ -315,6 +315,17 @@ See arch.memory_access().
 
 store(EA,SrcOp,DstOp,SrcReg,BaseReg,IndexReg,Mult,Offset):-
     memory_access("STORE",EA,SrcOp,DstOp,SrcReg,BaseReg,IndexReg,Mult,Offset).
+
+/**
+Represents the store of an immediate to memory.
+
+This is not instantiatied for all architectures. E.g. It is possible in x86 but
+not in ARM.
+*/
+.decl store_immediate(EA:address,SrcOp:operand_index,DstOp:operand_index,
+    Immediate:number,BaseReg:reg_nullable,IndexReg:reg_nullable,Mult:number,Offset:number)
+
+store_immediate(0,0,0,0,"NONE","NONE",0,0):- false.
 
 .decl delay_slot(BranchEA:address,EA:address)
 
