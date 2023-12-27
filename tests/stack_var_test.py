@@ -678,6 +678,9 @@ class StackVarTests(unittest.TestCase):
             count_stack_def_use_in_snippet(module, (("RSP", 16), ("RSP", 40))),
         )
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_push_pop(self):
         """
         Test that push pop sequences results in the right number of def_uses.
@@ -700,6 +703,9 @@ class StackVarTests(unittest.TestCase):
             count_stack_def_use_in_snippet(module, (("RSP", 0), ("RSP", 0))),
         )
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_push_pop_multiple_blocks(self):
         """
         Test that push pop through multiple blocks result in the right number
@@ -733,6 +739,9 @@ class StackVarTests(unittest.TestCase):
             count_stack_def_use_in_snippet(module, (("RSP", 0), ("RSP", 0))),
         )
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_push_pop_push_pop(self):
         """
         Test that multiple push-pop sequences end up in one def-use each.
@@ -768,6 +777,9 @@ class StackVarTests(unittest.TestCase):
             count_stack_def_use_in_snippet(module, (("RSP", 0), ("RSP", 0))),
         )
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_push_load_multiple_blocks(self):
         """
         Test push load patterns through multiple blocks.
@@ -808,6 +820,9 @@ class StackVarTests(unittest.TestCase):
             count_stack_def_use_in_snippet(module, (("RSP", 0), ("RSP", 16))),
         )
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_push_store_pop(self):
         """
         Test that store-pop pairs are computed correctly.
