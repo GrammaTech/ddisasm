@@ -1,3 +1,4 @@
+from collections import defaultdict
 import ctypes
 import platform
 import subprocess
@@ -5,9 +6,12 @@ import unittest
 from disassemble_reassemble_check import compile, cd, disassemble
 from pathlib import Path
 import gtirb
+from typing import Dict, Set
 
 
 ex_asm_arm_dir = Path("./examples/") / "arm_asm_examples"
+ex_asm_x64_dir = Path("./examples/") / "asm_examples"
+ex_asm_x86_dir = Path("./examples/") / "x86_32_asm_examples"
 
 
 class ValueRegTests(unittest.TestCase):
@@ -86,6 +90,115 @@ class ValueRegTests(unittest.TestCase):
                         self.fail(f"{ea:#x}: {val} != {baseline}")
                 else:
                     self.fail(f"{ea:#x}: no value_reg found")
+
+    def parse_best_value_reg(
+        self, m: gtirb.Module
+    ) -> Dict[int, Dict[str, Set[int]]]:
+        """
+        Parse complete values of the best_value_reg disassembly
+        table into a nested dictionary indexed by address and register.
+        """
+        table = (
+            m.aux_data["souffleOutputs"]
+            .data["disassembly.best_value_reg"][1]
+            .strip()
+            .split("\n")
+        )
+
+        value_reg = defaultdict(lambda: defaultdict(set))
+        for tupl in table:
+            tupl = tupl.split("\t")
+            if tupl[5] != "complete":
+                continue
+            ea = int(tupl[0], 0)
+            reg = tupl[1]
+            val = int(tupl[4], 0)
+            value_reg[ea][reg].add(val)
+        return value_reg
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_value_reg_through_stack_x64(self):
+        """
+        Test that best_value_reg computes correct values
+        passing values through the stack in x64.
+
+        """
+        binary = "ex"
+        with cd(ex_asm_x64_dir / "ex_stack_value_reg"):
+            self.assertTrue(compile("gcc", "g++", "", []))
+            self.assertTrue(
+                disassemble(
+                    binary,
+                    format="--ir",
+                    strip=False,
+                    extra_args=["--with-souffle-relations"],
+                )[0]
+            )
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+            value_reg = self.parse_best_value_reg(m)
+            expected = [
+                ("pop_4", "RSI", {4}),
+                ("pop_2", "RAX", {2}),
+                ("read_4", "RSI", {4}),
+                ("read_2", "RSI", {2}),
+                ("read_3", "RSI", {3}),
+                ("read_1", "RSI", {1}),
+            ]
+            for sym_name, reg, val in expected:
+                addr = [
+                    sym.referent.address for sym in m.symbols_named(sym_name)
+                ][0]
+                self.assertEqual(
+                    value_reg[addr][reg],
+                    val,
+                    f"register {reg} at label {sym_name} has"
+                    f" values {value_reg[addr][reg]}, expected {val}",
+                )
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_value_reg_through_stack_x86(self):
+        """
+        Test that best_value_reg computes correct values
+        passing values through the stack in x86.
+
+        """
+        binary = "ex"
+        with cd(ex_asm_x86_dir / "ex_stack_value_reg"):
+            self.assertTrue(compile("gcc", "g++", "", ["-m32"]))
+            self.assertTrue(
+                disassemble(
+                    binary,
+                    format="--ir",
+                    strip=False,
+                    extra_args=["--with-souffle-relations"],
+                )[0]
+            )
+            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir_library.modules[0]
+            value_reg = self.parse_best_value_reg(m)
+            expected = [
+                ("pop_4", "ESI", {4}),
+                ("pop_2", "EAX", {2}),
+                ("read_4", "ESI", {4}),
+                ("read_2", "ESI", {2}),
+                ("read_3", "ESI", {3}),
+                ("read_1", "ESI", {1}),
+            ]
+            for sym_name, reg, val in expected:
+                addr = [
+                    sym.referent.address for sym in m.symbols_named(sym_name)
+                ][0]
+                self.assertEqual(
+                    value_reg[addr][reg],
+                    val,
+                    f"register {reg} at label {sym_name} has"
+                    f" values {value_reg[addr][reg]}, expected {val}",
+                )
 
 
 if __name__ == "__main__":
