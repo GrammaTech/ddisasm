@@ -31,7 +31,7 @@ reg_map_rule("BL","RBX").
 reg_map_rule("CL","RCX").
 reg_map_rule("DL","RDX").
 reg_map_rule("AX","RAX").
-reg_map_rule("BB","RBX").
+reg_map_rule("BX","RBX").
 reg_map_rule("CX","RCX").
 reg_map_rule("DX","RDX").
 reg_map_rule("DI","RDI").
