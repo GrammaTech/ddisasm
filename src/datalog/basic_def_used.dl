@@ -70,15 +70,20 @@ track_register(Reg):-
             arch.register_access_override(EA,Reg,"W",1)
         ),
         track_register(Reg),
-        // Exception for stack pointer in calls.
-        // While the stack pointer gets changed the overall effect
-        // of a call leaves the stack pointer unchanged.
-        (
-            arch.stack_pointer(Reg),
-            !arch.call(EA,_)
-            ;
-            !arch.stack_pointer(Reg)
-        ).
+        !arch.call(EA,_).
+
+    // While the stack pointer gets changed in calls, the overall effect of a
+    // call leaves the stack pointer unchanged under most calling conventions.
+    // The caller takes care of cleaning up the arguments in the stack in:
+    // - 'x86 cdecl' and 'x64' (both Microsoft and Sytem V AMD64).
+    // - arm
+    // stdcall, fastcall, and thiscall for Visual Studio (x86) have callee
+    // cleanup and thus affect the stack pointer from the caller perspective.
+    def(EA,Reg):-
+        binary_isa("X86"),
+        binary_format("PE"),
+        arch.stack_pointer(Reg),
+        arch.call(EA,_).
 
 
     // A call "defines" the return value register
