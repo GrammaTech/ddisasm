@@ -541,7 +541,14 @@ stack_base_reg_move(Block,EA,Src,Dst):-
         live_var_used_in_block(Block,Next,[BaseReg,StackPos],UsedVar,EA_used,Index,Moves),
         block_instruction_next(Block,EA,Next),
         adjusts_stack_in_block(_,EA,BaseReg,Offset),
-        !def(EA,[BaseReg,StackPos]).
+        !def(EA,[BaseReg,StackPos]),
+        // We assume that negative offsets from the stack pointer are not live.
+        (
+            arch.stack_pointer(BaseReg),
+            StackPos+Offset >= 0
+        ;
+            !arch.stack_pointer(BaseReg)
+        ).
 
     // Instruction copies the stack pointer.
     // Note: since this *copies* it, there may now be two valid
