@@ -318,8 +318,11 @@ store(EA,SrcOp,DstOp,SrcReg,BaseReg,IndexReg,Mult,Offset):-
 
 /**
 Represents the store of an immediate to memory.
+The address of the written memory is: BaseReg + IndexReg * Mult + Offset.
+The immediate stored to memory is Immediate.
 
-This is not instantiatied for all architectures. E.g. It is possible in x86 but
+This is not instantiatied for all architectures but it is defined here
+to maintain a uniform interface. E.g. It is possible in x86 but
 not in ARM.
 */
 .decl store_immediate(EA:address,SrcOp:operand_index,DstOp:operand_index,

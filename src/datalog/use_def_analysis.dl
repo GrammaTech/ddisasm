@@ -507,6 +507,10 @@ stack_base_reg_move(Block,EA,Src,Dst):-
     */
     .decl live_var_used_in_block(Block:address,EA:address,LiveVar:stack_var,UsedVar:stack_var,EA_used:address,Index:operand_index,Moves:unsigned)
 
+    /**
+    Specify the number of moves of the stack register (the stack pointer or the frame pointer)
+    that are tracked in the def-use stack analysis. This parameters is used to ensure rapid
+    convergence*/
     .decl moves_limit(Moves:unsigned)
 
     moves_limit(2).

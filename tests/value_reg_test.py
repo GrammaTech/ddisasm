@@ -121,9 +121,8 @@ class ValueRegTests(unittest.TestCase):
     )
     def test_value_reg_through_stack_x64(self):
         """
-        Test that best_value_reg computes correct values
-        passing values through the stack in x64.
-
+        Test that best_value_reg computes correct values passing values through
+        the stack in x64.
         """
         binary = "ex"
         with cd(ex_asm_x64_dir / "ex_stack_value_reg"):
@@ -163,9 +162,8 @@ class ValueRegTests(unittest.TestCase):
     )
     def test_value_reg_through_stack_x86(self):
         """
-        Test that best_value_reg computes correct values
-        passing values through the stack in x86.
-
+        Test that best_value_reg computes correct values passing values through
+        the stack in x86.
         """
         binary = "ex"
         with cd(ex_asm_x86_dir / "ex_stack_value_reg"):
