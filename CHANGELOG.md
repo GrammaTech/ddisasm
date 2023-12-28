@@ -1,9 +1,13 @@
 # 1.8.1 (Unreleased)
 
+* Improve def-use and value-reg stack analysis to consider push and pop
+  instructions. These changes also fix a couple of bugs in the stack variable
+  propagation.
 * Update LIEF to 0.13.2
 * No longer consider `_x86.get_pc_thunk*` functions as ABI-intrinsic; this
   means `_copy` is not appended to the original symbol, and a symbol forwarding
   entry is not created.
+
 
 # 1.8.0
 
