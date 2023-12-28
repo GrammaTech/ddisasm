@@ -257,10 +257,6 @@ value_reg(EA,Reg,EA,Reg,1,0,1):-
     def_used_for_address(EA,Reg,_),
     value_reg_unsupported(EA,Reg).
 
-value_reg(EA,Reg,EA,Reg,1,0,1):-
-    arch.stack_pointer(Reg),
-    value_reg_edge(_,Reg,EA,Reg,1,_).
-
 // possible loop
 value_reg(EA,Reg,EA_from,"Unknown",Immediate,Base,Steps+1):-
     step_limit(StepLimit),
