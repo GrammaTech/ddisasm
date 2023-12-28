@@ -1,4 +1,8 @@
-# 1.8.1 (Unreleased)
+# 1.9.0 (Unreleased)
+
+* Stop generating debian metapackages and packages with the version attached
+  to the package name. Updates in the apt-repository now support multiple
+  package versions and upgrading `ddisasm` with `apt-get upgrade`.
 
 * Improve def-use and value-reg stack analysis to consider push and pop
   instructions. These changes also fix a couple of bugs in the stack variable
