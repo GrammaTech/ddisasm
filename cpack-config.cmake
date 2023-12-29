@@ -19,7 +19,7 @@ if("${CPACK_DDISASM_PACKAGE}" STREQUAL "deb-ddisasm")
     )
   else()
     message(
-      SEND_ERROR "Uknown / missing value for CPACK_DEBIAN_PACKAGE_RELEASE.")
+      SEND_ERROR "Unknown / missing value for CPACK_DEBIAN_PACKAGE_RELEASE.")
   endif()
 elseif("${CPACK_DDISASM_PACKAGE}" STREQUAL "deb-debug")
   set(CPACK_DEBIAN_PACKAGE_NAME "ddisasm-dbg")
