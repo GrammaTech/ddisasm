@@ -52,31 +52,24 @@ default:
   - apt-get update -y
 
 .download-deps:
-  - CAPSTONE_VERSION_SUFFIX=$([[ $CAPSTONE_VERSION == "" ]] && echo "" || echo "=$CAPSTONE_VERSION")
-  - GTIRB_VERSION_SUFFIX=$([[ $GTIRB_VERSION == "" ]] && echo "" || echo "=$GTIRB_VERSION")
-  - GTIRB_PPRINTER_VERSION_SUFFIX=$([[ $GTIRB_PPRINTER_VERSION == "" ]] && echo "" || echo "=$GTIRB_PPRINTER_VERSION")
   - >-
     apt-get install --download-only -y
-    libcapstone-dev${CAPSTONE_VERSION_SUFFIX}
-    libgtirb-dev${GTIRB_VERSION_SUFFIX}
-    libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION_SUFFIX}
-    gtirb-pprinter${GTIRB_PPRINTER_VERSION_SUFFIX}
+    libcapstone-dev${CAPSTONE_VERSION:+=$CAPSTONE_VERSION}
+    libgtirb-dev${GTIRB_VERSION:+=$GTIRB_VERSION}
+    libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+=$GTIRB_PPRINTER_VERSION}
+    gtirb-pprinter${GTIRB_PPRINTER_VERSION:+=$GTIRB_PPRINTER_VERSION}
   - mv /var/cache/apt/archives/*.deb .
 
 .install-deps:
-  - CAPSTONE_VERSION_SUFFIX=$([[ $CAPSTONE_VERSION == "" ]] && echo "" || echo "=$CAPSTONE_VERSION")
-  - GTIRB_VERSION_SUFFIX=$([[ $GTIRB_VERSION == "" ]] && echo "" || echo "=$GTIRB_VERSION")
-  - GTIRB_PPRINTER_VERSION_SUFFIX=$([[ $GTIRB_PPRINTER_VERSION == "" ]] && echo "" || echo "=$GTIRB_PPRINTER_VERSION")
   - >-
     apt-get install -y
-    libcapstone-dev${CAPSTONE_VERSION_SUFFIX}
-    libgtirb-dev${GTIRB_VERSION_SUFFIX}
-    libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION_SUFFIX}
-    gtirb-pprinter${GTIRB_PPRINTER_VERSION_SUFFIX}
+    libcapstone-dev${CAPSTONE_VERSION:+=$CAPSTONE_VERSION}
+    libgtirb-dev${GTIRB_VERSION:+=$GTIRB_VERSION}
+    libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+=$GTIRB_PPRINTER_VERSION}
+    gtirb-pprinter${GTIRB_PPRINTER_VERSION:+=$GTIRB_PPRINTER_VERSION}
 
 .install-capstone:
-  - CAPSTONE_VERSION_SUFFIX=$([[ $CAPSTONE_VERSION == "" ]] && echo "" || echo "=$CAPSTONE_VERSION")
-  - apt-get install -y libcapstone-dev${CAPSTONE_VERSION_SUFFIX}
+  - apt-get install -y libcapstone-dev${CAPSTONE_VERSION:+=$CAPSTONE_VERSION}
 
 # Set up ccache and report initial stats.
 .setup-ccache:
