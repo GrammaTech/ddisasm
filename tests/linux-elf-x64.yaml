@@ -14,7 +14,6 @@ default: &default
   # Reassembly configuration.
   reassemble:
     compiler: "gcc"
-    flags: ["-no-pie", "-nostartfiles"]
     skip: false
 
   # Test configuration.
@@ -38,7 +37,6 @@ cpp: &default-cpp
   <<: *default
   reassemble:
     compiler: "g++"
-    flags: ["-no-pie", "-nostartfiles"]
     skip: false
   test:
     <<: *default-test
@@ -91,7 +89,7 @@ c-object: &c-object
 
   reassemble:
     compiler: "gcc"
-    flags: ["-c", "-no-pie"]
+    object: true
 
   link:
     linker: "gcc"
@@ -104,7 +102,7 @@ cpp-object: &cpp-object
 
   reassemble:
     compiler: "g++"
-    flags: ["-c", "-no-pie"]
+    object: true
 
   link:
     linker: "g++"
@@ -231,25 +229,14 @@ tests:
 
   - name: ex_threads
     <<: *default-cpp
-    reassemble:
-      compiler: "g++"
-      flags: ["-no-pie", "-lpthread", "-nostartfiles"]
 
   - name: ex_dynamic_tls
     <<: *default
     binary: fun.so
-    reassemble:
-      compiler: "gcc"
-      flags: ["-shared", "-nostartfiles"]
-      skip: false
 
   - name: ex_dynamic_tls
     <<: *default
     binary: fun_initial_exec.so
-    reassemble:
-      compiler: "gcc"
-      flags: ["-shared", "-nostartfiles"]
-      skip: false
 
   - name: ex_dynamic_tls
     <<: *default
@@ -259,10 +246,6 @@ tests:
       c: ["gcc"]
       cpp: ["g++"]
       flags: ["-mtls-dialect=gnu2"]
-    reassemble:
-      compiler: "gcc"
-      flags: ["-shared", "-nostartfiles"]
-      skip: false
 
     test:
       <<: *default-test
@@ -280,22 +263,12 @@ tests:
   - name: ex_dynamic_tls2
     <<: *default
     binary: fun.so
-    reassemble:
-      compiler: "gcc"
-      flags: ["-shared", "-nostartfiles"]
-      skip: false
 
   - name: ex_call_once
     <<: *default-cpp
-    reassemble:
-      compiler: "g++"
-      flags: ["-no-pie", "-lpthread", "-nostartfiles"]
 
   - name: ex_imported_tls_syms
     <<: *default-cpp
-    reassemble:
-      compiler: "g++"
-      flags: ["-no-pie", "-lpthread", "-nostartfiles"]
 
   - name: ex_data_limit
     <<: *default
@@ -304,8 +277,7 @@ tests:
       compiler: "gcc"
       # 0x500000 is to make the addresses of .text and .data changed from the
       # original.
-      flags: ["-no-pie", "fun.so", "-nostartfiles", "-Wl,-Ttext=0x500000"]
-      skip: false
+      flags: ["-Wl,-Ttext=0x500000"]
 
   # ----------------------------------------------------------------------------
   # Static examples
@@ -317,9 +289,6 @@ tests:
       c: ["gcc"]
       cpp: ["g++"]
       optimizations: ["-O0"]
-    reassemble:
-      flags: ["-nostdlib", "-no-pie", "-nostartfiles"]
-      compiler: "gcc"
     test:
       strip_exe: "strip"
       strip: false
@@ -335,9 +304,6 @@ tests:
       c: ["gcc"]
       cpp: ["g++"]
       optimizations: ["-O0"]
-    reassemble:
-      flags: ["-nostdlib", "-no-pie", "-nostartfiles"]
-      compiler: "gcc"
     test:
       strip_exe: "strip"
       strip: true
@@ -439,39 +405,25 @@ tests:
     <<: *default
     <<: *test-strip-default
     binary: fun.so
-    reassemble:
-      compiler: "gcc"
-      flags: ["-shared", "-nostartfiles"]
-      skip: false
 
   - name: ex_dynamic_tls
     <<: *default
     <<: *test-strip-default
     binary: fun_initial_exec.so
-    reassemble:
-      compiler: "gcc"
-      flags: ["-shared", "-nostartfiles"]
-      skip: false
 
   - name: ex_dynamic_tls2
     <<: *default
     <<: *test-strip-default
     binary: fun.so
-    reassemble:
-      compiler: "gcc"
-      flags: ["-shared", "-nostartfiles"]
-      skip: false
 
   - name: ex_data_limit
     <<: *default
     <<: *test-strip-default
-    binary: ex
     reassemble:
       compiler: "gcc"
       # 0x500000 is to make the addresses of .text and .data changed from the
       # original.
-      flags: ["-no-pie", "fun.so", "-nostartfiles", "-Wl,-Ttext=0x500000"]
-      skip: false
+      flags: ["-Wl,-Ttext=0x500000"]
 
   # ----------------------------------------------------------------------------
   # Assembly examples.
@@ -561,10 +513,6 @@ tests:
   - name: ex_tls
     <<: *assembly
     binary: fun.so
-    reassemble:
-      compiler: "gcc"
-      flags: ["-shared", "-nostartfiles"]
-      skip: false
 
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
@@ -638,10 +586,6 @@ tests:
     <<: *assembly
     <<: *test-strip-default
     binary: fun.so
-    reassemble:
-      compiler: "gcc"
-      flags: ["-shared", "-nostartfiles"]
-      skip: false
 
   # ----------------------------------------------------------------------------
   # Relocatable ELF objects (.o).
@@ -724,9 +668,6 @@ tests:
 
   - name: ex_threads
     <<: *cpp-object
-    reassemble:
-      compiler: "g++"
-      flags: ["-c", "-no-pie", "-lpthread"]
     link:
       compiler: "g++"
       flags: ["-lpthread"]

@@ -50,14 +50,8 @@ class TestStaticLibCfg(unittest.TestCase):
                     )
                 )
 
-                binary = "libtest.a"
-
-                gtirb_file = "libtest.gtirb"
-                self.assertTrue(
-                    disassemble(binary, gtirb_file, format="--ir")[0]
-                )
-
-                ir_library = gtirb.IR.load_protobuf(gtirb_file)
+                binary = Path("libtest.a")
+                ir_library = disassemble(binary).ir()
                 module = None
                 for m in ir_library.modules:
                     if "foo_" in m.name:

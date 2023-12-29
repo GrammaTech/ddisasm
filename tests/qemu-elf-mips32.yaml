@@ -14,8 +14,6 @@ default: &default
   # Reassembly configuration.
   reassemble:
     compiler: "mips-linux-gnu-gcc"
-    flags: []
-    skip: false
 
   # Test configuration.
   test:
@@ -77,8 +75,6 @@ tests:
     <<: *default
     reassemble:
         compiler: "mips-linux-gnu-g++"
-        flags: ["-no-pie"]
-        skip: false
 
   - name: ex_false_pointer_array
     <<: *default
@@ -96,7 +92,6 @@ tests:
     <<: *zero-optimize
     reassemble:
       compiler: "mips-linux-gnu-g++"
-      flags: ["-no-pie"]
 
   - name: ex_noreturn
     <<: *default
@@ -128,8 +123,6 @@ tests:
     <<: *default
     reassemble:
         compiler: "mips-linux-gnu-g++"
-        flags: ["-no-pie"]
-        skip: false
 
   # FIXME: ex_exceptions{1,2,3}: .gcc_except_table
 
@@ -157,8 +150,6 @@ tests:
     <<: *test-strip-default
     reassemble:
         compiler: "mips-linux-gnu-g++"
-        flags: ["-no-pie"]
-        skip: false
 
   - name: ex_false_pointer_array
     <<: *default
@@ -215,8 +206,6 @@ tests:
     <<: *test-strip-default
     reassemble:
         compiler: "mips-linux-gnu-g++"
-        flags: ["-no-pie"]
-        skip: false
 
   # ---------------------------------------------------------------------------
   # sectionless (sstripped)
@@ -242,8 +231,6 @@ tests:
     <<: *test-sstrip-default
     reassemble:
         compiler: "mips-linux-gnu-g++"
-        flags: ["-no-pie"]
-        skip: false
 
   - name: ex_false_pointer_array
     <<: *default
@@ -300,8 +287,6 @@ tests:
     <<: *test-sstrip-default
     reassemble:
         compiler: "mips-linux-gnu-g++"
-        flags: ["-no-pie"]
-        skip: false
 
   - name: ex_got_ofst
     <<: *assembly

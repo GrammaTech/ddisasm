@@ -14,9 +14,6 @@ default: &default
   # Reassembly configuration.
   reassemble:
     compiler: "aarch64-linux-gnu-gcc"
-    flags: ["-nostartfiles"]
-    skip: false
-    makefile_target: false
 
   # Test configuration.
   test: &default-test
@@ -44,8 +41,6 @@ default-cpp: &default-cpp
   <<: *default
   reassemble:
     compiler: "aarch64-linux-gnu-g++"
-    flags: ["-no-pie", "-nostartfiles"]
-    skip: false
 
   test:
     <<: *default-test
@@ -103,8 +98,6 @@ tests:
       optimizations: ["-O0"]
     reassemble:
       compiler: "aarch64-linux-gnu-g++"
-      flags: ["-nostartfiles"]
-      skip: false
     test:
       <<: *default-test
       # Don't check CFG on C++ binaries
@@ -114,8 +107,6 @@ tests:
     <<: *default
     reassemble:
       compiler: "aarch64-linux-gnu-g++"
-      flags: ["-nostartfiles"]
-      skip: false
 
     test:
       <<: *default-test
@@ -154,8 +145,6 @@ tests:
     <<: *default
     reassemble:
       compiler: "aarch64-linux-gnu-g++"
-      flags: ["-nostartfiles"]
-      skip: false
 
     test:
       <<: *default-test
@@ -201,14 +190,15 @@ tests:
     test:
       <<: *default-test
       strip: true
-      cfg_checks: []  # TODO: re-enable when #363 is fixed.
+      cfg_checks: [] # TODO: re-enable when #363 is fixed.
 
+  # `reassemble` step rebuilds bar.o with `gtirb-pprinter --object --binary...`
+  # the `check` target depends on `bar.o` (transitively), so everything is
+  # rebuilt with the rewritten `bar.o` when we run `check`.
   - name: ex_static_lib_cfg
     binary: bar.o
     <<: *default
     cfg_checks: []
     reassemble:
       compiler: "aarch64-linux-gnu-gcc"
-      flags: ["-nostartfiles"]
-      skip: false
-      makefile_target: "reassemble_bar"
+      object: true

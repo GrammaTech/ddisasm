@@ -33,10 +33,9 @@ class ExtraArgsTest(unittest.TestCase):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
 
             # disassemble
-            self.assertTrue(disassemble("ex", format="--ir")[0])
+            ir = disassemble(Path("ex")).ir()
 
             # load the gtirb
-            ir = gtirb.IR.load_protobuf("ex.gtirb")
             m = ir.modules[0]
 
             main_sym = next(sym for sym in m.symbols if sym.name == "main")
@@ -70,21 +69,17 @@ class ExtraArgsTest(unittest.TestCase):
                         file=hints_file,
                         flush=True,
                     )
-                    self.assertTrue(
-                        disassemble(
-                            "ex",
-                            format="--ir",
-                            extra_args=[
-                                "--debug-dir",
-                                debug_dir,
-                                "--hints",
-                                hints_file.name,
-                            ],
-                        )[0]
-                    )
+                    ir = disassemble(
+                        Path("ex"),
+                        extra_args=[
+                            "--debug-dir",
+                            debug_dir,
+                            "--hints",
+                            hints_file.name,
+                        ],
+                    ).ir()
 
                 # load the new gtirb
-                ir = gtirb.IR.load_protobuf("ex.gtirb")
                 m = ir.modules[0]
 
                 main_sym = next(sym for sym in m.symbols if sym.name == "main")
@@ -158,7 +153,6 @@ class ExtraArgsTest(unittest.TestCase):
                     optimizations=["-O0"],
                     extra_compile_flags=["-pie"],
                     extra_ddisasm_flags=ddisasm_opts,
-                    extra_reassemble_flags=["-nostartfiles", "-pie"],
                     upload=False,
                 )
             )
@@ -178,12 +172,9 @@ class ExtraArgsTest(unittest.TestCase):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
 
             # disassemble
-            self.assertTrue(
-                disassemble(
-                    "ex",
-                    format="--ir",
-                    extra_args=["--profile", profile_dir_path],
-                )[0]
+            disassemble(
+                Path("ex"),
+                extra_args=["--profile", profile_dir_path],
             )
 
             profiles = [

@@ -82,13 +82,11 @@ class TestExamples(unittest.TestCase):
         binary = config.get("binary", config["name"])
         args = {
             "extra_compile_flags": config["build"]["flags"],
-            "extra_reassemble_flags": config["reassemble"]["flags"],
+            "build_object": config["reassemble"].get("object", False),
+            "extra_reassemble_flags": config["reassemble"].get("flags", []),
             "extra_link_flags": config.get("link", {}).get("flags", []),
             "linker": config.get("link", {}).get("linker"),
             "reassembly_compiler": config["reassemble"]["compiler"],
-            "makefile_target": config["reassemble"].get(
-                "makefile_target", None
-            ),
             "c_compilers": config["build"]["c"],
             "cxx_compilers": config["build"]["cpp"],
             "optimizations": config["build"]["optimizations"],

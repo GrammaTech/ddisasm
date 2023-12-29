@@ -53,13 +53,8 @@ class TestStackChkFallthrough(unittest.TestCase):
             with cd(ex_dir / "ex1"), self.subTest(platform=config["platform"]):
                 self.assertTrue(compile(*config["args"]))
 
-                binary = "ex"
-                gtirb_path = binary + ".gtirb"
-                self.assertTrue(
-                    disassemble(binary, gtirb_path, format="--ir")[0]
-                )
-
-                ex_ir = gtirb.IR.load_protobuf(gtirb_path)
+                binary = Path("ex")
+                ex_ir = disassemble(binary).ir()
                 module = ex_ir.modules[0]
 
                 # Locate the PLT block for __stack_chk_fail

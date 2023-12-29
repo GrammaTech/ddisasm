@@ -14,8 +14,6 @@ default: &default
   # Reassembly configuration.
   reassemble:
     compiler: "arm-linux-gnueabihf-gcc"
-    flags: ["-nostartfiles"]
-    skip: false
 
   # Test configuration.
   test: &default-test
@@ -45,7 +43,7 @@ c-object: &c-object
 
   reassemble:
     compiler: "arm-linux-gnueabihf-gcc"
-    flags: ["-c", "-no-pie"]
+    object: true
 
   link:
     linker: "arm-linux-gnueabihf-gcc"
@@ -56,7 +54,7 @@ cpp-object: &cpp-object
 
   reassemble:
     compiler: "arm-linux-gnueabihf-g++"
-    flags: ["-c", "-no-pie"]
+    object: true
 
   link:
     linker: "arm-linux-gnueabihf-g++"
@@ -70,18 +68,12 @@ tests:
 
   - name: ex1_no_pie
     <<: *assembly
-    reassemble:
-      compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-no-pie", "-nostartfiles"]
     build:
       <<: *assembly-build
       flags: ["-no-pie"]
 
   - name: ex_movw_movt
     <<: *assembly
-    reassemble:
-      compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-no-pie", "-nostartfiles"]
     build:
       <<: *assembly-build
       flags: ["-no-pie"]
@@ -103,21 +95,12 @@ tests:
 
   - name: ex_litpool
     <<: *assembly
-    reassemble:
-      compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-no-pie", "-nostartfiles"]
 
   - name: ex_vld
     <<: *assembly
-    reassemble:
-      compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-no-pie", "-nostartfiles"]
 
   - name: ex_add_as_jump
     <<: *assembly
-    reassemble:
-      compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-no-pie", "-nostartfiles"]
 
   - name: ex_blx_interwork
     <<: *assembly
@@ -127,9 +110,6 @@ tests:
 
   - name: ex_movw_movt_pie
     <<: *assembly
-    reassemble:
-      compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-pie", "-nostartfiles"]
 
   - name: ex_tbb_zero
     <<: *assembly
@@ -138,16 +118,13 @@ tests:
     <<: *assembly
     reassemble:
       compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-march=armv8-a", "-nostartfiles"]
+      flags: ["-march=armv8-a"]
 
   - name: ex_aliased_data
     <<: *assembly
 
   - name: ex_ldr_pc_rel_reg
     <<: *assembly
-    reassemble:
-      compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-no-pie", "-nostartfiles"]
 
   - name: ex_zero_size_object_sym
     <<: *assembly
@@ -189,14 +166,11 @@ tests:
       optimizations: ["-O0"]
     reassemble:
       compiler: "arm-linux-gnueabihf-g++"
-      flags: ["-nostartfiles"]
 
   - name: ex_memberPointer
     <<: *default
     reassemble:
       compiler: "arm-linux-gnueabihf-g++"
-      flags: ["-nostartfiles"]
-      skip: false
 
   - name: ex_noreturn
     <<: *default
@@ -220,8 +194,6 @@ tests:
     <<: *default
     reassemble:
       compiler: "arm-linux-gnueabihf-g++"
-      flags: ["-nostartfiles"]
-      skip: false
 
   - name: ex_uninitialized_data
     <<: *default
@@ -235,7 +207,6 @@ tests:
   #   <<: *default
   #   reassemble:
   #     compiler: "arm-linux-gnueabihf-g++"
-  #     flags: ["-no-pie", "-lpthread"]
 
   # TODO:
   # - name: ex_dynamic_tls
@@ -243,14 +214,12 @@ tests:
   #   binary: fun.so
   #   reassemble:
   #     compiler: "arm-linux-gnueabihf-gcc"
-  #     flags: ["-shared"]
 
   # TODO:
   # - name: ex_call_once
   #   <<: *default
   #   reassemble:
-  #     compiler: "g++"
-  #     flags: ["-no-pie", "-lpthread"]
+  #     compiler: "arm-linux-gnueabihf-g++"
 
   # ----------------------------------------------------------------------------
   # Relocatable ELF objects (.o).
@@ -324,11 +293,8 @@ tests:
   # TODO:
   # - name: ex_threads
   #   <<: *cpp-object
-  #   reassemble:
-  #     compiler: "g++"
-  #     flags: ["-c", "-no-pie", "-lpthread"]
   #   link:
-  #     compiler: "g++"
+  #     compiler: "arm-linux-gnueabihf-g++"
   #     flags: ["-lpthread"]
 
   - name: ex_obj_debug_reloc
@@ -342,7 +308,7 @@ tests:
 
     reassemble:
       compiler: "arm-linux-gnueabihf-g++"
-      flags: ["-c"]
+      object: true
 
     link:
       linker: "arm-linux-gnueabihf-g++"
