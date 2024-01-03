@@ -168,13 +168,9 @@ def compile(
         env["EXEC"] = exec_wrapper
     if arch:
         env["TARGET_ARCH"] = arch
-    completedProcess = subprocess.run(
-        make("clean"), env=env, stdout=subprocess.DEVNULL
-    )
+    completedProcess = subprocess.run(make("clean"), env=env)
     if completedProcess.returncode == 0:
-        completedProcess = subprocess.run(
-            make(), env=env, stdout=subprocess.DEVNULL
-        )
+        completedProcess = subprocess.run(make(), env=env)
     return completedProcess.returncode == 0
 
 
@@ -291,9 +287,7 @@ def test(
         env["CC"] = compiler
     if exec_wrapper:
         env["EXEC"] = exec_wrapper
-    completedProcess = subprocess.run(
-        make("check"), env=env, stderr=subprocess.DEVNULL, timeout=60
-    )
+    completedProcess = subprocess.run(make("check"), env=env, timeout=60)
     if completedProcess.returncode != 0:
         print(bcolors.fail("# Testing FAILED\n"))
         return False
