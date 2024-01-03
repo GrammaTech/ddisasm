@@ -250,28 +250,27 @@ The operand at index Index is accessed at EA with AccessMode
 /**
 Index: The index of the register in bitfield (starts with 0)
 */
-.decl op_register_bitfield(code:operand_code,Index:unsigned,register_name:input_reg)
+.decl op_register_bitfield(Code:operand_code,Index:unsigned,RegisterName:input_reg)
 .input op_register_bitfield
 
-.decl invalid_op_code(ea:address)
+.decl invalid_op_code(EA:address)
 .input invalid_op_code
 
-// three kinds of operators
-.decl op_regdirect(code:operand_code,register_name:input_reg)
+.decl op_regdirect(Code:operand_code,RegisterName:input_reg)
 .input op_regdirect
 
-.decl op_fp_immediate(code:operand_code,imm:float)
+.decl op_fp_immediate(Code:operand_code,Imm:float)
 .input op_fp_immediate
 
-.decl op_immediate(code:operand_code,offset:number)
+.decl op_immediate(Code:operand_code,Offset:number,SizeBytes:unsigned)
 .input op_immediate
 .output op_immediate
 
-.decl op_special(code:operand_code,type:symbol,value:symbol)
+.decl op_special(Code:operand_code,Type:symbol,Value:symbol)
 .input op_special
 
-.decl op_indirect(code:operand_code,reg1:input_reg,reg2:input_reg,reg3:input_reg,
-        multiplier:number,offset:number,size_value:unsigned)
+.decl op_indirect(Code:operand_code,Reg1:input_reg,Reg2:input_reg,Reg3:input_reg,
+        Multiplier:number,Offset:number,SizeBytes:unsigned)
 .input op_indirect
 .output op_indirect
 
@@ -365,7 +364,7 @@ expressions point to the beginning of the instruction.
 instruction_immediate_offset(EA,Index,ImmediateOffset,Size-ImmediateOffset):-
     instruction(EA,Size,_,_,_,_,_,_,ImmediateOffset,_),
     instruction_get_op(EA,Index,Op),
-    op_immediate(Op,_).
+    op_immediate(Op,_,_).
 
 /**
 This predicate determines the `Offset` and `Size` of a displacement
@@ -529,7 +528,7 @@ direct_jump(EA,as(Dest,address)):-
     instruction_get_operation(EA,Operation),
     arch.jump_operation_op_index(Operation,Index),
     instruction_get_op(EA,Index,Op),
-    op_immediate(Op,Dest),
+    op_immediate(Op,Dest,_),
     (
         !instruction_has_relocation(EA,_)
     ;
@@ -607,7 +606,7 @@ direct_call(EA,as(Dest,address)):-
     !binary_isa("ARM"),
     arch.call(EA,Index),
     instruction_get_op(EA,Index,Op),
-    op_immediate(Op,Dest),
+    op_immediate(Op,Dest,_),
     (
         !instruction_has_relocation(EA,_)
     ;
@@ -731,7 +730,7 @@ op_regdirect_contains_reg(Op,Reg):-
 op_immediate_and_reg(EA,Operation,Reg,Imm_index,Immediate):-
     instruction_get_operation(EA,Operation),
     instruction_get_op(EA,Imm_index,Op),
-    op_immediate(Op,Immediate),
+    op_immediate(Op,Immediate,_),
     instruction_get_op(EA,_,Op2),
     op_regdirect_contains_reg(Op2,Reg).
 

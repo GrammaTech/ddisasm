@@ -100,7 +100,7 @@ hi_load(EA,Reg,Upper):-
     instruction_get_operation(EA, "LUI"),
     instruction_get_op(EA, 1, BaseOp),
     instruction_get_op(EA, 2, RegOp),
-    op_immediate(BaseOp, Upper),
+    op_immediate(BaseOp, Upper,_),
     op_regdirect_contains_reg(RegOp,Reg).
 
 .decl hi_load_prop(reg_restore_ea:address, ea:address, reg:register, upper:number, type:symbol)
@@ -520,7 +520,7 @@ plt_entry_candidate(EA,as(GotIndex,unsigned)):-
     instruction(NextEA,_,_,"ADDIU",Op1_4,Op2_4,Op3_4,0,_,_),
     op_regdirect_contains_reg(Op3_4,"T8"),
     op_regdirect_contains_reg(Op1_4,"ZERO"),
-    op_immediate(Op2_4,GotIndex).
+    op_immediate(Op2_4,GotIndex,_).
 
 plt_entry(EA,Function):-
     plt_entry_candidate(EA,GotIndex),

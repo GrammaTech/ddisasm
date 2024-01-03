@@ -164,7 +164,7 @@ must_fallthrough(From,To):-
 may_have_symbolic_immediate(Src,as(Dest,address)):-
     instruction_immediate_offset(Src,Index,Offset,_),
     instruction_get_op(Src,Index,Op),
-    op_immediate(Op,Dest),
+    op_immediate(Op,Dest,_),
     (
         binary_type("DYN"),
         relocation(Src+Offset,_,_,_,_,_,_)
@@ -332,7 +332,7 @@ basic_target(Val):-
 
 block_limit(as(EA,address)):-
     (
-        op_immediate(_,EA);
+        op_immediate(_,EA,_);
         pc_relative_operand(_,_,EA);
         arch.pc_relative_addr(_,_,EA);
         basic_target(EA);

@@ -24,13 +24,13 @@
 Define register properties common to x86-32 and x86-64.
 */
 
-register_size_bits(Reg,8):-
+register_size_bytes(Reg,1):-
     Reg = "AL";
     Reg = "BL";
     Reg = "CL";
     Reg = "DL".
 
-register_size_bits(Reg,16):-
+register_size_bytes(Reg,2):-
     Reg = "AX";
     Reg = "BX";
     Reg = "CX";
@@ -40,7 +40,7 @@ register_size_bits(Reg,16):-
     Reg = "DI";
     Reg = "SP".
 
-register_size_bits(Reg,32):-
+register_size_bytes(Reg,4):-
     Reg = "EAX";
     Reg = "EBX";
     Reg = "ECX";

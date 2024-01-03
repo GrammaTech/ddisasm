@@ -124,7 +124,7 @@ data_access_size(Operation,as(DestReg,register),Size):-
 reg_arithmetic_operation(EA,Dst,Src,1,Immediate):-
     instruction(EA,_,_,"ADD",Op1,Op2,Op3,0,_,_),
     op_regdirect_contains_reg(Op1,Src),
-    op_immediate(Op2,Immediate),
+    op_immediate(Op2,Immediate,_),
     op_regdirect_contains_reg(Op3,Dst).
 
 // ADD reg, reg, reg
@@ -155,7 +155,7 @@ adr_dest(EA,Reg,as(Dest,address)):-
     // e.g. adrp x0, ImmOp
     instruction(EA,_,_,Operation,ImmOp,RegOp,0,0,_,_),
     substr(Operation,0,3) = "ADR",
-    op_immediate(ImmOp,Dest),
+    op_immediate(ImmOp,Dest,_),
     op_regdirect_contains_reg(RegOp,Reg).
 
 // mark adrp instructions as PC-relative

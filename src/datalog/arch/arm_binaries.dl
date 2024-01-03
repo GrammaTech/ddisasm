@@ -114,7 +114,7 @@ symbolic_operand_point(EA,2,-2,"arm: add r, r, n"):-
     ),
     op_regdirect_contains_reg(Op1,Reg),
     !arch.pc_reg(Reg),
-    op_immediate(Op2,_),
+    op_immediate(Op2,_,_),
     Op3 != 0,
     !symbolic_operand_attribute(EA,_,_).
 

@@ -29,7 +29,7 @@
 #include "../AuxDataSchema.h"
 #include "../gtirb-decoder/Relations.h"
 
-using ImmOp = relations::ImmOp;
+using ImmOp = int64_t;
 using IndirectOp = relations::IndirectOp;
 
 souffle::tuple &operator>>(souffle::tuple &t, gtirb::Addr &ea)
@@ -58,61 +58,61 @@ struct DecodedInstruction
 };
 
 std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SouffleProgram &Program,
-                                                              std::set<gtirb::Addr> &code)
+                                                              std::set<gtirb::Addr> &Code)
 {
     std::map<uint64_t, ImmOp> Immediates;
-    for(auto &output : *Program.getRelation("op_immediate"))
+    for(auto &Output : *Program.getRelation("op_immediate"))
     {
-        uint64_t operandCode;
-        ImmOp immediate;
-        output >> operandCode >> immediate;
-        Immediates[operandCode] = immediate;
+        uint64_t OperandCode, Size;
+        ImmOp Immediate;
+        Output >> OperandCode >> Immediate >> Size;
+        Immediates[OperandCode] = Immediate;
     };
     std::map<uint64_t, IndirectOp> Indirects;
-    for(auto &output : *Program.getRelation("op_indirect"))
+    for(auto &Output : *Program.getRelation("op_indirect"))
     {
-        uint64_t operandCode, size;
-        IndirectOp indirect;
-        output >> operandCode >> indirect.Reg1 >> indirect.Reg2 >> indirect.Reg3 >> indirect.Mult
-            >> indirect.Disp >> size;
-        Indirects[operandCode] = indirect;
+        uint64_t OperandCode, Size;
+        IndirectOp Indirect;
+        Output >> OperandCode >> Indirect.Reg1 >> Indirect.Reg2 >> Indirect.Reg3 >> Indirect.Mult
+            >> Indirect.Disp >> Size;
+        Indirects[OperandCode] = Indirect;
     };
 
-    std::map<gtirb::Addr, DecodedInstruction> insns;
-    for(auto &output : *Program.getRelation("instruction"))
+    std::map<gtirb::Addr, DecodedInstruction> Insns;
+    for(auto &Output : *Program.getRelation("instruction"))
     {
         gtirb::Addr EA;
-        output >> EA;
+        Output >> EA;
 
         // Don't bother recovering instructions that aren't considered code.
-        if(code.count(EA) == 0)
+        if(Code.count(EA) == 0)
         {
             continue;
         }
 
-        DecodedInstruction insn;
-        uint64_t size;
-        std::string prefix, opcode;
-        output >> size >> prefix >> opcode;
+        DecodedInstruction Insn;
+        uint64_t Size;
+        std::string Prefix, Opcode;
+        Output >> Size >> Prefix >> Opcode;
 
         for(size_t i = 1; i <= 4; i++)
         {
-            uint64_t operandIndex;
-            output >> operandIndex;
-            auto foundImmediate = Immediates.find(operandIndex);
-            if(foundImmediate != Immediates.end())
-                insn.Operands[i] = foundImmediate->second;
+            uint64_t OperandIndex;
+            Output >> OperandIndex;
+            auto FoundImmediate = Immediates.find(OperandIndex);
+            if(FoundImmediate != Immediates.end())
+                Insn.Operands[i] = FoundImmediate->second;
             else
             {
-                auto foundIndirect = Indirects.find(operandIndex);
-                if(foundIndirect != Indirects.end())
-                    insn.Operands[i] = foundIndirect->second;
+                auto FoundIndirect = Indirects.find(OperandIndex);
+                if(FoundIndirect != Indirects.end())
+                    Insn.Operands[i] = FoundIndirect->second;
             }
         }
-        output >> insn.immediateOffset >> insn.displacementOffset;
-        insns[EA] = insn;
+        Output >> Insn.immediateOffset >> Insn.displacementOffset;
+        Insns[EA] = Insn;
     }
-    return insns;
+    return Insns;
 }
 
 struct CodeInBlock

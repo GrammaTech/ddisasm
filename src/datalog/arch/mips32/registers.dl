@@ -60,7 +60,7 @@ general_purpose_reg("K1").
 general_purpose_reg("GP").
 general_purpose_reg("FP").
 
-register_size_bits(InputReg,32):-
+register_size_bytes(InputReg,4):-
     general_purpose_reg(Reg),
     reg_map(InputReg,Reg).
 

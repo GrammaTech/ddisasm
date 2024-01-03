@@ -41,7 +41,7 @@ move_operation("MOVZ").
 
 move_reg_imm(EA,Reg,Value,1):-
     instruction(EA,_,_,"LUI",Op1,Op2,0,0,_,_),
-    op_immediate(Op1,Immediate),
+    op_immediate(Op1,Immediate,_),
     Value = Immediate bshl 16,
     op_regdirect_contains_reg(Op2,Reg).
 
@@ -452,13 +452,13 @@ reg_arithmetic_operation(EA,Dst,Src,1,Immediate):-
     ),
     op_regdirect_contains_reg(Op3,Dst),
     op_regdirect_contains_reg(Op1,Src),
-    op_immediate(Op2,Immediate).
+    op_immediate(Op2,Immediate,_).
 
 reg_arithmetic_operation(EA,Dst,Src,2^Immediate,0):-
     instruction(EA,_,_,"SLL",Op1,Op2,Op3,0,_,_),
     op_regdirect_contains_reg(Op3,Dst),
     op_regdirect_contains_reg(Op1,Src),
-    op_immediate(Op2,Immediate).
+    op_immediate(Op2,Immediate,_).
 
 // ADD/ADDU <Register> <Register> <Register>
 reg_reg_arithmetic_operation(EA,Reg,Reg1,Reg2,1,0):-

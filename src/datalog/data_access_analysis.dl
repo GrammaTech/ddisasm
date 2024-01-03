@@ -48,26 +48,26 @@ instruction_memory_access_size(EA,Index,SizeAccess):-
     !invalid(EA,_),
     instruction_get_operation(EA,Operation),
     instruction_get_op(EA,Index,Op),
-    op_indirect(Op,_,_,_,_,_,NBits),
+    op_indirect(Op,_,_,_,_,_,NBytes),
     (
         // If the dest op is a register, see if there is a corresponding
         // data_access_size available.
         instruction_get_dest_op(EA,_,RegOp),
         op_regdirect(RegOp,Reg),
         arch.data_access_size(Operation,as(Reg,register),SizeAccess),
-        UNUSED(NBits)
+        UNUSED(NBytes)
         ;
         // If the dest op is not a register, use the operand size from the
         // instruction no matter if data_access_size is available or not.
         instruction_get_dest_op(EA,_,RegOp),
         !op_regdirect(RegOp,_),
-        SizeAccess = NBits/8,
+        SizeAccess = NBytes,
         UNUSED(Operation)
         ;
         // If data_access_size is not available for the Operation,
         // use the operand size from the instruction.
         !arch.data_access_size(Operation,_,_),
-        SizeAccess = NBits/8
+        SizeAccess = NBytes
     ).
 
 //there is a data access at EA in the operand Op_index

@@ -41,7 +41,7 @@ split_load(EA, NextEA, as(Base + Offset,address), "ADD") :-
     instruction_get_operation(EA,ADROperation),
     substr(ADROperation,0,3) = "ADR",
     instruction_get_op(EA, 1, BaseOp),
-    op_immediate(BaseOp, Base),
+    op_immediate(BaseOp, Base,_),
     instruction_get_op(EA, 2, RegOp),
     op_regdirect_contains_reg(RegOp,Reg),
 
@@ -60,7 +60,7 @@ split_load(EA, NextEA, as(Base + Offset,address), "ADD") :-
     // e.g. add x0, x0, <OffsetOp>
     instruction_get_operation(NextEA, "ADD"),
     instruction_get_op(NextEA, 2, OffsetOp),
-    op_immediate(OffsetOp, Offset),
+    op_immediate(OffsetOp, Offset,_),
     instruction_get_op(NextEA, 1, RegOp2),
     op_regdirect_contains_reg(RegOp2,Reg2),
     // Make sure the registers match
@@ -76,7 +76,7 @@ split_load(EA, NextEA, as(Base + Offset,address), "LDR/STR") :-
     instruction_get_operation(EA,ADROperation),
     substr(ADROperation,0,3) = "ADR",
     instruction_get_op(EA, 1, BaseOp),
-    op_immediate(BaseOp, Base),
+    op_immediate(BaseOp, Base,_),
     instruction_get_op(EA, 2, RegOp),
     op_regdirect_contains_reg(RegOp,Reg),
 
@@ -176,8 +176,8 @@ split_load_tail(EA,Offset,Reg_nn,Type):-
     // The memory access cannot be a post-index operation. There should be no
     // immediate operand.
     instruction(EA,_,_,_,_,Op2,Op3,_,_,_),
-    !op_immediate(Op2,_),
-    !op_immediate(Op3,_),
+    !op_immediate(Op2,_,_),
+    !op_immediate(Op3,_,_),
     reg_nonnull(Reg,Reg_nn),
     Type = "LDR/STR".
 
@@ -299,7 +299,7 @@ symbolic_operand_candidate(EA,1,Dest,Type):-
     ),
     !split_load_operand(EA,1,_),
     instruction_get_op(EA, 1, OffsetOp),
-    op_immediate(OffsetOp, Offset),
+    op_immediate(OffsetOp, Offset,_),
     Dest = as(Offset,address),
     (
         code(Dest), Type="code"

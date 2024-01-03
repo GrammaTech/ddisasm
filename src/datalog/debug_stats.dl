@@ -48,7 +48,7 @@ immediate_symbol(EA,Op_index,DestAddr):-
     instruction_get_op(EA,Op_index,Op),
     !direct_jump(EA,_),
     !direct_call(EA,_),
-    op_immediate(Op,Dest),
+    op_immediate(Op,Dest,_),
     DestAddr = as(Dest,address).
 
 .decl missed_jump_table(EA_jump:address)
