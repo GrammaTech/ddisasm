@@ -24,7 +24,7 @@ make install -j4
 ```
 
 - [libehp](https://git.zephyr-software.com/opensrc/libehp) or GrammaTech's [mirror](https://github.com/GrammaTech/libehp), version 1.0.0 or higher
-- [LIEF](https://lief.quarkslab.com/), version 0.13.0 or higher
+- [LIEF](https://lief.quarkslab.com/), version 0.13.2 or higher
 
 Our [Dockerfile](https://github.com/GrammaTech/ddisasm/blob/main/Dockerfile)
 is a good reference of how all the dependencies can be installed.

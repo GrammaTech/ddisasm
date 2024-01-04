@@ -65,7 +65,7 @@ RUN python3 -m pip install --no-cache-dir --upgrade pip && \
     python3 -m pip install --no-cache-dir \
     pyyaml \
     psycopg2-binary \
-    lief==0.13.0
+    lief==0.13.2
 
 COPY --from=UASM /usr/local/bin/uasm /usr/local/bin/uasm
 COPY etc/sstrip /usr/bin/sstrip
