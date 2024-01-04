@@ -277,7 +277,7 @@ tests:
       compiler: "gcc"
       # 0x500000 is to make the addresses of .text and .data changed from the
       # original.
-      flags: ["-Wl,-Ttext=0x500000"]
+      flags: ["fun.so", "-Wl,-Ttext=0x500000"]
 
   # ----------------------------------------------------------------------------
   # Static examples
@@ -423,7 +423,7 @@ tests:
       compiler: "gcc"
       # 0x500000 is to make the addresses of .text and .data changed from the
       # original.
-      flags: ["-Wl,-Ttext=0x500000"]
+      flags: ["fun.so", "-Wl,-Ttext=0x500000"]
 
   # ----------------------------------------------------------------------------
   # Assembly examples.

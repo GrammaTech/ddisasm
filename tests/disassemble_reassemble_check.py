@@ -238,7 +238,7 @@ def binary_print(
     """
     cmd = [
         "gtirb-pprinter",
-        "--dummy-so=yes",
+        "--dummy-so=no",
         ir_path,
         "--binary",
         binary_path,
