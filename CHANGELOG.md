@@ -1,5 +1,8 @@
 # 1.8.1 (Unreleased)
 
+* Fix 16-Thumb STM instructions considered to be invalid if the same register
+  in is used in reglist and register operands with writeback enabled.
+
 # 1.8.0
 
 * Prefer LOCAL symbols over GLOBAL ones when selecting symbols for symbolic
