@@ -1,5 +1,7 @@
 # 1.8.1 (Unreleased)
 
+* Update LIEF to 0.13.2
+
 # 1.8.0
 
 * Prefer LOCAL symbols over GLOBAL ones when selecting symbols for symbolic
