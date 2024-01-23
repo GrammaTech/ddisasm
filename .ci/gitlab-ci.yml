@@ -772,7 +772,7 @@ setup-ubuntu20-package-tests:
   script:
     - if [ $(lsb_release -sc) == "focal" ]; then TRUSTED="[trusted=yes]"; fi
     - echo -e "\ndeb $TRUSTED file:$(pwd)/apt-repo ./\n" >> /etc/apt/sources.list
-    - 'TEST_PKG_NAME=$(dpkg --info apt-repo/ddisasm*.deb | sed -n "s/ Package: //p")'
+    - 'TEST_PKG_NAME=$(dpkg --info apt-repo/ddisasm_*.deb | sed -n "s/ Package: //p")'
     - apt-get update -y && apt-get install -y --allow-unauthenticated $TEST_PKG_NAME
     - ddisasm --version
 
