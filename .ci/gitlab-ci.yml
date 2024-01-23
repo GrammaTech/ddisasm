@@ -50,10 +50,12 @@ default:
   - COMPONENT=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "stable" || echo "unstable")
   - echo "deb https://download.grammatech.com/gtirb/files/apt-repo $DIST_NAME $COMPONENT" | tee -a /etc/apt/sources.list.d/gtirb.list
   - apt-get update -y
+  - apt-get install aptitude
 
 .download-deps:
+  # Use aptitude to make sure gtirb-pprinter is installed even if that means installing an old gtirb
   - >-
-    apt-get install --download-only -y
+    aptitude install --download-only -y -o "Aptitude::ProblemResolver::Hints::=reject gtirb-pprinter :UNINST"
     libcapstone-dev${CAPSTONE_VERSION:+=$CAPSTONE_VERSION}
     libgtirb-dev${GTIRB_VERSION:+=$GTIRB_VERSION}
     libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+=$GTIRB_PPRINTER_VERSION}
@@ -61,8 +63,9 @@ default:
   - mv /var/cache/apt/archives/*.deb .
 
 .install-deps:
+  # Use aptitude to make sure gtirb-pprinter is installed even if that means installing an old gtirb
   - >-
-    apt-get install -y
+    aptitude install -y -o "Aptitude::ProblemResolver::Hints::=reject gtirb-pprinter :UNINST"
     libcapstone-dev${CAPSTONE_VERSION:+=$CAPSTONE_VERSION}
     libgtirb-dev${GTIRB_VERSION:+=$GTIRB_VERSION}
     libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+=$GTIRB_PPRINTER_VERSION}
