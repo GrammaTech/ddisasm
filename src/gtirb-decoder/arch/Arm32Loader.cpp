@@ -500,7 +500,7 @@ std::optional<relations::Operand> Arm32Loader::build(const cs_insn& CsInsn, cons
 
             // Capstone does not provide a way of accessing the size of
             // the memory reference.
-            // Size should be 64 instead of 32 for double-word memory
+            // Size should be 8 instead of 4 for double-word memory
             // reference: e.g., VLDR D0, [...]
             // TODO: (1) We could request capstone to be fixed, or (2) make
             // this function take the previous operand if any to infer the
