@@ -75,7 +75,7 @@ direct_jump(EA,Dest):-
 direct_call(EA,Dest):-
     arch.call(EA,Index),
     instruction_get_op(EA,Index,Op),
-    op_immediate(Op,Dest0),
+    op_immediate(Op,Dest0,_),
     !instruction_has_relocation(EA,_),
     instruction_get_operation(EA,Operation),
     (
@@ -116,7 +116,7 @@ Either movw r, #N or movt r, #N
 movw_movt(EA,Reg,Val,Operation):-
     instruction(EA,_,_,Operation,ImmOp,RegOp,0,_,_,_),
     op_regdirect_contains_reg(RegOp,Reg),
-    op_immediate(ImmOp,Val),
+    op_immediate(ImmOp,Val,_),
     (Operation = "MOVW"; Operation = "MOVT").
 
 /**
@@ -267,7 +267,7 @@ may_have_symbolic_immediate(Src,Dest):-
          Operation != "MOVT",
          instruction_immediate_offset(Src,Index,_,_),
          instruction_get_op(Src,Index,Op),
-         op_immediate(Op,Imm),
+         op_immediate(Op,Imm,_),
          Dest = as(Imm,address)
          ;
          movw_movt_pair(Src,_,Value),

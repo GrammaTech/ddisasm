@@ -78,7 +78,16 @@ namespace relations
         };
     };
 
-    using ImmOp = int64_t;
+    struct ImmOp
+    {
+        int64_t Value;
+        uint8_t Size;
+        bool operator<(const ImmOp& Op) const noexcept
+        {
+            return std::tie(Value, Size) < std::tie(Op.Value, Op.Size);
+        };
+    };
+
     using RegOp = std::string;
     struct IndirectOp
     {
@@ -87,7 +96,7 @@ namespace relations
         std::string Reg3;
         int64_t Mult;
         int64_t Disp;
-        uint64_t Size;
+        uint8_t Size;
 
         constexpr bool operator<(const IndirectOp& Op) const noexcept
         {
@@ -313,6 +322,8 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Instruction& I);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::IndirectOp& I);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::ImmOp& I);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::SpecialOp& I);
 

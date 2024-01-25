@@ -26,20 +26,20 @@ This module establishes basic information about register:
  - Whether they all callee or caller saved according to the ABI
 */
 
-register_size_bits(Reg32, 32),
-register_size_bits(Reg64, 64),
+register_size_bytes(Reg32, 4),
+register_size_bytes(Reg64, 8),
 reg_map_rule(Reg32, Reg64),
 general_purpose_reg(Reg64):-
     I = range(0,29),
     Reg32 = cat("W", to_string(I)),
     Reg64 = cat("X", to_string(I)).
 
-register_size_bits("W29", 32).
-register_size_bits("W30", 32).
-register_size_bits("WSP", 32).
-register_size_bits("FP", 64).
-register_size_bits("LR", 64).
-register_size_bits("SP", 64).
+register_size_bytes("W29", 4).
+register_size_bytes("W30", 4).
+register_size_bytes("WSP", 4).
+register_size_bytes("FP", 8).
+register_size_bytes("LR", 8).
+register_size_bytes("SP", 8).
 
 reg_map_rule("W29", "FP").
 reg_map_rule("W30", "LR").

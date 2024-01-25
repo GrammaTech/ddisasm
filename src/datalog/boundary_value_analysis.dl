@@ -111,7 +111,7 @@ compare_and_jump_indirect(EA_cmp,EA_jmp,CC,IndirectOp,Immediate):-
     instruction_get_op(EA_cmp,_,IndirectOp),
     op_indirect(IndirectOp,_,_,_,_,_,_),
     instruction_get_op(EA_cmp,_,ImmOp),
-    op_immediate(ImmOp,Immediate).
+    op_immediate(ImmOp,Immediate,_).
 
 /**
 Either "MIN" or "MAX"

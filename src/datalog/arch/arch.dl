@@ -215,7 +215,7 @@ Dst may be an untracked register.
 move_reg_imm(EA,Dst,Value,1):-
     instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
     move_operation(Operation),
-    op_immediate(Op1,Value),
+    op_immediate(Op1,Value,_),
     op_regdirect_contains_reg(Op2,Dst).
 
 .decl move(EA:address)
@@ -531,9 +531,9 @@ instruction_at(Instruction,Instruction):-
     instruction(Instruction,_,_,_,_,_,_,_,_,_).
 
 /**
-The size of a register, in bits.
+The size of a register, in bytes.
 */
-.decl register_size_bits(Reg:input_reg,Size:unsigned)
+.decl register_size_bytes(Reg:input_reg,Size:unsigned)
 
 // ===========================================================================
 // Other architectural attributes

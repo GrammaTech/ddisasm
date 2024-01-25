@@ -297,9 +297,8 @@ litpool_symbolic_operand(LitPoolAddr2,DataAccessSize,Symbol1,Symbol2,EA_D,Reg3,S
     arch.load_operation(Operation),
     instruction_get_src_op(EA_D,_,IndOp),
     instruction_get_dest_op(EA_D,_,RegOp),
-    op_indirect_mapped(IndOp,"NONE",Reg1,Reg2,_,0,Bits),
+    op_indirect_mapped(IndOp,"NONE",Reg1,Reg2,_,0,SymSize),
     op_regdirect_contains_reg(RegOp,Reg3),
-    SymSize = Bits / 8,
 
     reg_def_use.def_used(EA_B,Reg2,EA_D,_),
 
@@ -413,7 +412,7 @@ inferred_arch_info("Profile","System"):-
     substr(Operation,0,3) = "BLX",
     arch.jump_operation_op_index(Operation,OpIndex),
     instruction_get_op(EA,OpIndex,Op),
-    op_immediate(Op,_).
+    op_immediate(Op,_,_).
 
 // ARM code is not possible on the "Microcontroller" profile.
 inferred_arch_info("Profile","System"):-

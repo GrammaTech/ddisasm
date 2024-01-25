@@ -180,7 +180,11 @@ std::optional<relations::Operand> Arm64Loader::build(const cs_insn& CsInsn, uint
         case ARM64_OP_REG:
             return RegOp{registerName(CsOp.reg)};
         case ARM64_OP_IMM:
-            return ImmOp{CsOp.imm};
+        {
+            // ARM64 immediate operands do not have a size.
+            relations::ImmOp I = {CsOp.imm, 8};
+            return I;
+        }
         case ARM64_OP_MEM:
         {
             int64_t Mult = 1;
@@ -203,7 +207,7 @@ std::optional<relations::Operand> Arm64Loader::build(const cs_insn& CsInsn, uint
                             registerName(CsOp.mem.index),
                             Mult,
                             CsOp.mem.disp,
-                            4 * 8};
+                            4};
             return I;
         }
         case ARM64_OP_FP:
