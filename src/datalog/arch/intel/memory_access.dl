@@ -54,10 +54,10 @@ store_immediate(EA,1,2,Immediate,BaseReg,IndexReg,Mult,Offset):-
     instruction(EA,_,_,Operation,SrcOp,DestOp,0,0,_,_),
     move_operation(Operation),
     op_indirect_mapped(DestOp,"NONE",BaseReg,IndexReg,Mult,Offset,_),
-    op_immediate(SrcOp,Immediate).
+    op_immediate(SrcOp,Immediate,_).
 
 // We consider the offset w.r.t the stack pointer AFTER it has been updated.
 store_immediate(EA,1,2,Immediate,StackReg,"NONE",0,0):-
     instruction(EA,_,_,"PUSH",SrcOp,0,0,0,_,_),
     stack_pointer(StackReg),
-    op_immediate(SrcOp,Immediate).
+    op_immediate(SrcOp,Immediate,_).
