@@ -437,6 +437,10 @@ stack_base_reg_move(Block,EA,Src,Dst):-
     // A push with an indirect operand, e.g. push [addr]
     // defines a stack value (only possible in x86)
     def(EA,[StackReg,0]):-
+        (
+            binary_isa("X64");
+            binary_isa("X86")
+        ),
         arch.stack_pointer(StackReg),
         instruction(EA,_,_,"PUSH",SrcOp,0,0,0,_,_),
         op_indirect(SrcOp,_,_,_,_,_,_).
