@@ -196,9 +196,9 @@ reg_arithmetic_operation(EA,Reg,Reg_origin_nn,1,Offset):-
 // push and pop modify the stack pointer
 reg_arithmetic_operation(EA,StackReg,StackReg,1,Offset):-
     arch.stack_pointer(StackReg),
-    instruction(EA,_,_,Opcode,Op,0,0,0,_,_),
+    instruction(EA,_,_,OpCode,Op,0,0,0,_,_),
     (
-        Opcode = "PUSH",
+        OpCode = "PUSH",
         Sign = -1
         ;
         OpCode = "POP",
