@@ -61,6 +61,8 @@ track_register(Reg):-
 
 .comp BasicRegDefUse : BasicDefUse<register> {
     // Define any registers defined by the instruction
+    // We exclude calls from the generic rule and handle them with the
+    // subsequent rules.
     def(EA,Reg):-
         (
             register_access(EA,RegIn,"W"),
