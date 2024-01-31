@@ -277,11 +277,16 @@ analysis for both registers and stack variables.
 
     Forms an edge between two used() that depend on the same def.
     */
-    .decl live_var_at_prior_used(EA_used:address,BlockUsed:address,Var:T) overridable
+    .decl live_var_at_prior_used(EA_used:address,BlockUsed:address,Var:T)
 
     live_var_at_prior_used(EA_used,BlockUsed,Var):-
         live_var_at_block_end(Block,BlockUsed,Var),
         used_in_block(Block,EA_used,Var,_),
+        // The definition must be propagated for us to connect the two uses
+        // with live_var_at_prior_used. If the definition is not propagated,
+        // e.g. because there is a stack adjustment, the two uses might refer
+        // to different variables and should not be connected.
+        block_propagates_def(Block,Var),
         // Although this does not generate a live_var_at_prior used for a used
         // where the def was in the same block, it shouldn't be necessary since
         // the def will generate a live_var_def, which will connect directly to
@@ -573,15 +578,6 @@ stack_base_reg_move(Block,EA,Src,Dst):-
     live_var_used(Block,LiveVar,UsedVar,EA_used,Index,Moves):-
         live_var_used_in_block(Block,Block,LiveVar,UsedVar,EA_used,Index,Moves).
 
-    .override live_var_at_prior_used
-
-    live_var_at_prior_used(EA_used,BlockUsed,Var):-
-        live_var_at_block_end(Block,BlockUsed,Var),
-        used_in_block(Block,EA_used,Var,_),
-        // If there is a stack adjustment, the two uses might
-        // refer to different variables so we should not connect them
-        block_propagates_def(Block,Var),
-        !defined_in_block(Block,Var).
 }
 
 .init stack_def_use = StackVarDefUse
@@ -621,6 +617,18 @@ def_used_for_address(EA_def,Reg,Type):-
 def_used_for_address(EA,Reg,"PCRelative"):-
     arch.pc_relative_addr(EA,Reg,_).
 
+/*
+This rule propagates `def_used_for_address` through the stack:
+```
+mov $addr, %rax
+mov %rax, 10(%rsp) // store
+...
+mov 10(%rsp), %rbx // load
+call (%rbx)
+```
+If %rbx is used for an address and it was loaded from the stack, which in turn
+was defined from another register %rax, then %rax was also used as an address.
+*/
 def_used_for_address(EA_def,Reg1,Type):-
     def_used_for_address(EALoad,Reg2,Type),
     arch.load(EALoad,_,_,Reg2,RegBaseLoad,"NONE",_,StackPosLoad),
