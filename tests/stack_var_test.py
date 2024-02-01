@@ -677,3 +677,196 @@ class StackVarTests(unittest.TestCase):
             1,
             count_stack_def_use_in_snippet(module, (("RSP", 16), ("RSP", 40))),
         )
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_push_pop(self):
+        """
+        Test that push pop sequences results in the right number of def_uses.
+        """
+        module = snippets.asm_to_gtirb(
+            """
+            pushq $1
+            pushq $2
+            pushq $3
+            popq %rax
+            popq %rbx
+            popq %rcx
+
+            .end:
+            """
+        )
+
+        self.assertEqual(
+            3,
+            count_stack_def_use_in_snippet(module, (("RSP", 0), ("RSP", 0))),
+        )
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_push_pop_multiple_blocks(self):
+        """
+        Test that push pop through multiple blocks result in the right number
+        of def_uses.
+        """
+        module = snippets.asm_to_gtirb(
+            """
+            pushq $1
+            pushq $2
+
+            # Add control flow (splits blocks)
+            test $0, %rax
+            je .end
+
+            pushq $3
+
+            # Add control flow (splits blocks)
+            test $0, %rax
+            je .end
+
+            popq %rax
+            popq %rbx
+            popq %rcx
+
+            .end:
+            """
+        )
+
+        self.assertEqual(
+            3,
+            count_stack_def_use_in_snippet(module, (("RSP", 0), ("RSP", 0))),
+        )
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_push_pop_push_pop(self):
+        """
+        Test that multiple push-pop sequences end up in one def-use each.
+        """
+        module = snippets.asm_to_gtirb(
+            """
+            pushq $1
+            popq %rax
+            pushq $2
+
+            # Add control flow (splits blocks)
+            test $0, %rax
+            je .end
+
+            popq %rbx
+            pushq $3
+
+            # Add control flow (splits blocks)
+            test $0, %rax
+            je .end
+            # Add control flow (splits blocks)
+            test $0, %rax
+            je .end
+
+            popq %rcx
+
+            .end:
+            """
+        )
+
+        self.assertEqual(
+            3,
+            count_stack_def_use_in_snippet(module, (("RSP", 0), ("RSP", 0))),
+        )
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_push_load_multiple_blocks(self):
+        """
+        Test push load patterns through multiple blocks.
+        """
+        module = snippets.asm_to_gtirb(
+            """
+            pushq $1
+            pushq $2
+
+            # Add control flow (splits blocks)
+            test $0, %rax
+            je .end
+
+            pushq $3
+
+            # Add control flow (splits blocks)
+            test $0, %rax
+            je .end
+
+            mov (%rsp),%rax
+            mov 8(%rsp),%rbx
+            mov 16(%rsp), %rcx
+
+            .end:
+            """
+        )
+
+        self.assertEqual(
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 0), ("RSP", 0))),
+        )
+        self.assertEqual(
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 0), ("RSP", 8))),
+        )
+        self.assertEqual(
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 0), ("RSP", 16))),
+        )
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_push_store_pop(self):
+        """
+        Test that store-pop pairs are computed correctly.
+        """
+        module = snippets.asm_to_gtirb(
+            """
+            pushq %rax
+            pushq %rbx
+            pushq %rcx
+
+            # Add control flow (splits blocks)
+            test $0, %rax
+            je .end
+
+            mov %rax, (%rsp)
+            mov %rbx, 8(%rsp)
+            mov %rcx, 16(%rsp)
+
+
+            # Add control flow (splits blocks)
+            test $0, %rax
+            je .end
+
+            popq %rax
+            popq %rbx
+            popq %rcx
+
+            .end:
+            """
+        )
+
+        self.assertEqual(
+            3,
+            count_stack_def_use_in_snippet(module, None),
+        )
+        self.assertEqual(
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 0), ("RSP", 0))),
+        )
+        self.assertEqual(
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 8), ("RSP", 0))),
+        )
+        self.assertEqual(
+            1,
+            count_stack_def_use_in_snippet(module, (("RSP", 16), ("RSP", 0))),
+        )

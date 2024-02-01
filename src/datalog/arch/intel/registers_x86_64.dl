@@ -26,11 +26,14 @@ This module stablishes basic information about register:
  - Whether they all callee or caller saved according to the ABI
 
 */
-
 reg_map_rule("AL","RAX").
 reg_map_rule("BL","RBX").
 reg_map_rule("CL","RCX").
 reg_map_rule("DL","RDX").
+reg_map_rule("AX","RAX").
+reg_map_rule("BX","RBX").
+reg_map_rule("CX","RCX").
+reg_map_rule("DX","RDX").
 reg_map_rule("DI","RDI").
 reg_map_rule("SI","RSI").
 reg_map_rule("BP","RBP").
