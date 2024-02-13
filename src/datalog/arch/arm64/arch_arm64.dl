@@ -99,6 +99,7 @@ logic_operation("BIC").
 pointer_size(8).
 
 call_operation("BL").
+call_operation("BLR").
 
 syscall_operation("SVC").
 
