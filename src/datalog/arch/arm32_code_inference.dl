@@ -1056,7 +1056,7 @@ negative_block_heuristic(Block,"code",Size,0,"arm: ldmdaeq"):-
 /**
 00 00 00 00 (ARM: andeq r0, r0, r0) or 00 00 (Thumb: mov r0, r0) is unlikely a real instruction.
 */
-negative_block_heuristic(Block,"code",Size,0,"arm: contains unplausible instr"):-
+negative_block_heuristic(Block,"code",Size,Inst,"arm: contains unplausible instr"):-
     code_in_block_candidate_refined(Inst,Block),
     arch.instruction_at(EA,Inst),
     instruction(Inst,InstSize,_,_,_,_,_,_,_,_),
@@ -1065,7 +1065,7 @@ negative_block_heuristic(Block,"code",Size,0,"arm: contains unplausible instr"):
     Size = End-Start.
 
 // A code block that must fall through to a function start is highly likely false.
-negative_block_heuristic(Block,"code",Size,0,"arm: must-fallthrough to function symbol"):-
+negative_block_heuristic(Block,"code",Size,BlockSucc,"arm: must-fallthrough to function symbol"):-
     function_symbol(BlockSucc,_),
     must_fallthrough(EA,BlockSucc),
     code_in_block_candidate_refined(EA,Block),
@@ -1074,7 +1074,7 @@ negative_block_heuristic(Block,"code",Size,0,"arm: must-fallthrough to function 
     Size = End-Start.
 
 // Same as above, but with an exidx boundary
-negative_block_heuristic(Block,"code",Size,0,"arm: must-fallthrough to exidx boundary"):-
+negative_block_heuristic(Block,"code",Size,EASucc,"arm: must-fallthrough to exidx boundary"):-
     arm_exidx_entry(EASucc,0),
     arch.instruction_at(EASucc,BlockSucc),
     must_fallthrough(EA,BlockSucc),
@@ -1084,7 +1084,7 @@ negative_block_heuristic(Block,"code",Size,0,"arm: must-fallthrough to exidx bou
     Size = End-Start.
 
 // Same as above, but without an explicit function symbol
-negative_block_heuristic(Block,"code",Size,0,"arm: must-fallthrough to known function start"):-
+negative_block_heuristic(Block,"code",Size,BlockSucc,"arm: must-fallthrough to known function start"):-
     direct_call(CallFrom,BlockSucc),
     code_in_block_candidate_refined(CallFrom,CallFromBlock),
     known_block(CallFromBlock,"code",_,_),
