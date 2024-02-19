@@ -1714,4 +1714,14 @@ void performSanityChecks(AnalysisPassResult &Result, souffle::SouffleProgram &Pr
                 << "\t$ ddisasm --hints ./hints.csv [...]\n";
         Result.Warnings.push_back(WarnMsg.str());
     }
+
+    auto MissingWeight = Program.getRelation("missing_weight");
+    for(auto &output : *MissingWeight)
+    {
+        std::stringstream WarnMsg;
+        std::string Missing;
+        output >> Missing;
+        WarnMsg << "Missing Weight:" << Missing << std::endl;
+        Result.Warnings.push_back(WarnMsg.str());
+    }
 }

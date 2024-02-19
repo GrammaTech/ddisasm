@@ -55,6 +55,7 @@ The disassembly consists of several phases:
 // cfg generates a control flow graph
 #include "cfg.dl"
 
+#include "code_inference_weights.dl"
 /**
 The instruction at address 'EA' belong to the block 'Block'.
 The block address is the address of the first instruction in the block.
@@ -834,7 +835,7 @@ unresolved_block(Other,"data",OtherSize):-
 
 // If some rule assigns negative points, make sure positive point rules are considered.
 unresolved_block(Block,Type,Size):-
-    negative_block_points(Block,Type,Size,_,_,_),
+    negative_block_heuristic(Block,Type,Size,_,_),
     !known_block(Block,Type,Size,_),
     !impossible_block(Block,Type,Size,_).
 
@@ -1183,176 +1184,57 @@ candidate_block_is_padding(Block):-
 
 .decl block_points_proportional(Block:address,Type:block_type,Size:unsigned,Importance:number,HeuristicName:symbol)
 
+.decl block_heuristic(Block:address,Type:block_type,Size:unsigned,Predecessor:address,HeuristicName:symbol)
 /**
-Negative block points are collected in their own relation.
+Negative block heuristics are collected in their own relation.
 
-This allows any block with negative_block_points to be marked as
+This allows any block with negative_block_heuristic to be marked as
 unresolved_block without causing cyclic negation.
 */
-.decl negative_block_points(Block:address,Type:block_type,Size:unsigned,Predecessor:address,Importance:number,HeuristicName:symbol)
+.decl negative_block_heuristic(Block:address,Type:block_type,Size:unsigned,Predecessor:address,HeuristicName:symbol)
 
+block_points(Block,Type,Size,Predecessor,Weight,HeuristicName):-
+    block_heuristic(Block,Type,Size,Predecessor,HeuristicName),
+    heuristic_weight(HeuristicName,"simple",Weight).
 
-.decl heuristic_weight(Weight:number,Name:symbol)
-.decl default_heuristic_weight(Weight:number,Name:symbol)
-.decl user_heuristic_weight(Weight:number,Name:symbol)
-.input user_heuristic_weight
+block_points(Block,Type,Size,Predecessor,Weight,HeuristicName):-
+    negative_block_heuristic(Block,Type,Size,Predecessor,HeuristicName),
+    heuristic_weight(HeuristicName,"simple",Weight).
 
-heuristic_weight(Weight,Name):-
-    user_heuristic_weight(Weight,Name).
-heuristic_weight(Weight,Name):-
-    !user_heuristic_weight(_,Name),
-    default_heuristic_weight(Weight,Name).
+block_points_proportional(Block,Type,Size,Weight,HeuristicName):-
+    block_heuristic(Block,Type,Size,_,HeuristicName),
+    heuristic_weight(HeuristicName,"proportional",Weight).
 
-default_heuristic_weight(5,"size").
-default_heuristic_weight(2,"data bias").
-default_heuristic_weight(6,"relative-jump-table").
-default_heuristic_weight(3,"relative-jump-table-start").
-
-default_heuristic_weight(0,"basic point").
-default_heuristic_weight(1,"code section start").
-default_heuristic_weight(1,"aligned address in data").
-default_heuristic_weight(1,"address in data array").
-default_heuristic_weight(3,"appears").
-
-default_heuristic_weight(1,"fallthrough_to").
-default_heuristic_weight(1,"has well-defined jump").
-default_heuristic_weight(1,"has well-defined call").
-default_heuristic_weight(3,"has well-defined call to a function symbol").
-default_heuristic_weight(1,"plt call").
-default_heuristic_weight(2,"padding nop block").
-default_heuristic_weight(3,"exc-region").
-default_heuristic_weight(10,"landing-pad").
-default_heuristic_weight(5,"seh handler").
-
-default_heuristic_weight(2,"unresolved-direct-jump").
-default_heuristic_weight(2,"unresolved-direct-call").
-default_heuristic_weight(2,"unresolved-may-fallthrough").
-default_heuristic_weight(7,"resolved-reaches").
-default_heuristic_weight(3,"relative jump table target").
-default_heuristic_weight(1,"relative jump table target: absolute").
-default_heuristic_weight(2,"data access").
-default_heuristic_weight(4,"data access: resolved").
-default_heuristic_weight(2,"composite data access").
-default_heuristic_weight(3,"composite data access: 1 resolved").
-default_heuristic_weight(4,"composite data access: 2 resolved").
-
-default_heuristic_weight(-3,"overlaps with relocation").
-default_heuristic_weight(-1,"dangling block with enclosed instr").
-
-// ARM32
-default_heuristic_weight(2,"indefinite litpool ref").
-default_heuristic_weight(7,"arm: plt-block").
-default_heuristic_weight(7,"arm: plt-block: bx pc").
-default_heuristic_weight(1,"arm: plt call").
-default_heuristic_weight(10,"arm: $d symbol").
-default_heuristic_weight(2,"arm: return followed by a function").
-default_heuristic_weight(2,"arm: pointer to string in data").
-default_heuristic_weight(3,"arm: pointer to string adjacent to another strings in data").
-default_heuristic_weight(3,"arm: jump table target").
-default_heuristic_weight(1,"multiple litpool refs in a block").
-default_heuristic_weight(8,"possible string: symbol").
-default_heuristic_weight(5,"possible string: string pred exists").
-default_heuristic_weight(5,"possible string: string succ exists").
-default_heuristic_weight(4,"possible string: string param for string library").
-default_heuristic_weight(2,"arm: calculated dest").
-default_heuristic_weight(6,"arm: calculated dest: resolved").
-default_heuristic_weight(15,"arm: jump table: no symbol").
-default_heuristic_weight(5,"arm: jump table").
-default_heuristic_weight(2,"arm: jump table: no start").
-default_heuristic_weight(10,"arm: jump table fits target").
-default_heuristic_weight(1,"arm: litpool: consecutive literal pools").
-default_heuristic_weight(3,"arm: litpool: consecutive literal pools 2").
-
-//default_heuristic_weight(Confidence-2,cat("litpool ref block: ",Reason)).
-//default_heuristic_weight(Points,cat("litpool: ",Reason)).
-//default_heuristic_weight(Confidence,"arm: litpool: ref by block containing plausible instr seq").
-
-
-
-default_heuristic_weight(Weight,cat("plausible_block: ", Why)):-
-    Weight=3, Why="cmp/conditional-branch";
-    Weight=6, Why="movw/movt";
-    Weight=1, Why="set-r0/return";
-    Weight=2, Why="cmp/it";
-    Weight=7, Why="mov-lr-pc/jump";
-    Weight=1, Why="adjust-sp/return";
-    Weight=2, Why="multiple loads from stack".
-
-default_heuristic_weight(1,cat("plausible_block: ", Why)):-
-    (
-        Note = "jump to";
-        Note = "call to";
-        Note = "jump from";
-        Note = "call from";
-        Note = "may-fallthrough from";
-        Note = "must-fallthrough from"
-    ),
-    Why = cat("transitive: ",Note).
-
-
-
-default_heuristic_weight(-1,"arm: possibly invalid thumb block").
-default_heuristic_weight(-1,"arm: dangling thumb instruction").
-default_heuristic_weight(-5,"possible string: symbol is target").
-default_heuristic_weight(-20,"arm: litpool: overlapped with code symbol").
-default_heuristic_weight(-3,"arm: bogus sub-instruction").
-default_heuristic_weight(-7,"arm: ldmdaeq").
-default_heuristic_weight(-2,"arm: contains unplasible instr").
-default_heuristic_weight(-10,"arm: must-fallthrough to function symbol").
-default_heuristic_weight(-10,"arm: must-fallthrough to exidx boundary").
-default_heuristic_weight(-8,"arm: must-fallthrough to known function start").
-
-
-default_heuristic_weight(1, "litpool ref block: adr/ldm unresolved").
-default_heuristic_weight(3, "litpool ref block: adr/ldm").
-default_heuristic_weight(1, "litpool ref block: ldr/ldrd unresolved").
-default_heuristic_weight(3, "litpool ref block: ldr/ldrd").
-default_heuristic_weight(10,"litpool ref block: ref by non-overlapping block").
-default_heuristic_weight(1, "litpool ref block: not overlapping").
-default_heuristic_weight(1, "litpool ref block: loaded register used somewhere").
-default_heuristic_weight(1, "litpool ref block: possibly register param").
-default_heuristic_weight(2, "litpool ref block: valid VLDR").
-default_heuristic_weight(7, "litpool ref block: ldr_add_pc").
-
-default_heuristic_weight(4,"litpool: litpool ref block: adr/ldm").
-default_heuristic_weight(5,"litpool: litpool ref block: ldr/ldrd").
-default_heuristic_weight(2,"litpool: litpool ref block: adr/ldm unresolved").
-default_heuristic_weight(3,"litpool: litpool ref block: ldr/ldrd unresolved").
-default_heuristic_weight(12,"litpool: litpool ref block: ref by non-overlapping block").
-default_heuristic_weight(4,"litpool: litpool ref block: loaded register used somewhere").
-default_heuristic_weight(3,"litpool: litpool ref block: possibly register param").
-default_heuristic_weight(1,"litpool: multiple litpool refs in a block").
-default_heuristic_weight(4,"litpool: litpool ref block: valid VLDR").
-default_heuristic_weight(9,"litpool: litpool ref block: ldr_add_pc").
-
-
-block_points(Block,Type,Size,Predecessor,Importance,HeuristicName):-
-    negative_block_points(Block,Type,Size,Predecessor,Importance,HeuristicName).
-
-
-block_points_proportional(Block,Type,Size,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic), Heuristic = "size",
+block_heuristic(Block,Type,Size,0,"size"):-
     unresolved_block(Block,Type,Size).
 
-//////////////////////////////////////////////////////////////////////
-// data block candidate points
+.decl missing_weight(HeuristicName:symbol)
+.output missing_weight
 
-block_points(Block,"data",Size,0,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic), Heuristic = "relative-jump-table",
+missing_weight(HeuristicName):-
+    block_heuristic(_,_,_,_,HeuristicName),
+    !heuristic_weight(HeuristicName,_,_).
+
+missing_weight(HeuristicName):-
+    negative_block_heuristic(_,_,_,_,HeuristicName),
+    !heuristic_weight(HeuristicName,_,_).
+
+//////////////////////////////////////////////////////////////////////
+// data block candidate heuristics
+
+block_heuristic(Block,"data",Size,0,"relative-jump-table"):-
     data_block_candidate(Block,Size),
     relative_address(Block,Size,_,_,_,_).
 
 
-block_points(Block,"data",Size,0,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic), Heuristic = "relative-jump-table-start",
+block_heuristic(Block,"data",Size,0,"relative-jump-table-start"):-
     data_block_candidate(Block,Size),
     relative_address_start(Block,_,_,_,_).
 
 //////////////////////////////////////////////////////////////////////
 // code block candidate points
 
-block_points(Block,"code",BlockSize,0,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic), Heuristic = "overlaps with relocation",
+block_heuristic(Block,"code",BlockSize,0,"overlaps with relocation"):-
     (
         binary_isa("X86");
         binary_isa("X64")
@@ -1374,29 +1256,24 @@ block_points(Block,"code",BlockSize,0,Weight,Heuristic):-
     block_candidate_boundaries(Block,"code",Start,End),
     BlockSize = End - Start.
 
-block_points(Block,"data",Size,0,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic), Heuristic = "data bias",
+block_heuristic(Block,"data",Size,0,"data bias"):-
     unresolved_block(Block,"data",Size).
 
-block_points(Block,Type,Size,0,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic), Heuristic = "basic point",
+block_heuristic(Block,Type,Size,0,"basic point"):-
     unresolved_block(Block,Type,Size).
 
-block_points(Block,"code",Size,0,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic), Heuristic = "code section start",
+block_heuristic(Block,"code",Size,0,"code section start"):-
     unresolved_block(Block,"code",Size),
     code_section(Section),
     loaded_section(Block,_,Section).
 
-block_points(Block,"code",Size,0,Weight, Heuristic):-
-    heuristic_weight(Weight,Heuristic),Heuristic = "aligned address in data",
+block_heuristic(Block,"code",Size,0,"aligned address in data"):-
     !binary_isa("X86"),
     !binary_isa("ARM"),
     unresolved_block(Block,"code",Size),
     aligned_address_in_data(_,Block).
 
-block_points(Block,"code",Size,0,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic),Heuristic = "address in data array",
+block_heuristic(Block,"code",Size,0,"address in data array"):-
     !binary_isa("ARM"),
     unresolved_block(Block,"code",Size),
     address_in_data(Address,Block),
@@ -1416,8 +1293,7 @@ block_points(Block,"code",Size,0,Weight,Heuristic):-
         address_in_data(Address-Pt_size,_)
     ).
 
-block_points(Block,"code",Size,BlockPred,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic),Heuristic = "unresolved-direct-jump",
+block_heuristic(Block,"code",Size,BlockPred,"unresolved-direct-jump"):-
     unresolved_block(Block,"code",Size),
     direct_jump(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
@@ -1425,23 +1301,21 @@ block_points(Block,"code",Size,BlockPred,Weight,Heuristic):-
     unresolved_block(BlockPred,"code",_).
 
 
-block_points(Block,"code",Size,BlockPred,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic),Heuristic = "unresolved-direct-call",
+block_heuristic(Block,"code",Size,BlockPred,"unresolved-direct-call"):-
     unresolved_block(Block,"code",Size),
     direct_call(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     BlockPred != Block,
     unresolved_block(BlockPred,"code",_).
 
-block_points(Block,"code",Size,0,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic),Heuristic = "unresolved-may-fallthrough",
+block_heuristic(Block,"code",Size,0,"unresolved-may-fallthrough"):-
     unresolved_block(Block,"code",Size),
     may_fallthrough(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     !candidate_block_is_padding(BlockPred),
     unresolved_block(BlockPred,"code",_).
 
-block_points(Block,"code",Size,0,3,"incremental linking target"):-
+block_heuristic(Block,"code",Size,0,"incremental linking target"):-
     incremental_linking(First,Last),
     direct_jump(EA,Block),
     EA >= First, EA <= Last,
@@ -1454,11 +1328,10 @@ These start at 7 if reachable directly from a non-overlapping block, and are
 propagated forward to blocks that they must reach, and propagated forward
 while subtracting a point to blocks that they may reach.
 */
-.decl resolved_reaches(Block:address,Size:unsigned,Points:number)
+.decl resolved_reaches(Block:address,Size:unsigned)
 
 // Base case: a non-overlapping block directly falls through to this block.
-resolved_reaches(Block,Size,Weight):-
-    heuristic_weight(Weight,"resolved-reaches"),
+resolved_reaches(Block,Size):-
     unresolved_block(Block,"code",Size),
     (
         may_fallthrough(EA,Block);
@@ -1470,7 +1343,7 @@ resolved_reaches(Block,Size,Weight):-
     !unresolved_block(BlockPred,"code",_),
     !impossible_block(BlockPred,"code",_,_).
 
-resolved_reaches(Block,Size,Points):-
+resolved_reaches(Block,Size):-
     unresolved_block(Block,"code",Size),
     (
         must_fallthrough(EA,Block);
@@ -1480,15 +1353,14 @@ resolved_reaches(Block,Size,Points):-
         jump_table_candidate(EA,_,_,Block)
     ),
     code_in_block_candidate_refined(EA,BlockPred),
-    resolved_reaches(BlockPred,_,Points).
+    resolved_reaches(BlockPred,_).
 
 
-block_points(Block,"code",Size,0,Points,"resolved-reaches"):-
-    resolved_reaches(Block,Size,Points).
+block_heuristic(Block,"code",Size,0,"resolved-reaches"):-
+    resolved_reaches(Block,Size).
 
 // its address appears somewhere
-block_points(Block,"code",Size,0,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic), Heuristic = "appears",
+block_heuristic(Block,"code",Size,0,"appears"):-
     unresolved_block(Block,"code",Size),
     possible_target_from(Block,EA),
     !unlikely_have_symbolic_immediate(EA),
@@ -1499,12 +1371,11 @@ block_points(Block,"code",Size,0,Weight,Heuristic):-
     !unresolved_block(BlockPred,"code",_),
     !impossible_block(BlockPred,"code",_,_).
 
-block_points(Block,"code",Size,0,Weight,Heuristic):-
+block_heuristic(Block,"code",Size,0,Heuristic):-
     unresolved_block(Block,"code",Size),
     relative_address(EA,_,_,_,Block,_),
     count :{ relative_address(EA,_,_,_,_,_) } = 1,
     !relative_address(Block,_,_,_,_,_),
-    heuristic_weight(Weight,Heuristic),
     (
         !address_in_data(EA,_),
         Heuristic = "relative jump table target"
@@ -1516,8 +1387,7 @@ block_points(Block,"code",Size,0,Weight,Heuristic):-
     ).
 
 // give a point if it may fallthrough to another block
-block_points(Block,"code",Size,Block_succ,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic), Heuristic = "fallthrough_to",
+block_heuristic(Block,"code",Size,Block_succ,"fallthrough_to"):-
     unresolved_block(Block,"code",Size),
     code_in_block_candidate_refined(EA,Block),
     may_fallthrough(EA,Block_succ),
@@ -1526,41 +1396,36 @@ block_points(Block,"code",Size,Block_succ,Weight,Heuristic):-
     !impossible_block(Block_succ,"code",_,_),
     !is_padding(Block_succ).
 
-block_points(Block,"code",Size,0,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic), Heuristic = "has well-defined jump",
+block_heuristic(Block,"code",Size,0,"has well-defined jump"):-
     unresolved_block(Block,"code",Size),
     code_in_block_candidate_refined(EA,Block),
     direct_jump(EA,BlockDest),
     !unresolved_block(BlockDest,"code",_).
 
-block_points(Block,"code",Size,0,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic), Heuristic = "has well-defined call",
+block_heuristic(Block,"code",Size,0,"has well-defined call"):-
     unresolved_block(Block,"code",Size),
     code_in_block_candidate_refined(EA,Block),
     direct_call(EA,BlockDest),
     !unresolved_block(BlockDest,"code",_).
 
-block_points(Block,"code",Size,0,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic), Heuristic = "has well-defined call to a function symbol",
+block_heuristic(Block,"code",Size,0,"has well-defined call to a function symbol"):-
     unresolved_block(Block,"code",Size),
     code_in_block_candidate_refined(EA,Block),
     direct_call(EA,BlockDest),
     function_symbol(BlockDest,_).
 
-block_points(Block,"code",Size,0,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic), Heuristic = "plt call",
+block_heuristic(Block,"code",Size,0,"plt call"):-
     unresolved_block(Block,"code",Size),
     code_in_block_candidate_refined(EA,Block),
     direct_call(EA,BlockDest),
     plt_entry(BlockDest,_).
 
-block_points(Block,"code",Size,0,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic), Heuristic = "padding nop block",
+block_heuristic(Block,"code",Size,0,"padding nop block"):-
     unresolved_block(Block,"code",Size),
     fde_addresses(_,Block),
     arch.is_nop(Block).
 
-block_points(Block,"data",Size,0,10,"repeated byte"):-
+block_heuristic(Block,"data",Size,0,"repeated byte"):-
     unresolved_block(Block,"data",Size),
     repeated_byte(Block,_,Count), Count >= 8,
     !is_padding(Block).
@@ -1569,8 +1434,7 @@ block_points(Block,"data",Size,0,10,"repeated byte"):-
 Give penalty on the dangling block where one or two instructions are enclosed
 in a bigger instruction.
 */
-block_points(Block2,"code",BlockSize2,0,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic), Heuristic = "dangling block with enclosed instr",
+block_heuristic(Block2,"code",BlockSize2,0,"dangling block with enclosed instr"):-
     unresolved_block_overlap(Block,"code",_,Block2,"code",BlockSize2),
     Block < Block2,
     instruction(Block,Size,_,_,_,_,_,_,_,_),   // Instr
@@ -1584,18 +1448,15 @@ block_points(Block2,"code",BlockSize2,0,Weight,Heuristic):-
     block_candidate_boundaries(Block2,"code",Beg2,_),
     !block_candidate_boundaries(_,"code",_,Beg2).
 
-block_points(Block,"code",Size,0,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic), Heuristic = "exc-region",
+block_heuristic(Block,"code",Size,0,"exc-region"):-
     unresolved_block(Block,"code",Size),
     lsda_callsite_addresses(Block, _, _).
 
-block_points(Block,"code",Size,0,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic), Heuristic = "landing-pad",
+block_heuristic(Block,"code",Size,0,"landing-pad"):-
     unresolved_block(Block,"code",Size),
     lsda_callsite_addresses( _, _, Block).
 
-negative_block_points(Block,"code",Size,0,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic), Heuristic = "conditional jump/return: fallthrough to invalid",
+negative_block_heuristic(Block,"code",Size,0,"conditional jump/return: fallthrough to invalid"):-
     code_in_block_candidate_refined(EA,Block),
     block_candidate_boundaries(Block,"code",Start,End),
     Size = End - Start,
@@ -1607,8 +1468,7 @@ negative_block_points(Block,"code",Size,0,Weight,Heuristic):-
     invalid(Invalid,_).
 
 
-negative_block_points(Block,"code",Size,0,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic), Heuristic = "jump to string",
+negative_block_heuristic(Block,"code",Size,0,"jump to string"):-
     ascii_string(Beg,End),
     direct_jump(EA,Dest),
     Dest >= Beg,
@@ -1622,16 +1482,14 @@ negative_block_points(Block,"code",Size,0,Weight,Heuristic):-
     block_candidate_boundaries(Block,"code",Start,End),
     Size = End - Start.
 
-block_points(Block,"code",Size,0,Weight,Heuristic):-
-    heuristic_weight(Weight,Heuristic), Heuristic = "seh handler",
+block_heuristic(Block,"code",Size,0,"seh handler"):-
     unresolved_block(Block,"code",Size),
     seh_handler_entry(_,Block).
 
-block_points(Block,"data",AccessSize,0,Weight,Heuristic):-
+block_heuristic(Block,"data",AccessSize,0,Heuristic):-
     arch.simple_data_load(EA,Block,AccessSize),
     unresolved_block(Block,"data",AccessSize),
     code_in_block_candidate_refined(EA,Block0),
-    heuristic_weight(Weight,Heuristic),
     (
         !unresolved_block(Block0,"code",_),
         !impossible_block(Block0,"code",_,_),
@@ -1641,12 +1499,11 @@ block_points(Block,"data",AccessSize,0,Weight,Heuristic):-
         Heuristic = "data access"
     ).
 
-block_points(Block,"data",AccessSize,0,Weight,Heuristic):-
+block_heuristic(Block,"data",AccessSize,0,Heuristic):-
     composite_data_access(EA,EA_load,Block,AccessSize),
     unresolved_block(Block,"data",AccessSize),
     code_in_block_candidate_refined(EA,CodeBlock1),
     code_in_block_candidate_refined(EA_load,CodeBlock2),
-    heuristic_weight(Weight,Heuristic),
     (
         !unresolved_block(CodeBlock1,"code",_),
         !impossible_block(CodeBlock1,"code",_,_),
@@ -1669,7 +1526,7 @@ block_points(Block,"data",AccessSize,0,Weight,Heuristic):-
         Heuristic = "composite data access"
     ).
 
-block_points(Block,"code",Size,0,-1,"debug block"):-
+block_heuristic(Block,"code",Size,0,"debug block"):-
     (
         binary_isa("X86");
         binary_isa("X64")
