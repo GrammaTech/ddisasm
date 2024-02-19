@@ -119,7 +119,7 @@ class ValueRegTests(unittest.TestCase):
         Test that best_value_reg computes correct values passing values through
         the stack in x64.
         """
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_asm_x64_dir / "ex_stack_value_reg"):
             self.assertTrue(compile("gcc", "g++", "", []))
             ir_library = disassemble(
@@ -156,7 +156,7 @@ class ValueRegTests(unittest.TestCase):
         Test that best_value_reg computes correct values passing values through
         the stack in x86.
         """
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_asm_x86_dir / "ex_stack_value_reg"):
             self.assertTrue(compile("gcc", "g++", "", ["-m32"]))
             ir_library = disassemble(

@@ -344,7 +344,7 @@ class AuxDataTests(unittest.TestCase):
         """
         Test generating auxdata from DT_INIT and DT_FINI dynamic entries
         """
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_dir / "ex_dynamic_initfini"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
 
@@ -382,7 +382,7 @@ class AuxDataTests(unittest.TestCase):
         """
         Test that a PT_GNU_STACK segment with size populates elfStackSize
         """
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_dir / "ex1"):
             stack_size = 0x200000
             self.assertTrue(
@@ -408,7 +408,7 @@ class AuxDataTests(unittest.TestCase):
         )
 
         for ld_keyword, is_exec in cases:
-            binary = "ex"
+            binary = Path("ex")
             with self.subTest(keyword=ld_keyword), cd(ex_dir / "ex1"):
                 self.assertTrue(
                     compile("gcc", "g++", "-O0", [f"-Wl,-z,{ld_keyword}"])
@@ -495,14 +495,7 @@ class PeResourcesTests(unittest.TestCase):
             # Disassemble to GTIRB file.
             binary_path = Path("ex.exe")
             ir_path = Path("ex.gtirb")
-            disassemble(
-                binary_path,
-                extra_args=[
-                    "--generate-import-libs",
-                    "--generate-resources",
-                ],
-                output=ir_path,
-            )
+            disassemble(binary_path, output=ir_path)
 
             binary_print(ir_path, binary_path)
 

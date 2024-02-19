@@ -21,7 +21,7 @@ class MovedLabelTests(unittest.TestCase):
         Test that labels are correctly moved.
         """
 
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_asm_dir / "ex_moved_label"):
             self.assertTrue(compile("gcc", "g++", "-Os", []))
             ir_library = disassemble(binary).ir()

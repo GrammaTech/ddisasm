@@ -42,7 +42,7 @@ class SynchronousAccessTests(unittest.TestCase):
         synchronous accesses all the way.
         """
 
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_asm_dir / "ex_synchronous_access2"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
             ir_library = disassemble(

@@ -38,13 +38,13 @@ class TestFunctionInference(unittest.TestCase):
                 compile(c_compiler, cxx_compiler, optimization, [])
             )
             ir = disassemble(
-                binary,
+                Path(binary),
                 extra_args=["--skip-function-analysis"],
             ).ir()
             module = ir.modules[0]
 
             ir_stripped = disassemble(
-                binary,
+                Path(binary),
                 Path("ex_stripped.gtirb"),
                 strip_exe=strip_exe,
                 strip=True,

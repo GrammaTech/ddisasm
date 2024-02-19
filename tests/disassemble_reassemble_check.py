@@ -47,7 +47,7 @@ class bcolors:
 def get_target(binary, strip_exe, strip, sstrip, extra_strip_flags=None):
     if strip:
         print("# stripping binary\n")
-        stripped_binary = Path(str(binary) + ".stripped")
+        stripped_binary = binary.with_suffix(".stripped")
         shutil.copy(binary, stripped_binary)
         binary = stripped_binary
 
@@ -65,8 +65,10 @@ def get_target(binary, strip_exe, strip, sstrip, extra_strip_flags=None):
             binary = None
     if sstrip:
         print("# stripping sections\n")
-        sstripped_binary = Path(str(binary) + ".stripped")
+        sstripped_binary = binary.with_suffix(".sstripped")
         shutil.copy(binary, sstripped_binary)
+        binary = sstripped_binary
+
         completed_process = subprocess.run(
             build_chroot_wrapper() + ["sstrip", sstripped_binary]
         )
@@ -205,7 +207,7 @@ def disassemble(
     If check=True, raises an exception if disassembly fails.
     """
     if output is None:
-        output = Path(str(binary) + ".gtirb")
+        output = binary.with_suffix(".gtirb")
 
     with get_target(
         binary, strip_exe, strip, sstrip, extra_strip_flags=extra_strip_flags
@@ -374,9 +376,9 @@ def disassemble_reassemble_test(
                     compile_errors += 1
                     continue
 
-                ir_path = Path(binary + ".gtirb")
+                ir_path = binary_path.with_name(binary_path.name + ".gtirb")
                 disassemble_result = disassemble(
-                    binary,
+                    binary_path,
                     ir_path,
                     strip_exe=strip_exe,
                     strip=strip,

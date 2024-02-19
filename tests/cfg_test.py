@@ -326,7 +326,7 @@ class CfgTests(unittest.TestCase):
         """
         Test ARM32 CFG from TBB/TBH jumptables
         """
-        binary = "ex"
+        binary = Path("ex")
         examples = (
             ("ex_tbb", b"\xdf\xe8\x00\xf0", 1),
             ("ex_tbh", b"\xdf\xe8\x10\xf0", 2),
