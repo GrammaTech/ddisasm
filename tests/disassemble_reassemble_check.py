@@ -338,12 +338,7 @@ def disassemble_reassemble_test(
     optimizations.
     """
     assert len(c_compilers) == len(cxx_compilers)
-    compile_errors = 0
-    disassembly_errors = 0
-    reassembly_errors = 0
-    link_errors = 0
-    test_errors = 0
-    gtirb_errors = 0
+    error_count = 0
     binary_path = Path(binary)
 
     with cd(make_dir):
@@ -369,7 +364,7 @@ def disassemble_reassemble_test(
                     exec_wrapper,
                     arch,
                 ):
-                    compile_errors += 1
+                    error_count += 1
                     continue
 
                 ir_path = binary_path.with_name(binary_path.name + ".gtirb")
@@ -389,7 +384,7 @@ def disassemble_reassemble_test(
                     print(bcolors.okgreen("Disassembly succeed"))
                     # Do some GTIRB checks
                     module = disassemble_result.ir().modules[0]
-                    gtirb_errors += check_gtirb.run_checks(
+                    error_count += check_gtirb.run_checks(
                         module, cfg_checks or []
                     )
 
@@ -399,7 +394,7 @@ def disassemble_reassemble_test(
                     asm_print_result = asm_print(ir_path, asm_path)
                     if asm_print_result.returncode != 0:
                         print(bcolors.fail("Printing assembly failed"))
-                        disassembly_errors += 1
+                        error_count += 1
                         continue
                     elif upload:
                         print(bcolors.okgreen("Printing assembly succeed"))
@@ -414,7 +409,7 @@ def disassemble_reassemble_test(
 
                 else:
                     print(bcolors.fail("Disassembly failed"))
-                    disassembly_errors += 1
+                    error_count += 1
                     continue
 
                 if build_object:
@@ -432,7 +427,7 @@ def disassemble_reassemble_test(
                         extra_flags=extra_reassemble_flags,
                     )
                     if binary_print_result.returncode != 0:
-                        disassembly_errors += 1
+                        error_count += 1
                         continue
 
                 if linker and not link(
@@ -444,22 +439,14 @@ def disassemble_reassemble_test(
                     [binary_print_path],
                     extra_link_flags,
                 ):
-                    link_errors += 1
+                    error_count += 1
                     continue
                 if skip_test or skip_reassemble:
                     print(bcolors.warning(" No testing"))
                     continue
                 if not test(reassembly_compiler, exec_wrapper):
-                    test_errors += 1
-    total_errors = (
-        compile_errors
-        + gtirb_errors
-        + disassembly_errors
-        + reassembly_errors
-        + link_errors
-        + test_errors
-    )
-    return total_errors == 0
+                    error_count += 1
+    return error_count == 0
 
 
 if __name__ == "__main__":
