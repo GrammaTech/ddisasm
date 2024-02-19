@@ -5,6 +5,7 @@ import os
 import shlex
 import shutil
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from timeit import default_timer as timer
 from typing import Collection, List, Optional
@@ -176,16 +177,11 @@ def compile(
     return completedProcess.returncode == 0
 
 
+@dataclass
 class DisassemblyResult:
-    def __init__(
-        self,
-        process: subprocess.CompletedProcess,
-        ir_path: Path,
-        elapsed_time: float,
-    ):
-        self.process = process
-        self.ir_path = ir_path
-        self.elapsed_time = elapsed_time
+    process: subprocess.CompletedProcess
+    ir_path: Path
+    elapsed_time: float
 
     def ir(self) -> gtirb.IR:
         return gtirb.IR.load_protobuf(self.ir_path)
