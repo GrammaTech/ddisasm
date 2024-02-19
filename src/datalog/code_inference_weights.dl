@@ -67,11 +67,15 @@ default_heuristic_weight("repeated byte","simple",10).
 default_heuristic_weight("overlaps with relocation","simple",-3).
 default_heuristic_weight("dangling block with enclosed instr","simple",-1).
 default_heuristic_weight("debug block","simple",-1).
-
 default_heuristic_weight("incremental linking target","simple",3).
 default_heuristic_weight("conditional jump/return: fallthrough to invalid","simple",-2).
 
 // ARM32
+default_heuristic_weight("arm: jump table: no symbol","proportional",15).
+default_heuristic_weight("arm: jump table","proportional",5).
+default_heuristic_weight("arm: jump table: no start","proportional",2).
+default_heuristic_weight("arm: jump table fits target","proportional",10).
+
 default_heuristic_weight("indefinite litpool ref","simple",2).
 default_heuristic_weight("arm: plt-block","simple",7).
 default_heuristic_weight("arm: plt-block: bx pc","simple",7).
@@ -88,15 +92,8 @@ default_heuristic_weight("possible string: string succ exists","simple",5).
 default_heuristic_weight("possible string: string param for string library","simple",4).
 default_heuristic_weight("arm: calculated dest","simple",2).
 default_heuristic_weight("arm: calculated dest: resolved","simple",6).
-
-default_heuristic_weight("arm: jump table: no symbol","simple",15).
-default_heuristic_weight("arm: jump table","simple",5).
-default_heuristic_weight("arm: jump table: no start","simple",2).
-default_heuristic_weight("arm: jump table fits target","simple",10).
-
 default_heuristic_weight("arm: litpool: consecutive literal pools","simple",1).
 default_heuristic_weight("arm: litpool: consecutive literal pools 2","simple",3).
-
 
 default_heuristic_weight(cat("plausible_block: ", Why),"simple",Weight):-
     Weight=3, Why="cmp/conditional-branch";
@@ -107,27 +104,13 @@ default_heuristic_weight(cat("plausible_block: ", Why),"simple",Weight):-
     Weight=1, Why="adjust-sp/return";
     Weight=2, Why="multiple loads from stack".
 
-/* default_heuristic_weight(cat("plausible_block: ", Why),"simple",1):-
-    (
-        Note = "jump to";
-        Note = "call to";
-        Note = "jump from";
-        Note = "call from";
-        Note = "may-fallthrough from";
-        Note = "must-fallthrough from"
-    ),
-    Why = cat("transitive: ",Note). */
-
-
-
-
 default_heuristic_weight("arm: possibly invalid thumb block","simple",-1).
 default_heuristic_weight("arm: dangling thumb instruction","simple",-1).
 default_heuristic_weight("possible string: symbol is target","simple",-5).
 default_heuristic_weight("arm: litpool: overlapped with code symbol","simple",-20).
 default_heuristic_weight("arm: bogus sub-instruction","simple",-3).
 default_heuristic_weight("arm: ldmdaeq","simple",-7).
-default_heuristic_weight("arm: contains unplausible instr","simple",-2).
+default_heuristic_weight("arm: contains unplausible instr","simple",-10).
 default_heuristic_weight("arm: must-fallthrough to function symbol","simple",-10).
 default_heuristic_weight("arm: must-fallthrough to exidx boundary","simple",-10).
 default_heuristic_weight("arm: must-fallthrough to known function start","simple",-8).
