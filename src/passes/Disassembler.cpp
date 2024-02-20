@@ -1722,6 +1722,6 @@ void performSanityChecks(AnalysisPassResult &Result, souffle::SouffleProgram &Pr
         std::string Missing;
         output >> Missing;
         WarnMsg << "Missing Weight:" << Missing << std::endl;
-        Result.Warnings.push_back(WarnMsg.str());
+        Messages.push_back(WarnMsg.str());
     }
 }
