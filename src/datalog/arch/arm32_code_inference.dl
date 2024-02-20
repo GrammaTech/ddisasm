@@ -427,12 +427,12 @@ References to potential litpools with indeterminate sizes.
 .decl indefinite_litpool_ref(Start:address,Size:unsigned)
 
 // litpool that looks like a string
-indefinite_litpool_ref(RefAddr,Size):-
-    arch.pc_relative_addr(EA,_,RefAddr),
-    code_in_block_candidate(EA,_),
-    !composite_data_access(EA,_,_,_),
-    ascii_string(RefAddr,End),
-    Size = End - RefAddr.
+//indefinite_litpool_ref(RefAddr,Size):-
+//    arch.pc_relative_addr(EA,_,RefAddr),
+//    code_in_block_candidate(EA,_),
+//    !composite_data_access(EA,_,_,_),
+//    ascii_string(RefAddr,End),
+//    Size = End - RefAddr.
 
 // If there's no known use of a pc-relative register,
 // it may be a reference to data that is getting passed to a function.
@@ -440,7 +440,6 @@ indefinite_litpool_ref(RefAddr,Size):-
     arch.pc_relative_addr(EA,_,RefAddr),
     code_in_block_candidate(EA,_),
     !composite_data_access(EA,_,_,_),
-    !ascii_string(RefAddr,_),
     NextLimit = min Limit : {
         data_block_limit(Limit),
         Limit > RefAddr

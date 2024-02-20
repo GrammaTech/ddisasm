@@ -35,7 +35,7 @@ heuristic_weight(Name,Type,Weight):-
 
 default_heuristic_weight("size","proportional",5).
 
-default_heuristic_weight("data bias","simple",2).
+default_heuristic_weight("data bias","simple",0).
 default_heuristic_weight("relative-jump-table","simple",6).
 default_heuristic_weight("relative-jump-table-start","simple",3).
 default_heuristic_weight("basic point","simple",0).
@@ -76,7 +76,7 @@ default_heuristic_weight("arm: jump table","proportional",5).
 default_heuristic_weight("arm: jump table: no start","proportional",2).
 default_heuristic_weight("arm: jump table fits target","proportional",10).
 
-default_heuristic_weight("indefinite litpool ref","simple",2).
+default_heuristic_weight("indefinite litpool ref","simple",0).
 default_heuristic_weight("arm: plt-block","simple",7).
 default_heuristic_weight("arm: plt-block: bx pc","simple",7).
 default_heuristic_weight("arm: plt call","simple",1).

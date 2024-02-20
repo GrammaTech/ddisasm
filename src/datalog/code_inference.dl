@@ -1490,6 +1490,7 @@ block_heuristic(Block,"code",Size,0,"seh handler"):-
     seh_handler_entry(_,Block).
 
 block_heuristic(Block,"data",AccessSize,0,Heuristic):-
+    !binary_isa("ARM"), // ARM's litpool_ref system gives points
     arch.simple_data_load(EA,Block,AccessSize),
     unresolved_block(Block,"data",AccessSize),
     code_in_block_candidate_refined(EA,Block0),
@@ -1503,6 +1504,7 @@ block_heuristic(Block,"data",AccessSize,0,Heuristic):-
     ).
 
 block_heuristic(Block,"data",AccessSize,0,Heuristic):-
+    !binary_isa("ARM"), // ARM's litpool_ref system gives points
     composite_data_access(EA,EA_load,Block,AccessSize),
     unresolved_block(Block,"data",AccessSize),
     code_in_block_candidate_refined(EA,CodeBlock1),
