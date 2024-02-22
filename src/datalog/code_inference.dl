@@ -55,7 +55,6 @@ The disassembly consists of several phases:
 // cfg generates a control flow graph
 #include "cfg.dl"
 
-#include "code_inference_weights.dl"
 /**
 The instruction at address 'EA' belong to the block 'Block'.
 The block address is the address of the first instruction in the block.
@@ -1251,9 +1250,6 @@ block_heuristic(Block,"code",BlockSize,0,"overlaps with relocation"):-
     ),
     block_candidate_boundaries(Block,"code",Start,End),
     BlockSize = End - Start.
-
-block_heuristic(Block,"data",Size,0,"data bias"):-
-    unresolved_block(Block,"data",Size).
 
 block_heuristic(Block,Type,Size,0,"basic point"):-
     unresolved_block(Block,Type,Size).

@@ -310,6 +310,7 @@ if(DDISASM_ARM_32)
       datalog/arch/arm_binaries.dl
       datalog/arch/arm32_binaries.dl
       datalog/arch/arm32_code_inference.dl
+      datalog/arch/arm32_code_inference_weights.dl
       datalog/arch/arm32_jump_tables.dl
       datalog/arch/arm32_symbolization.dl)
 

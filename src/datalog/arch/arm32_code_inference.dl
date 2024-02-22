@@ -426,13 +426,6 @@ References to potential litpools with indeterminate sizes.
 */
 .decl indefinite_litpool_ref(Start:address,Size:unsigned)
 
-// litpool that looks like a string
-//indefinite_litpool_ref(RefAddr,Size):-
-//    arch.pc_relative_addr(EA,_,RefAddr),
-//    code_in_block_candidate(EA,_),
-//    !composite_data_access(EA,_,_,_),
-//    ascii_string(RefAddr,End),
-//    Size = End - RefAddr.
 
 // If there's no known use of a pc-relative register,
 // it may be a reference to data that is getting passed to a function.
@@ -446,7 +439,6 @@ indefinite_litpool_ref(RefAddr,Size):-
     },
     Size = NextLimit - RefAddr.
 
-block_heuristic(RefAddr,"data",Size,0,"indefinite litpool ref"),
 data_block_candidate(RefAddr,Size):-
     indefinite_litpool_ref(RefAddr,Size).
 
@@ -474,12 +466,6 @@ overlap_with_litpool(Block):-
 Confidence level for each literal pool
 */
 .decl litpool_confidence(EARef:address, LitPoolAddr:address, Reason:symbol)
-
-/* .decl litpool_total_confidence(LitPoolAddr:address, Confidence:number)
-
-litpool_total_confidence(LitPoolAddr,Total):-
-    litpool_boundaries(LitPoolAddr,_),
-    Total = sum X:{litpool_confidence(_,LitPoolAddr,X,_)}. */
 
 /**
 ADR/LDM pair loads multiple data from literal pool.
@@ -732,39 +718,6 @@ contains_plausible_instr_seq(Block,"multiple loads from stack"):-
                     arch.memory_access("LOAD",EA,_,_,_,SP,_,_,_)},
     Count > 5.
 
-/**
-Give 1 point to the blocks that are one-step transitive
-from a block `plausible_block`.
-*/
-/* plausible_block(Block,1,cat("transitive: ",Note),Block2):-
-    unresolved_block(Block,"code",_),
-    !arch.dangling_thumb_instr(Block),
-    (
-        code_in_block_candidate_refined(EA,Block),
-        direct_jump(EA,Block2),
-        Note = "jump to"
-        ;
-        code_in_block_candidate_refined(EA,Block),
-        direct_call(EA,Block2),
-        Note = "call to"
-        ;
-        direct_jump(EA,Block),
-        code_in_block_candidate_refined(EA,Block2),
-        Note = "jump from"
-        ;
-        direct_call(EA,Block),
-        code_in_block_candidate_refined(EA,Block2),
-        Note = "call from"
-        ;
-        may_fallthrough(EA,Block),
-        code_in_block_candidate_refined(EA,Block2),
-        Note = "may-fallthrough from"
-        ;
-        must_fallthrough(EA,Block),
-        code_in_block_candidate_refined(EA,Block2),
-        Note = "must-fallthrough from"
-    ),
-    plausible_block(Block2,_,_,0). */
 
 //////////////////////////////////////////////////////////////////////////
 // block points
@@ -840,18 +793,6 @@ block_heuristic(LitPoolAddr,"data",Size,0,Litpool_reason):-
     Litpool_reason = cat("litpool: ",Reason),
     LitPoolAddr = RefAddr + LitPoolOffset.
 
-/**
-Even if the ref block is overlapping, if it contains a plausible instruction
-sequence, it is likely a true literal pool.
-*/
-//block_heuristic(LitPoolAddr,"data",Size,0,Confidence,"arm: litpool: ref by block containing plausible instr seq"):-
-//    litpool_ref(EA,_,RefAddr,LitPoolOffset,Size,_),
-//    LitPoolAddr = RefAddr + LitPoolOffset,
-//    code_in_block_candidate_refined(EA,Block),
-//    unresolved_block(Block,"code",_),
-//    !overlap_with_litpool(Block),
-//    Confidence = sum X:{plausible_block(Block,X,_,_)},
-//    Confidence > 0.
 
 /**
 Literal pools are often placed together.
@@ -868,8 +809,6 @@ block_heuristic(LitPoolAddr,"data",Size,0,Heuristic):-
         (Size2 = 4; Size2 = 8),
         // There is a literal pool before this one.
         litpool_boundaries(LitPoolAddr-Size2,LitPoolAddr),
-        //litpool_total_confidence(LitPoolAddr-Size2,Confidence),
-        //Confidence > 1,
         (
             // There is no literal pool after this one.
             !litpool_boundaries(LitPoolAddr+Size,_),
@@ -877,8 +816,6 @@ block_heuristic(LitPoolAddr,"data",Size,0,Heuristic):-
             ;
             // There is a literal pool after this one.
             litpool_boundaries(LitPoolAddr+Size,_),
-            //litpool_total_confidence(LitPoolAddr+Size,Confidence2),
-            //Confidence2 > 2,
             Heuristic = "arm: litpool: consecutive literal pools 2"
         )
         ;
@@ -886,8 +823,6 @@ block_heuristic(LitPoolAddr,"data",Size,0,Heuristic):-
         !litpool_boundaries(LitPoolAddr-4,LitPoolAddr),
         !litpool_boundaries(LitPoolAddr-8,LitPoolAddr),
         litpool_boundaries(LitPoolAddr+Size,_),
-        //litpool_total_confidence(LitPoolAddr+Size,Confidence1),
-        //Confidence1 > 1,
         Heuristic = "arm: litpool: consecutive literal pools"
     ).
 

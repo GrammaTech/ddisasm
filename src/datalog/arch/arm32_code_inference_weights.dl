@@ -1,0 +1,86 @@
+//===- arm32_code_inference_weights.dl ---------------------*- datalog -*-===//
+//
+//  Copyright (C) 2024 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===---------------------------------------------------------------------===//
+
+
+// Proportional weights
+default_heuristic_weight("arm: jump table fits target","proportional",10).
+default_heuristic_weight("arm: jump table: no start","proportional",2).
+default_heuristic_weight("arm: jump table: no symbol","proportional",15).
+default_heuristic_weight("arm: jump table","proportional",5).
+
+
+// Simple weights
+default_heuristic_weight("arm: $d symbol","simple",10).
+default_heuristic_weight("arm: bogus sub-instruction","simple",-3).
+default_heuristic_weight("arm: calculated dest: resolved","simple",6).
+default_heuristic_weight("arm: calculated dest","simple",2).
+default_heuristic_weight("arm: contains unplausible instr","simple",-10).
+default_heuristic_weight("arm: dangling thumb instruction","simple",-1).
+default_heuristic_weight("arm: jump table target","simple",3).
+default_heuristic_weight("arm: ldmdaeq","simple",-7).
+default_heuristic_weight("arm: litpool: consecutive literal pools 2","simple",2).
+default_heuristic_weight("arm: litpool: consecutive literal pools","simple",1).
+default_heuristic_weight("arm: litpool: overlapped with code symbol","simple",-20).
+default_heuristic_weight("arm: must-fallthrough to exidx boundary","simple",-10).
+default_heuristic_weight("arm: must-fallthrough to function symbol","simple",-10).
+default_heuristic_weight("arm: must-fallthrough to known function start","simple",-8).
+default_heuristic_weight("arm: plt-block: bx pc","simple",7).
+default_heuristic_weight("arm: plt-block","simple",7).
+default_heuristic_weight("arm: plt call","simple",1).
+default_heuristic_weight("arm: pointer to string adjacent to another strings in data","simple",3).
+default_heuristic_weight("arm: pointer to string in data","simple",2).
+default_heuristic_weight("arm: possibly invalid thumb block","simple",-1).
+default_heuristic_weight("arm: return followed by a function","simple",2).
+default_heuristic_weight("litpool: litpool ref block: adr/ldm","simple",4).
+default_heuristic_weight("litpool: litpool ref block: adr/ldm unresolved","simple",2).
+default_heuristic_weight("litpool: litpool ref block: ldr_add_pc","simple",9).
+default_heuristic_weight("litpool: litpool ref block: ldr/ldrd","simple",5).
+default_heuristic_weight("litpool: litpool ref block: ldr/ldrd unresolved","simple",3).
+default_heuristic_weight("litpool: litpool ref block: loaded register used somewhere","simple",4).
+default_heuristic_weight("litpool: litpool ref block: possibly register param","simple",3).
+default_heuristic_weight("litpool: litpool ref block: ref by non-overlapping block","simple",12).
+default_heuristic_weight("litpool: litpool ref block: valid VLDR","simple",4).
+default_heuristic_weight("litpool: multiple litpool refs in a block","simple",1).
+default_heuristic_weight("litpool ref block: adr/ldm","simple",3).
+default_heuristic_weight("litpool ref block: adr/ldm unresolved","simple",1).
+default_heuristic_weight("litpool ref block: ldr_add_pc","simple",7).
+default_heuristic_weight("litpool ref block: ldr/ldrd","simple",3).
+default_heuristic_weight("litpool ref block: ldr/ldrd unresolved","simple",1).
+default_heuristic_weight("litpool ref block: loaded register used somewhere","simple",1).
+default_heuristic_weight("litpool ref block: not overlapping","simple",1).
+default_heuristic_weight("litpool ref block: possibly register param","simple",1).
+default_heuristic_weight("litpool ref block: ref by non-overlapping block","simple",10).
+default_heuristic_weight("litpool ref block: valid VLDR","simple",2).
+default_heuristic_weight("multiple litpool refs in a block","simple",1).
+default_heuristic_weight("plausible_block: adjust-sp/return","simple",1).
+default_heuristic_weight("plausible_block: cmp/conditional-branch","simple",3).
+default_heuristic_weight("plausible_block: cmp/it","simple",2).
+default_heuristic_weight("plausible_block: mov-lr-pc/jump","simple",7).
+default_heuristic_weight("plausible_block: movw/movt","simple",6).
+default_heuristic_weight("plausible_block: multiple loads from stack","simple",2).
+default_heuristic_weight("plausible_block: set-r0/return","simple",1).
+default_heuristic_weight("possible string: string param for string library","simple",4).
+default_heuristic_weight("possible string: string pred exists","simple",5).
+default_heuristic_weight("possible string: string succ exists","simple",5).
+default_heuristic_weight("possible string: symbol is target","simple",-5).
+default_heuristic_weight("possible string: symbol","simple",8).
