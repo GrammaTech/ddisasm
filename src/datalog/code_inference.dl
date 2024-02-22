@@ -468,7 +468,6 @@ after_end(Next,End):-
 after_end(Next,End):-
     after_end(EA,End),
     is_padding(EA),
-    !block_limit(EA),
     next(EA,Next).
 
 after_end(Next,End):-
