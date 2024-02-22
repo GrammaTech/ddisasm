@@ -55,7 +55,8 @@ default_heuristic_weight("seh handler","simple",5).
 default_heuristic_weight("unresolved-direct-jump","simple",2).
 default_heuristic_weight("unresolved-direct-call","simple",2).
 default_heuristic_weight("unresolved-may-fallthrough","simple",2).
-default_heuristic_weight("resolved-reaches","simple",7).
+default_heuristic_weight("resolved-reaches weak","simple",3).
+default_heuristic_weight("resolved-reaches strong","simple",7).
 default_heuristic_weight("relative jump table target","simple",2).
 default_heuristic_weight("relative jump table target: absolute","simple",1).
 default_heuristic_weight("data access","simple",2).
@@ -93,7 +94,7 @@ default_heuristic_weight("possible string: string param for string library","sim
 default_heuristic_weight("arm: calculated dest","simple",2).
 default_heuristic_weight("arm: calculated dest: resolved","simple",6).
 default_heuristic_weight("arm: litpool: consecutive literal pools","simple",1).
-default_heuristic_weight("arm: litpool: consecutive literal pools 2","simple",3).
+default_heuristic_weight("arm: litpool: consecutive literal pools 2","simple",2).
 
 default_heuristic_weight(cat("plausible_block: ", Why),"simple",Weight):-
     Weight=3, Why="cmp/conditional-branch";
