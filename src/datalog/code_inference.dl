@@ -578,6 +578,13 @@ known_block(Block,"data",4,"relocation"):-
     !instruction_has_relocation(_,Block),
     address_in_data(Block,_).
 
+data_block_candidate(Addr,Pt_size):-
+    code_section(Name),
+    loaded_section(BegSect,EndSect,Name),
+    BegSect <= Addr, Addr < EndSect,
+    aligned_address_in_data(Addr,Dest),
+    ascii_string(Dest,_),
+    arch.pointer_size(Pt_size).
 /**
 The block candidate defined by address 'Block' extends from 'BegAddr' to 'EndAddr'.
 In most cases 'BegAddr' and 'Block' coincide, but there are exceptions such as
@@ -651,6 +658,7 @@ block_candidate_dependency_edge(BlockA,"code",EndAddrA-BegAddrA,BlockB,"code",En
         direct_jump(EA,BlockB);
         direct_call(EA,BlockB)
     ),
+    !candidate_block_is_padding(BlockA),
     block_candidate_boundaries(BlockA,"code",BegAddrA,EndAddrA),
     block_candidate_boundaries(BlockB,"code",BegAddrB,EndAddrB),
     BlockA != BlockB.
@@ -918,8 +926,9 @@ unresolved_interval_order(LastID+1,NextStart,NextEnd):-
 
 .decl block_type_priority(Type:block_type,Priority:unsigned)
 
-block_type_priority("code",2).
-block_type_priority("data",1).
+
+block_type_priority("data",2).
+block_type_priority("code",1).
 block_type_priority("padding",0).
 
 /**
@@ -1152,15 +1161,6 @@ discarded_block(Block2,"code",Block2Size,"first instruction overlap",Block):-
 candidate_block_is_not_padding(Block):-
     code_in_block_candidate_refined(EA,Block),
     !is_padding(EA).
-
-// has a direct call from a non-overlapping block
-// don't consider it to be padding.
-candidate_block_is_not_padding(Block):-
-    code_in_block_candidate_refined(Block,Block),
-    direct_call(From,Block),
-    code_in_block_candidate_refined(From,FromBlock),
-    !unresolved_block(FromBlock,"code",_),
-    !impossible_block(FromBlock,"code",_,_).
 
 .decl candidate_block_is_padding(Block:address)
 

@@ -38,7 +38,7 @@ default_heuristic_weight("arm: contains unplausible instr","simple",-10).
 default_heuristic_weight("arm: dangling thumb instruction","simple",-1).
 default_heuristic_weight("arm: jump table target","simple",3).
 default_heuristic_weight("arm: ldmdaeq","simple",-7).
-default_heuristic_weight("arm: litpool: consecutive literal pools 2","simple",2).
+default_heuristic_weight("arm: litpool: consecutive literal pools 2","simple",3).
 default_heuristic_weight("arm: litpool: consecutive literal pools","simple",1).
 default_heuristic_weight("arm: litpool: overlapped with code symbol","simple",-20).
 default_heuristic_weight("arm: must-fallthrough to exidx boundary","simple",-10).

@@ -1029,11 +1029,6 @@ negative_block_heuristic(Block,"code",Size,BlockSucc,"arm: must-fallthrough to k
     block_candidate_boundaries(Block,"code",Start,End),
     Size = End-Start.
 
-data_block_candidate(Block,Pt_size):-
-    aligned_address_in_data(Block,Addr),
-    ascii_string(Addr,_),
-    arch.pointer_size(Pt_size).
-
 block_heuristic(Block,"data",Size,0,"arm: pointer to string in data"):-
     aligned_address_in_data(Block,Addr),
     arch.pointer_size(Size),
