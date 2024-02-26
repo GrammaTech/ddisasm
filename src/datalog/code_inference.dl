@@ -583,7 +583,8 @@ data_block_candidate(Addr,Pt_size):-
     loaded_section(BegSect,EndSect,Name),
     BegSect <= Addr, Addr < EndSect,
     aligned_address_in_data(Addr,Dest),
-    ascii_string(Dest,_),
+    ascii_string(StrBeg,StrEnd),
+    StrBeg >= Dest, Dest < StrEnd,
     arch.pointer_size(Pt_size).
 /**
 The block candidate defined by address 'Block' extends from 'BegAddr' to 'EndAddr'.

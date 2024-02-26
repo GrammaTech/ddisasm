@@ -970,7 +970,7 @@ E.g.,
 >  ldmdaeq r7, { r0, r3, r6, r7, r8, sb, fp, ip }
 >  ldmdaeq r5, { r1, r3, r4, r5, r7, r8 }
 */
-negative_block_heuristic(Block,"code",Size,0,"arm: ldmdaeq"):-
+negative_block_heuristic(Block,"code",Size,EA,"arm: ldmdaeq"):-
     code_in_block_candidate_refined(EA,Block),
     block_candidate_boundaries(Block,"code",Start,End),
     Size = End-Start,
