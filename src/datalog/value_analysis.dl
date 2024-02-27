@@ -191,6 +191,30 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     ),
     Val >= 0.
 
+// mov QWORD or DWORD from memory (constant propagated address)
+value_reg(EA,Reg,EA,"NONE",0,Val,Steps+1):-
+    step_limit(StepLimit),
+    value_reg(EA_def,BaseReg,_,"NONE",0,MemVal,Steps),
+    reg_def_use.def_used(EA_def,BaseReg,EA,_),
+
+    arch.load(EA,SrcOp,_,Reg,BaseReg,"NONE",_,0),
+    def_used_for_address(EA,Reg,_),
+    instruction_memory_access_size(EA,SrcOp,Size),
+
+    MemVal >= 0,
+    MemAddr = as(MemVal,address),
+    4 <= Size, Size <= 8,
+    (
+        data_word(MemAddr,Size,Val),
+        !symbolic_expr_from_relocation(MemAddr,_,_,_,_)
+        ;
+        symbolic_expr_from_relocation(MemAddr,Size, Symbol, _, TargetAddr),
+        defined_symbol(_,_,_,_,_,_,_,_,Symbol),
+        Val = as(TargetAddr,number)
+    ),
+    Val >= 0,
+    Steps <= StepLimit - 2.
+
 /**
 Constant folding for bitwise operations (reg op reg)
 */
