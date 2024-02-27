@@ -644,6 +644,46 @@ class CfgTests(unittest.TestCase):
                 f"unexpected edges from {src}",
             )
 
+    def check_plt_edges(
+        self,
+        module: gtirb.Module,
+        plt_calls: List[Tuple[str, EdgeLabel, EdgeLabel, str]],
+    ) -> None:
+        """
+        Check that each call represented in `plt_calls` has the right
+        sequences of edges that lead to the expected target.
+
+        Each element in `plt_call` is a tuple with a starting
+        symbol, two edge labels, and a target symbol.
+        """
+        for src, edge_label1, edge_label2, tgt in plt_calls:
+            src_block = next(module.symbols_named(src)).referent
+            edges = [
+                edge
+                for edge in src_block.outgoing_edges
+                if edge.label == edge_label1
+            ]
+            self.assertEqual(
+                len(edges),
+                1,
+                f"Expected one edge with label {edge_label1} from {src}",
+            )
+            plt_block = edges[0].target
+            self.assertEqual(plt_block.section.name, ".plt")
+            edges_plt = [
+                edge
+                for edge in plt_block.outgoing_edges
+                if edge.label == edge_label2
+            ]
+            self.assertEqual(
+                len(edges_plt),
+                1,
+                f"Expected one edge with label {edge_label2} "
+                f"from block at {plt_block.address:0x} called from {src}",
+            )
+            tgt_block = edges_plt[0].target
+            self.assertIn(tgt, [s.name for s in tgt_block.references])
+
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
@@ -758,52 +798,27 @@ class CfgTests(unittest.TestCase):
             # For PLT calls, check that we can traverse a list of edges
             # (passing through the PLT block) and end up in the right block
             # (with the right symbol)
-            plt_calls = {
-                "call_ext_reg": (
+            plt_calls = [
+                (
+                    "call_ext_reg",
                     EdgeLabel(EdgeType.Call, False, False),
                     EdgeLabel(EdgeType.Branch, False, False),
                     "puts",
                 ),
-                "call_ext_indirect": (
+                (
+                    "call_ext_indirect",
                     EdgeLabel(EdgeType.Call, False, False),
                     EdgeLabel(EdgeType.Branch, False, False),
                     "puts",
                 ),
-                "call_ext_plt": (
+                (
+                    "call_ext_plt",
                     EdgeLabel(EdgeType.Call, False, True),
                     EdgeLabel(EdgeType.Branch, False, False),
                     "puts",
                 ),
-            }
-
-            for src, path in plt_calls.items():
-                edge_label1, edge_label2, tgt = path
-                src_block = next(m.symbols_named(src)).referent
-                edges = [
-                    edge
-                    for edge in src_block.outgoing_edges
-                    if edge.label == edge_label1
-                ]
-                self.assertEqual(
-                    len(edges),
-                    1,
-                    f"Expected one edge with label {edge_label1} from {src}",
-                )
-                plt_block = edges[0].target
-                self.assertEqual(plt_block.section.name, ".plt")
-                edges_plt = [
-                    edge
-                    for edge in plt_block.outgoing_edges
-                    if edge.label == edge_label2
-                ]
-                self.assertEqual(
-                    len(edges_plt),
-                    1,
-                    f"Expected one edge with label {edge_label2} "
-                    f"from block at {plt_block.address:0x} called from {src}",
-                )
-                tgt_block = edges_plt[0].target
-                self.assertIn(tgt, [s.name for s in tgt_block.references])
+            ]
+            self.check_plt_edges(m, plt_calls)
 
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
@@ -965,6 +980,62 @@ class CfgTests(unittest.TestCase):
             self.assertGreaterEqual(len(incoming_edges), 1)
             for edge in incoming_edges:
                 self.assertEqual(edge.label.type, gtirb.EdgeType.Call)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_arm64_calls(self):
+        """
+        Test different kinds of calls for arm64.
+        """
+        binary = "ex"
+        ex_cfg_dir = ex_arm64_asm_dir / "ex_cfg"
+        with cd(ex_cfg_dir):
+            self.assertTrue(
+                compile(
+                    "aarch64-linux-gnu-gcc", "aarch64-linux-gnu-g++", "-O0", []
+                )
+            )
+            self.assertTrue(disassemble(binary, format="--ir")[0])
+            ir = gtirb.IR.load_protobuf(binary + ".gtirb")
+            m = ir.modules[0]
+
+            # Check outgoing edges for each block.
+            # src and target blocks are identified with through their symbols.
+            expected_cfg = {
+                "call_direct": [
+                    ("f", EdgeLabel(EdgeType.Call, False, True)),
+                    (
+                        "call_direct_external",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_indirect": [
+                    ("f", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_indirect_external",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_indirect_external": [
+                    ("puts", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "final",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+            }
+            self.check_edges(m, expected_cfg)
+
+            plt_calls = [
+                (
+                    "call_direct_external",
+                    EdgeLabel(EdgeType.Call, False, True),
+                    EdgeLabel(EdgeType.Branch, False, False),
+                    "puts",
+                )
+            ]
+            self.check_plt_edges(m, plt_calls)
 
 
 if __name__ == "__main__":
