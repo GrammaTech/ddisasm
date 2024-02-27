@@ -11,11 +11,6 @@ default: &default
     optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
     flags: ["-m32", "-fno-pie", "-no-pie"]
 
-  # Reassembly configuration.
-  reassemble:
-    compiler: "gcc"
-    skip: false
-
   # Test configuration.
   test: &default-test
     wrapper: null
@@ -48,10 +43,6 @@ cpp: &default-cpp
       - edge_instruction_group
       - cfg_completeness
 
-  reassemble:
-    compiler: "g++"
-    skip: false
-
 position-independent: &position-independent
   <<: *default
 
@@ -61,11 +52,6 @@ position-independent: &position-independent
     cpp: ["g++", "clang++"]
     optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
     flags: ["-m32", "-fpie"]
-
-  # Reassembly configuration.
-  reassemble:
-    compiler: "gcc"
-    skip: false
 
 strip: &strip
   test:
@@ -86,10 +72,6 @@ position-independent-cpp: &position-independent-cpp
       - outgoing_edges
       - edge_instruction_group
       - cfg_completeness
-
-  reassemble:
-    compiler: "g++"
-    skip: false
 
 assembly-position-independent: &assembly-position-independent
   <<: *position-independent

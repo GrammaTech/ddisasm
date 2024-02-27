@@ -11,11 +11,6 @@ default: &default
     optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
     flags: []
 
-  # Reassembly configuration.
-  reassemble:
-    compiler: "gcc"
-    skip: false
-
   # Test configuration.
   test: &default-test
     wrapper: null
@@ -35,9 +30,6 @@ default: &default
 
 cpp: &default-cpp
   <<: *default
-  reassemble:
-    compiler: "g++"
-    skip: false
   test:
     <<: *default-test
     # some code is reachable only through exceptions
@@ -88,7 +80,6 @@ c-object: &c-object
     optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
 
   reassemble:
-    compiler: "gcc"
     object: true
 
   link:
@@ -101,7 +92,6 @@ cpp-object: &cpp-object
   <<: *c-object
 
   reassemble:
-    compiler: "g++"
     object: true
 
   link:
@@ -274,7 +264,6 @@ tests:
     <<: *default
     binary: ex
     reassemble:
-      compiler: "gcc"
       # 0x500000 is to make the addresses of .text and .data changed from the
       # original.
       flags: ["fun.so", "-Wl,-Ttext=0x500000"]
@@ -420,7 +409,6 @@ tests:
     <<: *default
     <<: *test-strip-default
     reassemble:
-      compiler: "gcc"
       # 0x500000 is to make the addresses of .text and .data changed from the
       # original.
       flags: ["fun.so", "-Wl,-Ttext=0x500000"]

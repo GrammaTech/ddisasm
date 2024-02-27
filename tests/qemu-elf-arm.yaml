@@ -164,13 +164,9 @@ tests:
       <<: *default-build
       # Testing one version is enough.
       optimizations: ["-O0"]
-    reassemble:
-      compiler: "arm-linux-gnueabihf-g++"
 
   - name: ex_memberPointer
     <<: *default
-    reassemble:
-      compiler: "arm-linux-gnueabihf-g++"
 
   - name: ex_noreturn
     <<: *default
@@ -192,8 +188,6 @@ tests:
 
   - name: ex_virtualDispatch
     <<: *default
-    reassemble:
-      compiler: "arm-linux-gnueabihf-g++"
 
   - name: ex_uninitialized_data
     <<: *default
@@ -205,21 +199,15 @@ tests:
   # TODO:
   # - name: ex_threads
   #   <<: *default
-  #   reassemble:
-  #     compiler: "arm-linux-gnueabihf-g++"
 
   # TODO:
   # - name: ex_dynamic_tls
   #   <<: *default
   #   binary: fun.so
-  #   reassemble:
-  #     compiler: "arm-linux-gnueabihf-gcc"
 
   # TODO:
   # - name: ex_call_once
   #   <<: *default
-  #   reassemble:
-  #     compiler: "arm-linux-gnueabihf-g++"
 
   # ----------------------------------------------------------------------------
   # Relocatable ELF objects (.o).

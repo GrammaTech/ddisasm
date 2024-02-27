@@ -316,7 +316,7 @@ def disassemble_reassemble_test(
     extra_compile_flags=[],
     extra_reassemble_flags=(),
     extra_link_flags=[],
-    reassembly_compiler="gcc",
+    reassembly_compiler=None,
     c_compilers=["gcc", "clang"],
     cxx_compilers=["g++", "clang++"],
     optimizations=["-O0", "-O1", "-O2", "-O3", "-Os"],

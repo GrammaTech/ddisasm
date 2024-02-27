@@ -122,7 +122,9 @@ class TestStaticLib(unittest.TestCase):
                     asm_dir = Path("libmsg-tmp")
                     asm_dir.mkdir()
 
-                    re_compiler = default.get("reassemble").get("compiler")
+                    re_compiler = default.get("reassemble", {}).get(
+                        "compiler", "gcc"
+                    )
 
                     binary_print(
                         result.ir_path,
