@@ -196,15 +196,15 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
 // but the register has a constant value.
 value_reg(EA,Reg,EA,"NONE",0,Val,Steps+1):-
     step_limit(StepLimit),
-    value_reg(EA_def,BaseReg,_,"NONE",0,MemVal,Steps),
+    value_reg(EA_def,BaseReg,_,"NONE",0,RegVal,Steps),
     reg_def_use.def_used(EA_def,BaseReg,EA,_),
 
-    arch.load(EA,SrcOp,_,Reg,BaseReg,"NONE",_,0),
+    arch.load(EA,SrcOp,_,Reg,BaseReg,"NONE",_,Offset),
     def_used_for_address(EA,Reg,_),
     instruction_memory_access_size(EA,SrcOp,Size),
 
-    MemVal >= 0,
-    MemAddr = as(MemVal,address),
+    RegVal + Offset >= 0,
+    MemAddr = as(RegVal + Offset,address),
     4 <= Size, Size <= 8,
     (
         data_word(MemAddr,Size,Val),
