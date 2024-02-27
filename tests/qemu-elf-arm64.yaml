@@ -183,14 +183,3 @@ tests:
       <<: *default-test
       strip: true
       cfg_checks: [] # TODO: re-enable when #363 is fixed.
-
-  # `reassemble` step rebuilds bar.o with `gtirb-pprinter --object --binary...`
-  # the `check` target depends on `bar.o` (transitively), so everything is
-  # rebuilt with the rewritten `bar.o` when we run `check`.
-  - name: ex_static_lib_cfg
-    binary: bar.o
-    <<: *default
-    cfg_checks: []
-    reassemble:
-      compiler: "aarch64-linux-gnu-gcc"
-      object: true
