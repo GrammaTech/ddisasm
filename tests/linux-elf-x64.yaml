@@ -79,9 +79,6 @@ c-object: &c-object
     flags: ["--save-temps"]
     optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
 
-  reassemble:
-    object: true
-
   link:
     linker: "gcc"
     flags: []
@@ -90,9 +87,6 @@ c-object: &c-object
 
 cpp-object: &cpp-object
   <<: *c-object
-
-  reassemble:
-    object: true
 
   link:
     linker: "g++"
@@ -657,7 +651,7 @@ tests:
   - name: ex_threads
     <<: *cpp-object
     link:
-      compiler: "g++"
+      linker: "g++"
       flags: ["-lpthread"]
 
 # Tests with special flags

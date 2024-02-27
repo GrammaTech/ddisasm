@@ -41,20 +41,12 @@ c-object: &c-object
     flags: ["--save-temps"]
     optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
 
-  reassemble:
-    compiler: "arm-linux-gnueabihf-gcc"
-    object: true
-
   link:
     linker: "arm-linux-gnueabihf-gcc"
     flags: []
 
 cpp-object: &cpp-object
   <<: *c-object
-
-  reassemble:
-    compiler: "arm-linux-gnueabihf-g++"
-    object: true
 
   link:
     linker: "arm-linux-gnueabihf-g++"
@@ -293,10 +285,6 @@ tests:
       <<: *default-build
       optimizations: ["-Og"]
       flags: ["-g"]
-
-    reassemble:
-      compiler: "arm-linux-gnueabihf-g++"
-      object: true
 
     link:
       linker: "arm-linux-gnueabihf-g++"

@@ -82,7 +82,6 @@ class TestExamples(unittest.TestCase):
         binary = config.get("binary", config["name"])
         args = {
             "extra_compile_flags": config["build"]["flags"],
-            "build_object": config.get("reassemble", {}).get("object", False),
             "extra_reassemble_flags": config.get("reassemble", {}).get(
                 "flags", []
             ),

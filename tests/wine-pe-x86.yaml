@@ -24,7 +24,6 @@ default: &default
   # Reassembly configuration.
   reassemble:
     compiler: "uasm"
-    object: true
 
   # Linker configuration.
   link:

@@ -320,7 +320,6 @@ def disassemble_reassemble_test(
     c_compilers=["gcc", "clang"],
     cxx_compilers=["g++", "clang++"],
     optimizations=["-O0", "-O1", "-O2", "-O3", "-Os"],
-    build_object=False,
     linker=None,
     strip_exe="strip",
     strip=False,
@@ -412,7 +411,7 @@ def disassemble_reassemble_test(
                     error_count += 1
                     continue
 
-                if build_object:
+                if linker:
                     binary_print_path = binary_path.with_suffix(".o")
                 else:
                     binary_print_path = binary_path
@@ -423,7 +422,7 @@ def disassemble_reassemble_test(
                         binary_print_path,
                         check=False,
                         compiler=reassembly_compiler,
-                        build_object=build_object,
+                        build_object=bool(linker),
                         extra_flags=extra_reassemble_flags,
                     )
                     if binary_print_result.returncode != 0:
