@@ -754,6 +754,13 @@ class CfgTests(unittest.TestCase):
                 "call_local_reg_offset_pc": [
                     ("fun", EdgeLabel(EdgeType.Call, False, False)),
                     (
+                        "call_local_reg_load",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_local_reg_load": [
+                    ("fun", EdgeLabel(EdgeType.Call, False, False)),
+                    (
                         "je_local_direct",
                         EdgeLabel(EdgeType.Fallthrough, False, True),
                     ),
@@ -890,6 +897,13 @@ class CfgTests(unittest.TestCase):
                 "call_local_reg_offset_pc": [
                     ("fun", EdgeLabel(EdgeType.Call, False, False)),
                     (
+                        "call_local_reg_load",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_local_reg_load": [
+                    ("fun", EdgeLabel(EdgeType.Call, False, False)),
+                    (
                         "je_local_direct",
                         EdgeLabel(EdgeType.Fallthrough, False, True),
                     ),
@@ -1012,6 +1026,13 @@ class CfgTests(unittest.TestCase):
                 ],
                 "call_indirect": [
                     ("f", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_indirect_offset",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_indirect_offset": [
+                    ("g", EdgeLabel(EdgeType.Call, False, False)),
                     (
                         "call_indirect_external",
                         EdgeLabel(EdgeType.Fallthrough, False, True),

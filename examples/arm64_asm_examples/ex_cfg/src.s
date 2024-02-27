@@ -12,6 +12,16 @@ f:
 	ldp	x29, x30, [sp], 16
 	ret
 
+g:
+	stp	x29, x30, [sp, -16]!
+	mov	x29, sp
+	adrp	x0, .message
+	add	x0, x0, :lo12:.message
+	bl	puts
+	nop
+	ldp	x29, x30, [sp], 16
+	ret
+
 	.align	2
 	.global	main
 	.type	main, %function
@@ -29,6 +39,12 @@ call_indirect:
 	adrp	x0, f_pointer
 	add	x0, x0, :lo12:f_pointer
 	ldr	x0, [x0]
+	blr	x0
+
+call_indirect_offset:
+	adrp	x0, f_pointer
+	add	x0, x0, :lo12:f_pointer
+	ldr	x0, [x0,#8]
 	blr	x0
 
 call_indirect_external:
@@ -50,14 +66,10 @@ final:
 
 	.section	.data.rel.local,"aw"
 	.align	3
-	.global	f_pointer
-	.type	f_pointer, %object
-	.size	f_pointer, 8
+
 f_pointer:
 	.xword	f
-
-	.global	puts_pointer
-	.type	puts_pointer, %object
-	.size	puts_pointer, 8
+g_pointer:
+	.xword	g
 puts_pointer:
 	.xword	puts
