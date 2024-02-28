@@ -81,3 +81,19 @@ missing_relocation_handling(EA):-
     !got_reference(EA,_),
     Type != "ABSOLUTE",
     Type != "COPY".
+
+/**
+This predicate detects block_heuristics that do not have
+a defined weight.
+This indicates an implementation mistake.
+*/
+.decl missing_weight(HeuristicName:symbol)
+.output missing_weight
+
+missing_weight(HeuristicName):-
+    block_heuristic(_,_,_,_,HeuristicName),
+    !heuristic_weight(HeuristicName,_,_).
+
+missing_weight(HeuristicName):-
+    negative_block_heuristic(_,_,_,_,HeuristicName),
+    !heuristic_weight(HeuristicName,_,_).

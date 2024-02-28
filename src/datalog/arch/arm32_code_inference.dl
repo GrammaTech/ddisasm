@@ -621,18 +621,6 @@ contains_implausible_instr_seq(Block):-
     op_regdirect_contains_reg(Op1,"R0"),
     op_regdirect_contains_reg(Op2,"R0").
 
-/**
-Limited version of `contains_plausible_instr_seq`.
-Exclude implausible instructions.
-*/
-
-block_heuristic(Block,"code",Size,0,Heuristic):-
-    unresolved_block(Block,"code",Size),
-    contains_plausible_instr_seq(Block,Type),
-    !contains_implausible_instr_seq(Block),
-    Heuristic = cat("plausible_block: ", Type).
-
-
 
 /**
 Block with movw/movt pair is likely real code.
@@ -721,6 +709,12 @@ contains_plausible_instr_seq(Block,"multiple loads from stack"):-
 
 //////////////////////////////////////////////////////////////////////////
 // block points
+
+block_heuristic(Block,"code",Size,0,Heuristic):-
+    unresolved_block(Block,"code",Size),
+    contains_plausible_instr_seq(Block,Type),
+    !contains_implausible_instr_seq(Block),
+    Heuristic = cat("plausible_block: ", Type).
 
 block_heuristic(EA_entry,"code",Size,0,"arm: plt-block"):-
     unresolved_block(EA_entry,"code",Size),

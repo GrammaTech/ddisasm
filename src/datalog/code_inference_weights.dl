@@ -21,9 +21,28 @@
 //
 //===---------------------------------------------------------------------===//
 
+/**
+The heuristic with name 'Name' has type 'Type' and weight 'Weight'.
+The type can be "simple" or "proportional".
+- "simple" heuristics assign X points where X is the heuristic weight.
+- "proportional" heuristics assign X*Size points where X is the weight
+and Size is the size of the block in bytes.
 
+Heuristic weights take a default value specified in `default_heuristic_weight`
+unless a user-defined value is provided using `user_heuristic_weight` which
+can be fed to ddisasm as a hint.
+*/
 .decl heuristic_weight(Name:symbol,Type:symbol,Weight:number)
+
+/**
+Default heuristic weights (see `heuristic_weight`)
+*/
 .decl default_heuristic_weight(Name:symbol,Type:symbol,Weight:number)
+
+/**
+User-provided heuristic weights. These take precedence over
+the default weights and can be provided as ddisasm hints.
+*/
 .decl user_heuristic_weight(Name:symbol,Type:symbol,Weight:number)
 .input user_heuristic_weight
 
