@@ -14,6 +14,8 @@
 * Fix size access of LDR instruction in ARM64.
 * Extend value_reg analysis to support memory loads using a register with
   constant address.
+* Refactor the code inference point system. Decouple heuristics from their weights.
+  Heuristic weights can now be modified by providing user hints.
 
 
 # 1.8.0
