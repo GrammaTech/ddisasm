@@ -175,11 +175,33 @@ value_reg(EA,Reg,EA,"NONE",0,as(Val,number),1):-
     arch.pc_relative_addr(EA,Reg,Val),
     track_register(Reg).
 
-// mov QWORD or DWORD from memory (constant address)
+// Load QWORD or DWORD from memory using a simple_data_access_pattern
+// That is, a data access that does not require value_reg to be computed.
 value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     def_used_for_address(EA,Reg,_),
     arch.load(EA,SrcOp,_,Reg,_,_,_,_),
     simple_data_access_pattern(MemAddr,SrcOp,Size,EA),
+    4 <= Size, Size <= 8,
+    (
+        data_word(MemAddr,Size,Val),
+        !symbolic_expr_from_relocation(MemAddr,_,_,_,_)
+        ;
+        symbolic_expr_from_relocation(MemAddr,Size, Symbol, _, TargetAddr),
+        defined_symbol(_,_,_,_,_,_,_,_,Symbol),
+        Val = as(TargetAddr,number)
+    ),
+    Val >= 0.
+
+// Load QWORD or DWORD from memory where memory is accessed using a register
+// but the register has a constant value.
+value_reg(EA,Reg,EA,"NONE",0,Val,1):-
+    const_value_reg_used(EA,_,_,BaseReg,RegVal),
+    arch.load(EA,SrcOp,_,Reg,BaseReg,"NONE",_,Offset),
+    def_used_for_address(EA,Reg,_),
+    instruction_memory_access_size(EA,SrcOp,Size),
+
+    RegVal + Offset >= 0,
+    MemAddr = as(RegVal + Offset,address),
     4 <= Size, Size <= 8,
     (
         data_word(MemAddr,Size,Val),
@@ -364,7 +386,7 @@ best_value_reg(EA,Reg,0,MaxMultiplier,Offset,"incomplete"):-
 /**
 A constant value is used in a data access.
 
-EADef: The address where Value was orginally defined (which may not necessarily
+EADef: The address where Value was originally defined (which may not necessarily
 be where Reg is defined, if that value is moved to a different register later).
 
 EARegDef: The address where Reg is defined as Value. Often EADef = EARegDef.

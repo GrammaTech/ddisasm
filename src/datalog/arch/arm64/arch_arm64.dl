@@ -99,6 +99,7 @@ logic_operation("BIC").
 pointer_size(8).
 
 call_operation("BL").
+call_operation("BLR").
 
 syscall_operation("SVC").
 
@@ -119,6 +120,9 @@ data_access_size(Operation,as(DestReg,register),Size):-
         substr(Operation,0,4) = "LDRH", Size = 2;
         substr(Operation,0,5) = "LDRSH", Size = 2
     ).
+
+data_access_size("LDR",as(Reg,register),Size):-
+    register_size_bytes(Reg, Size).
 
 // ADD reg, reg, #imm
 reg_arithmetic_operation(EA,Dst,Src,1,Immediate):-

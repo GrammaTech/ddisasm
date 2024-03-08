@@ -10,6 +10,10 @@
 * No longer consider `_x86.get_pc_thunk*` functions as ABI-intrinsic; this
   means `_copy` is not appended to the original symbol, and a symbol forwarding
   entry is not created.
+* Fix handling of BLR instruction in ARM64.
+* Fix size access of LDR instruction in ARM64.
+* Extend value_reg analysis to support memory loads using a register with
+  constant address.
 
 
 # 1.8.0
