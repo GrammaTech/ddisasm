@@ -17,7 +17,7 @@ will add a fact `invalid(0x100,"definitely_not_code")` to the Datalog database o
 The fields need to be separated by tabs '\t'.
 
 You can consult the Datalog API reference https://grammatech.github.io/ddisasm/APIRef.html
-for details on the interal Ddisasm predicates.
+for details on the internal Ddisasm predicates.
 
 ### Changing heuristic weights with hints
 
