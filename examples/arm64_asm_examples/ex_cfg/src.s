@@ -1,3 +1,4 @@
+# Test different kinds of calls
 	.arch armv8-a
 	.text
 	.global	f
@@ -12,6 +13,8 @@ f:
 	ldp	x29, x30, [sp], 16
 	ret
 
+# This function is called from 'call_indirect_offset' but only indirectly
+# through the 'g_pointer' which is also accessed indirectly.
 g:
 	stp	x29, x30, [sp, -16]!
 	mov	x29, sp
