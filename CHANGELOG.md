@@ -16,7 +16,8 @@
   constant address.
 * Refactor the code inference point system. Decouple heuristics from their weights.
   Heuristic weights can now be modified by providing user hints.
-
+* Generate GOT, PAGE and GOT, OFST symbolic expression attributes for split
+  .got loads on MIPS.
 
 # 1.8.0
 
