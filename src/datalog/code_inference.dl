@@ -1232,15 +1232,15 @@ A block defined by its address 'Block', 'Type', and 'Size' has been assigned a h
 
 block_points(Block,Type,Size,Instance,Weight,HeuristicName):-
     block_heuristic(Block,Type,Size,Instance,HeuristicName),
-    heuristic_weight(HeuristicName,"simple",Weight).
+    heuristic_weight(HeuristicName,SIMPLE_WEIGHT,Weight).
 
 block_points(Block,Type,Size,Instance,Weight,HeuristicName):-
     negative_block_heuristic(Block,Type,Size,Instance,HeuristicName),
-    heuristic_weight(HeuristicName,"simple",Weight).
+    heuristic_weight(HeuristicName,SIMPLE_WEIGHT,Weight).
 
 block_points_proportional(Block,Type,Size,Weight,HeuristicName):-
     block_heuristic(Block,Type,Size,_,HeuristicName),
-    heuristic_weight(HeuristicName,"proportional",Weight).
+    heuristic_weight(HeuristicName,PROPORTIONAL_WEIGHT,Weight).
 
 block_heuristic(Block,Type,Size,0,"size"):-
     unresolved_block(Block,Type,Size).

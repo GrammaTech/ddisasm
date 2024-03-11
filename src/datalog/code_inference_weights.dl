@@ -23,9 +23,9 @@
 
 /**
 The heuristic with name 'Name' has type 'Type' and weight 'Weight'.
-The type can be "simple" or "proportional".
-- "simple" heuristics assign X points where X is the heuristic weight.
-- "proportional" heuristics assign X*Size points where X is the weight
+The type can be SIMPLE_WEIGHT or PROPORTIONAL_WEIGHT.
+- SIMPLE_WEIGHT heuristics assign X points where X is the heuristic weight.
+- PROPORTIONAL_WEIGHT heuristics assign X*Size points where X is the weight
 and Size is the size of the block in bytes.
 
 Heuristic weights take a default value specified in `default_heuristic_weight`
@@ -52,43 +52,42 @@ heuristic_weight(Name,Type,Weight):-
     !user_heuristic_weight(Name,_,_),
     default_heuristic_weight(Name,Type,Weight).
 
-
 // Proportional weights
-default_heuristic_weight("size","proportional",5).
+default_heuristic_weight("size",PROPORTIONAL_WEIGHT,5).
 
 
 // Simple weights
-default_heuristic_weight("address in data array","simple",1).
-default_heuristic_weight("aligned address in data","simple",1).
-default_heuristic_weight("appears","simple",3).
-default_heuristic_weight("basic point","simple",0).
-default_heuristic_weight("code section start","simple",1).
-default_heuristic_weight("composite data access: 1 resolved","simple",3).
-default_heuristic_weight("composite data access: 2 resolved","simple",4).
-default_heuristic_weight("composite data access","simple",2).
-default_heuristic_weight("conditional jump/return: fallthrough to invalid","simple",-2).
-default_heuristic_weight("dangling block with enclosed instr","simple",-1).
-default_heuristic_weight("data access: resolved","simple",4).
-default_heuristic_weight("data access","simple",2).
-default_heuristic_weight("debug block","simple",-1).
-default_heuristic_weight("exc-region","simple",3).
-default_heuristic_weight("fallthrough_to","simple",1).
-default_heuristic_weight("has well-defined call","simple",1).
-default_heuristic_weight("has well-defined call to a function symbol","simple",3).
-default_heuristic_weight("has well-defined jump","simple",1).
-default_heuristic_weight("incremental linking target","simple",3).
-default_heuristic_weight("landing-pad","simple",10).
-default_heuristic_weight("overlaps with relocation","simple",-3).
-default_heuristic_weight("padding nop block","simple",2).
-default_heuristic_weight("plt call","simple",1).
-default_heuristic_weight("relative-jump-table","simple",6).
-default_heuristic_weight("relative-jump-table-start","simple",3).
-default_heuristic_weight("relative jump table target: absolute","simple",1).
-default_heuristic_weight("relative jump table target","simple",2).
-default_heuristic_weight("repeated byte","simple",10).
-default_heuristic_weight("resolved-reaches strong","simple",7).
-default_heuristic_weight("resolved-reaches weak","simple",3).
-default_heuristic_weight("seh handler","simple",5).
-default_heuristic_weight("unresolved-direct-call","simple",2).
-default_heuristic_weight("unresolved-direct-jump","simple",2).
-default_heuristic_weight("unresolved-may-fallthrough","simple",2).
+default_heuristic_weight("address in data array",SIMPLE_WEIGHT,1).
+default_heuristic_weight("aligned address in data",SIMPLE_WEIGHT,1).
+default_heuristic_weight("appears",SIMPLE_WEIGHT,3).
+default_heuristic_weight("basic point",SIMPLE_WEIGHT,0).
+default_heuristic_weight("code section start",SIMPLE_WEIGHT,1).
+default_heuristic_weight("composite data access: 1 resolved",SIMPLE_WEIGHT,3).
+default_heuristic_weight("composite data access: 2 resolved",SIMPLE_WEIGHT,4).
+default_heuristic_weight("composite data access",SIMPLE_WEIGHT,2).
+default_heuristic_weight("conditional jump/return: fallthrough to invalid",SIMPLE_WEIGHT,-2).
+default_heuristic_weight("dangling block with enclosed instr",SIMPLE_WEIGHT,-1).
+default_heuristic_weight("data access: resolved",SIMPLE_WEIGHT,4).
+default_heuristic_weight("data access",SIMPLE_WEIGHT,2).
+default_heuristic_weight("debug block",SIMPLE_WEIGHT,-1).
+default_heuristic_weight("exc-region",SIMPLE_WEIGHT,3).
+default_heuristic_weight("fallthrough_to",SIMPLE_WEIGHT,1).
+default_heuristic_weight("has well-defined call",SIMPLE_WEIGHT,1).
+default_heuristic_weight("has well-defined call to a function symbol",SIMPLE_WEIGHT,3).
+default_heuristic_weight("has well-defined jump",SIMPLE_WEIGHT,1).
+default_heuristic_weight("incremental linking target",SIMPLE_WEIGHT,3).
+default_heuristic_weight("landing-pad",SIMPLE_WEIGHT,10).
+default_heuristic_weight("overlaps with relocation",SIMPLE_WEIGHT,-3).
+default_heuristic_weight("padding nop block",SIMPLE_WEIGHT,2).
+default_heuristic_weight("plt call",SIMPLE_WEIGHT,1).
+default_heuristic_weight("relative-jump-table",SIMPLE_WEIGHT,6).
+default_heuristic_weight("relative-jump-table-start",SIMPLE_WEIGHT,3).
+default_heuristic_weight("relative jump table target: absolute",SIMPLE_WEIGHT,1).
+default_heuristic_weight("relative jump table target",SIMPLE_WEIGHT,2).
+default_heuristic_weight("repeated byte",SIMPLE_WEIGHT,10).
+default_heuristic_weight("resolved-reaches strong",SIMPLE_WEIGHT,7).
+default_heuristic_weight("resolved-reaches weak",SIMPLE_WEIGHT,3).
+default_heuristic_weight("seh handler",SIMPLE_WEIGHT,5).
+default_heuristic_weight("unresolved-direct-call",SIMPLE_WEIGHT,2).
+default_heuristic_weight("unresolved-direct-jump",SIMPLE_WEIGHT,2).
+default_heuristic_weight("unresolved-may-fallthrough",SIMPLE_WEIGHT,2).
