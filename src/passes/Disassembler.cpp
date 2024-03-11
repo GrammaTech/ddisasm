@@ -1716,12 +1716,26 @@ void performSanityChecks(AnalysisPassResult &Result, souffle::SouffleProgram &Pr
     }
 
     auto MissingWeight = Program.getRelation("missing_weight");
-    for(auto &output : *MissingWeight)
+    for(auto &Output : *MissingWeight)
+    {
+        std::stringstream ErrorMsg;
+        std::string Missing;
+        Output >> Missing;
+        ErrorMsg << "Missing Weight:" << Missing << std::endl;
+        Messages.push_back(ErrorMsg.str());
+    }
+
+    auto UnexpectedNegativeWeight = Program.getRelation("unexpected_negative_heuristic_weight");
+    for(auto &Output : *UnexpectedNegativeWeight)
     {
         std::stringstream WarnMsg;
-        std::string Missing;
-        output >> Missing;
-        WarnMsg << "Missing Weight:" << Missing << std::endl;
-        Messages.push_back(WarnMsg.str());
+        std::string Heuristic;
+        int64_t Weight;
+        Output >> Heuristic >> Weight;
+        WarnMsg << Heuristic << " was assigned a negative weight " << Weight
+                << " but it is designed as a positive heuristic.\n"
+                << "Positive heuristics are only computed for unresolved blocks "
+                << "but will not cause blocks to become unresolved." << std::endl;
+        Result.Warnings.push_back(WarnMsg.str());
     }
 }
