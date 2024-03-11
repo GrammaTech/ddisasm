@@ -104,6 +104,9 @@ class ExtraArgsTest(unittest.TestCase):
                 self.assertNotIn("bad-hint", invalid_text)
                 self.assertNotIn("0x100000", invalid_text)
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_negative_weight_hint(self):
         """Test that providing a negative weight to a positive hint causes a
         warning to be printed.
