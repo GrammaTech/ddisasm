@@ -172,7 +172,6 @@ tests:
     <<: *default-cpp
 
   - name: ex_false_pointer_array
-  - name: ex_false_pointer_array
     <<: *default
 
   - name: ex_float
