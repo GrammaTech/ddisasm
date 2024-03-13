@@ -168,6 +168,10 @@ tests:
   - name: ex_exceptions3
     <<: *default-cpp
 
+  - name: ex_exceptions4
+    <<: *default-cpp
+
+  - name: ex_false_pointer_array
   - name: ex_false_pointer_array
     <<: *default
 
@@ -372,6 +376,10 @@ tests:
     <<: *test-strip-default
 
   - name: ex_exceptions3
+    <<: *default-cpp
+    <<: *test-strip-default
+
+  - name: ex_exceptions4
     <<: *default-cpp
     <<: *test-strip-default
 
@@ -662,6 +670,10 @@ tests:
 
   # TODO:
   # - name: ex_exceptions3
+  #   <<: *cpp-object
+
+  # TODO:
+  # - name: ex_exceptions4
   #   <<: *cpp-object
 
   - name: ex_false_pointer_array
