@@ -36,16 +36,14 @@ contains_implausible_instr_seq(0):- false.
 Block contains a plausible sequence of instructions, which has low possibility
 of happening in data bytes: e.g., mov lr, pc; jump
 This can be used for the code inference step.
-
-Block2: transitive block
 */
-.decl contains_plausible_instr_seq(Block:address,Weight:number,Type:symbol)
+.decl contains_plausible_instr_seq(Block:address,Type:symbol)
 
 /**
 Block contains an instruction sequence of a flag-setting instruction followed
 by a conditional jump or return.
 */
-contains_plausible_instr_seq(Block,3,"cmp/conditional-branch"):-
+contains_plausible_instr_seq(Block,"cmp/conditional-branch"):-
     (
         conditional_jump(EA)
         ;
@@ -56,22 +54,6 @@ contains_plausible_instr_seq(Block,3,"cmp/conditional-branch"):-
     code_in_block_candidate_refined(PrevEA,Block),
     instruction_get_operation(PrevEA,Operation),
     arch.cmp_operation(Operation).
-
-/**
-A plausible block 'Block' is a block that contains one or more plausible
-instructions or instruction sequences and does not contain any implausible
-instruction sequences.
-'Weight' specifies the number of points given to the plausible block.
-'Type' specifies the kind of plausible instruction sequence found in the block.
-'Block2` is the block from which the points were transferred if any (0 otherwise).
-*/
-.decl plausible_block(Block:address,Weight:number,Type:symbol,Block2:address)
-
-plausible_block(0,0,"",0):- false.
-
-block_points(Block,"code",Size,0,Weight,cat("plausible_block: ", Why)):-
-    unresolved_block(Block,"code",Size),
-    plausible_block(Block,Weight,Why,_).
 
 avoid_symbols("$d").
 
