@@ -507,6 +507,7 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(
         {"TPOFF", gtirb::SymAttribute::TPOFF},
         {"DTPOFF", gtirb::SymAttribute::DTPOFF},
         {"NTPOFF", gtirb::SymAttribute::NTPOFF},
+        {"PAGE", gtirb::SymAttribute::PAGE},
         {"TLSGD", gtirb::SymAttribute::TLSGD},
         {"TLSLD", gtirb::SymAttribute::TLSLD},
         {"TLSLDM", gtirb::SymAttribute::TLSLDM},
@@ -519,6 +520,7 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(
         // MIPS
         {"HI", gtirb::SymAttribute::HI},
         {"LO", gtirb::SymAttribute::LO},
+        {"OFST", gtirb::SymAttribute::OFST},
         // X86
         {"INDNTPOFF", gtirb::SymAttribute::INDNTPOFF},
     };
