@@ -960,7 +960,7 @@ class CfgTests(unittest.TestCase):
         """
         Test different kinds of calls for arm64.
         """
-        binary = "ex"
+        binary = Path("ex")
         ex_cfg_dir = ex_arm64_asm_dir / "ex_cfg"
         with cd(ex_cfg_dir):
             self.assertTrue(
@@ -968,8 +968,7 @@ class CfgTests(unittest.TestCase):
                     "aarch64-linux-gnu-gcc", "aarch64-linux-gnu-g++", "-O0", []
                 )
             )
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-            ir = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir = disassemble(binary).ir()
             m = ir.modules[0]
 
             # Check outgoing edges for each block.
