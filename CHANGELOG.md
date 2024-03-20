@@ -14,8 +14,11 @@
 * Fix size access of LDR instruction in ARM64.
 * Extend value_reg analysis to support memory loads using a register with
   constant address.
+* Refactor the code inference point system. Decouple heuristics from their weights.
+  Heuristic weights can now be modified by providing user hints.
+* Generate GOT, PAGE and GOT, OFST symbolic expression attributes for split
+  .got loads on MIPS.
 * Correct symbol_minus_symbol in lsda entries with a reference to the end of `.gcc_except_table`: add `boundary_sym_expr` for such reference
-
 
 # 1.8.0
 

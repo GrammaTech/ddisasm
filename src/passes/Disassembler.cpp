@@ -507,6 +507,7 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(
         {"TPOFF", gtirb::SymAttribute::TPOFF},
         {"DTPOFF", gtirb::SymAttribute::DTPOFF},
         {"NTPOFF", gtirb::SymAttribute::NTPOFF},
+        {"PAGE", gtirb::SymAttribute::PAGE},
         {"TLSGD", gtirb::SymAttribute::TLSGD},
         {"TLSLD", gtirb::SymAttribute::TLSLD},
         {"TLSLDM", gtirb::SymAttribute::TLSLDM},
@@ -519,6 +520,7 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(
         // MIPS
         {"HI", gtirb::SymAttribute::HI},
         {"LO", gtirb::SymAttribute::LO},
+        {"OFST", gtirb::SymAttribute::OFST},
         // X86
         {"INDNTPOFF", gtirb::SymAttribute::INDNTPOFF},
     };
@@ -1712,6 +1714,30 @@ void performSanityChecks(AnalysisPassResult &Result, souffle::SouffleProgram &Pr
                 << "\t$ printf 'disassembly.known_block\\t0x" << std::hex << BlockB << "\\t"
                 << BlockKindB << "\\t" << std::dec << SizeB << "\\thint\\n' >> hints.csv\n"
                 << "\t$ ddisasm --hints ./hints.csv [...]\n";
+        Result.Warnings.push_back(WarnMsg.str());
+    }
+
+    auto MissingWeight = Program.getRelation("missing_weight");
+    for(auto &Output : *MissingWeight)
+    {
+        std::stringstream ErrorMsg;
+        std::string Missing;
+        Output >> Missing;
+        ErrorMsg << "Missing Weight:" << Missing << std::endl;
+        Messages.push_back(ErrorMsg.str());
+    }
+
+    auto UnexpectedNegativeWeight = Program.getRelation("unexpected_negative_heuristic_weight");
+    for(auto &Output : *UnexpectedNegativeWeight)
+    {
+        std::stringstream WarnMsg;
+        std::string Heuristic;
+        int64_t Weight;
+        Output >> Heuristic >> Weight;
+        WarnMsg << Heuristic << " was assigned a negative weight " << Weight
+                << " but it is designed as a positive heuristic.\n"
+                << "Positive heuristics are only computed for unresolved blocks "
+                << "but will not cause blocks to become unresolved." << std::endl;
         Result.Warnings.push_back(WarnMsg.str());
     }
 }

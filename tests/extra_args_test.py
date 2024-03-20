@@ -105,6 +105,35 @@ class ExtraArgsTest(unittest.TestCase):
                 self.assertNotIn("0x100000", invalid_text)
 
     @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_negative_weight_hint(self):
+        """Test that providing a negative weight to a positive hint causes a
+        warning to be printed.
+        """
+        with cd(ex_dir / "ex1"):
+            # build
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            with tempfile.NamedTemporaryFile(mode="w") as hints_file:
+                # Add a negative weight to a positive hint
+                print(
+                    "disassembly.user_heuristic_weight"
+                    "\tlanding-pad\tsimple\t-1",
+                    file=hints_file,
+                    flush=True,
+                )
+                result = subprocess.run(
+                    ["ddisasm", "ex", "--hints", hints_file.name],
+                    capture_output=True,
+                    text=True,
+                )
+
+                self.assertIn(
+                    "landing-pad was assigned a negative weight -1",
+                    result.stderr,
+                )
+
+    @unittest.skipUnless(
         os.path.exists("./build/lib/libfunctors.so")
         and platform.system() == "Linux",
         "This test is linux only.",

@@ -299,8 +299,8 @@ discarded_split_load(EA_hi,EA_lo,Dest_addr,Type,Points):-
 // e.g., lw v0, -32696(gp)  <-- v0: MIPS_BASE_ADDRESS
 //       addiu a0, v0, 2560 <-- 2560: offset from MIPS_BASE_ADDRESS to target L
 // ->
-//       lw v0, %got(L)(gp)
-//       addiu a0, v0, %lo(L)
+//       lw v0, %got_page(L)(gp)
+//       addiu a0, v0, %got_ofst(L)
 base_addr_offset_operand(EA,NextEA,Dest_addr):-
     gp_relative_operand(EA,1,_),
     value_reg(EA,Reg,_,"NONE",_,Value,_),
@@ -348,10 +348,12 @@ base_addr_offset_operand(EA,NextEA,Dest_addr):-
         Dest_addr >= Begin, Dest_addr <= End
     ).
 
-symbolic_operand_attribute(EA,1,"GOT"):-
+symbolic_operand_attribute(EA,1,"GOT"),
+symbolic_operand_attribute(EA,1,"PAGE"):-
     base_addr_offset_operand(EA,_,_).
 
-symbolic_operand_attribute(EA,2,"LO"):-
+symbolic_operand_attribute(EA,2,"GOT"),
+symbolic_operand_attribute(EA,2,"OFST"):-
     base_addr_offset_operand(_,EA,_).
 
 // Hi

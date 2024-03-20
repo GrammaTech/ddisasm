@@ -81,3 +81,35 @@ missing_relocation_handling(EA):-
     !got_reference(EA,_),
     Type != "ABSOLUTE",
     Type != "COPY".
+
+/**
+This predicate detects block_heuristics that do not have
+a defined weight.
+This indicates an implementation mistake.
+*/
+.decl missing_weight(HeuristicName:symbol)
+.output missing_weight
+
+missing_weight(HeuristicName):-
+    block_heuristic(_,_,_,_,HeuristicName),
+    !heuristic_weight(HeuristicName,_,_).
+
+missing_weight(HeuristicName):-
+    negative_block_heuristic(_,_,_,_,HeuristicName),
+    !heuristic_weight(HeuristicName,_,_).
+
+
+/**
+Check that users do not set negative weights to positive heuristics.
+Negative weights for positive heuristics will only take effect for
+blocks that are not resolved, whereas regular negative heuristics will
+set all matching blocks as unresolved.
+*/
+.decl unexpected_negative_heuristic_weight(HeuristicName:symbol,UserWeight:number)
+.output unexpected_negative_heuristic_weight
+
+unexpected_negative_heuristic_weight(Name,UserWeight):-
+    user_heuristic_weight(Name,_,UserWeight),
+    default_heuristic_weight(Name,_,DefaultWeight),
+    DefaultWeight >= 0,
+    UserWeight < 0.
