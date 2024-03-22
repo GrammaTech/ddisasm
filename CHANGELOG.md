@@ -18,6 +18,7 @@
   Heuristic weights can now be modified by providing user hints.
 * Generate GOT, PAGE and GOT, OFST symbolic expression attributes for split
   .got loads on MIPS.
+* Correct symbol_minus_symbol in lsda entries with a reference to the end of `.gcc_except_table`: add `boundary_sym_expr` for such reference
 
 # 1.8.0
 

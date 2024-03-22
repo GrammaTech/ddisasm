@@ -126,6 +126,9 @@ tests:
   - name: ex_exceptions3
     <<: *default-cpp
 
+  - name: ex_exceptions4
+    <<: *default-cpp
+
   - name: ex_false_pointer_array
     <<: *default
 
@@ -210,6 +213,9 @@ tests:
     <<: *position-independent-cpp
 
   - name: ex_exceptions3
+    <<: *position-independent-cpp
+
+  - name: ex_exceptions4
     <<: *position-independent-cpp
 
   - name: ex_false_pointer_array
