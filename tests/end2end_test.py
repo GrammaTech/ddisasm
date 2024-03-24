@@ -82,12 +82,13 @@ class TestExamples(unittest.TestCase):
         binary = config.get("binary", config["name"])
         args = {
             "extra_compile_flags": config["build"]["flags"],
-            "extra_reassemble_flags": config["reassemble"]["flags"],
+            "extra_reassemble_flags": config.get("reassemble", {}).get(
+                "flags", []
+            ),
             "extra_link_flags": config.get("link", {}).get("flags", []),
             "linker": config.get("link", {}).get("linker"),
-            "reassembly_compiler": config["reassemble"]["compiler"],
-            "makefile_target": config["reassemble"].get(
-                "makefile_target", None
+            "reassembly_compiler": config.get("reassemble", {}).get(
+                "compiler", None
             ),
             "c_compilers": config["build"]["c"],
             "cxx_compilers": config["build"]["cpp"],
@@ -96,7 +97,7 @@ class TestExamples(unittest.TestCase):
             "strip": config["test"].get("strip", False),
             "sstrip": config["test"].get("sstrip", False),
             "skip_test": config["test"].get("skip", False),
-            "skip_reassemble": config["reassemble"].get("skip", False),
+            "skip_reassemble": config.get("reassemble", {}).get("skip", False),
             "cfg_checks": config["test"].get("cfg_checks"),
             "exec_wrapper": config["test"].get("wrapper"),
             "arch": config.get("arch"),

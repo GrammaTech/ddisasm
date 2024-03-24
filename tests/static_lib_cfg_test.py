@@ -5,7 +5,13 @@ from pathlib import Path
 import gtirb
 import yaml
 
-from disassemble_reassemble_check import compile, disassemble, cd
+from disassemble_reassemble_check import (
+    compile,
+    disassemble,
+    cd,
+    binary_print,
+    test,
+)
 
 ex_dir = Path("./examples/")
 
@@ -50,14 +56,8 @@ class TestStaticLibCfg(unittest.TestCase):
                     )
                 )
 
-                binary = "libtest.a"
-
-                gtirb_file = "libtest.gtirb"
-                self.assertTrue(
-                    disassemble(binary, gtirb_file, format="--ir")[0]
-                )
-
-                ir_library = gtirb.IR.load_protobuf(gtirb_file)
+                binary = Path("libtest.a")
+                ir_library = disassemble(binary).ir()
                 module = None
                 for m in ir_library.modules:
                     if "foo_" in m.name:
@@ -79,3 +79,44 @@ class TestStaticLibCfg(unittest.TestCase):
                     last_sym_expr = sym_expr
                 self.assertIsNotNone(last_sym_expr)
                 self.assertEqual(next(last_sym_expr.symbols).name, "bar")
+
+
+class TestStaticLibCfgArm64Object(unittest.TestCase):
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_static_lib_cfg_bar_object(self):
+        """
+        Test null-transform of bar.o from ex_static_lib_cfg on ARM64
+        """
+        binary = Path("bar.o")
+
+        with cd("examples/ex_static_lib_cfg"):
+
+            for opt in ["-O0", "-O1", "-O2", "-O3", "-Os"]:
+                with self.subTest(optimization=opt):
+                    compiler = "aarch64-linux-gnu-gcc"
+                    wrapper = "qemu-aarch64 -L /usr/aarch64-linux-gnu"
+                    self.assertTrue(
+                        compile(
+                            compiler,
+                            "",
+                            opt,
+                            [],
+                            exec_wrapper=wrapper,
+                        )
+                    )
+
+                    result = disassemble(binary)
+
+                    # Rebuilds bar.o with gtirb-pprinter --object --binary...
+                    # The `check` target depends on `bar.o` (transitively),
+                    # so everything is rebuilt with the rewritten `bar.o`
+                    # when we run `check`.
+                    binary_print(
+                        result.ir_path,
+                        binary,
+                        compiler=compiler,
+                        build_object=True,
+                    )
+                    self.assertTrue(test(compiler, wrapper))

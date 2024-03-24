@@ -24,8 +24,6 @@ default: &default
   # Reassembly configuration.
   reassemble:
     compiler: "uasm"
-    flags: ["-nologo", "-coff"]
-    skip: false
 
   # Linker configuration.
   link:

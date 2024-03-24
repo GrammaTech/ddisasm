@@ -22,11 +22,8 @@ class TestUnpopulatedJumpTable(unittest.TestCase):
                 compile("clang", "", "-O0", ["-m32", "-fno-pie", "-no-pie"])
             )
 
-            binary = "ex"
-            gtirb_path = binary + ".gtirb"
-            self.assertTrue(disassemble(binary, gtirb_path, format="--ir")[0])
-
-            ex_ir = gtirb.IR.load_protobuf(gtirb_path)
+            binary = Path("ex")
+            ex_ir = disassemble(binary).ir()
             module = ex_ir.modules[0]
 
             # Find the function with the jump table.

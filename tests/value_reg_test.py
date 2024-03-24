@@ -22,7 +22,7 @@ class ValueRegTests(unittest.TestCase):
         """
         Test that value_reg computes correct values.
         """
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_asm_arm_dir / "ex_value_reg"):
             self.assertTrue(
                 compile(
@@ -33,16 +33,11 @@ class ValueRegTests(unittest.TestCase):
                     "qemu-arm -L /usr/arm-linux-gnueabihf",
                 )
             )
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    format="--ir",
-                    strip=False,
-                    extra_args=["--with-souffle-relations"],
-                )[0]
-            )
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(
+                binary,
+                strip=False,
+                extra_args=["--with-souffle-relations"],
+            ).ir()
             m = ir_library.modules[0]
 
             fun = [s for s in m.symbols if s.name == "fun"][0]
@@ -124,18 +119,14 @@ class ValueRegTests(unittest.TestCase):
         Test that best_value_reg computes correct values passing values through
         the stack in x64.
         """
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_asm_x64_dir / "ex_stack_value_reg"):
             self.assertTrue(compile("gcc", "g++", "", []))
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    format="--ir",
-                    strip=False,
-                    extra_args=["--with-souffle-relations"],
-                )[0]
-            )
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(
+                binary,
+                strip=False,
+                extra_args=["--with-souffle-relations"],
+            ).ir()
             m = ir_library.modules[0]
             value_reg = self.parse_best_value_reg(m)
             expected = [
@@ -165,18 +156,14 @@ class ValueRegTests(unittest.TestCase):
         Test that best_value_reg computes correct values passing values through
         the stack in x86.
         """
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_asm_x86_dir / "ex_stack_value_reg"):
             self.assertTrue(compile("gcc", "g++", "", ["-m32"]))
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    format="--ir",
-                    strip=False,
-                    extra_args=["--with-souffle-relations"],
-                )[0]
-            )
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(
+                binary,
+                strip=False,
+                extra_args=["--with-souffle-relations"],
+            ).ir()
             m = ir_library.modules[0]
             value_reg = self.parse_best_value_reg(m)
             expected = [

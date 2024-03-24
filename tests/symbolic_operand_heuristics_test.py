@@ -20,18 +20,10 @@ class SymbolicOperandsTests(unittest.TestCase):
            If the result is compared to a non-symbolic operand or
            multiplied, the negative heuristic will prevent symbolization.
         """
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_asm_dir / "ex_symbolic_operand_heuristics"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    format="--ir",
-                    strip=False,
-                )[0]
-            )
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
 
             # check that we symbolize the LEA instructions with 0 offset

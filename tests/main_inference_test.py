@@ -1,7 +1,6 @@
 import platform
 import unittest
 from disassemble_reassemble_check import compile, disassemble, cd
-import gtirb
 import yaml
 
 from pathlib import Path
@@ -29,29 +28,23 @@ class TestMainInference(unittest.TestCase):
         """
         with cd(make_dir):
             self.assertTrue(compile(**compile_opts), msg="Compilation failed")
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    strip_exe=strip_exe,
-                    strip=strip,
-                    format="--ir",
-                    extra_args=["--skip-function-analysis"],
-                )[0],
-                msg="Disassembly failed",
-            )
-            module = gtirb.IR.load_protobuf(binary + ".gtirb").modules[0]
-            self.assertTrue(
-                disassemble(
-                    binary, strip_exe=strip_exe, strip=True, format="--ir"
-                )[0],
-                msg="Disassembly failed (stripped)",
-            )
-            moduleStripped = gtirb.IR.load_protobuf(binary + ".gtirb").modules[
-                0
-            ]
+            ir = disassemble(
+                binary,
+                strip_exe=strip_exe,
+                strip=strip,
+                extra_args=["--skip-function-analysis"],
+            ).ir()
+            module = ir.modules[0]
+            ir_stripped = disassemble(
+                binary,
+                Path("ex_stripped.gtirb"),
+                strip_exe=strip_exe,
+                strip=True,
+            ).ir()
+            module_stripped = ir_stripped.modules[0]
             self.assertEqual(
                 self.get_main_address(module),
-                self.get_main_address(moduleStripped),
+                self.get_main_address(module_stripped),
             )
 
     @unittest.skipUnless(
@@ -86,7 +79,7 @@ class TestMainInference(unittest.TestCase):
                     ):
                         self.check_main_inference(
                             ex_dir / "ex1",
-                            "ex",
+                            Path("ex"),
                             strip=strip,
                             strip_exe=strip_exe,
                             compiler=compiler,
