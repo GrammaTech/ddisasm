@@ -35,7 +35,7 @@ jobs:
           echo "image_path=$IMAGE_PATH" >> $GITHUB_OUTPUT
       - uses: actions/checkout@master
       - name: Kaniko build
-        uses: aevea/action-kaniko@v0.9.0
+        uses: aevea/action-kaniko@v0.12.0
         with:
           registry: ghcr.io
           image: ${{ matrix.os }}
