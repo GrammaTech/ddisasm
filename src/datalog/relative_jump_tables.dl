@@ -380,8 +380,12 @@ relative_jump_table_entry_candidate(EA,TableStart,Size,Reference,Dest,Scale,Offs
     !binary_isa("ARM"),
     relative_jump_table_entry_candidate(LastEA,TableStart,Size,Reference,_,Scale,Offset),
     EA = LastEA + Size,
-    jump_table_max(TableStart,TableEnd),
-    TableEnd >= EA,
+    (
+        jump_table_max(TableStart,TableEnd),
+        TableEnd >= EA
+        ;
+        relative_address(EA,Size,TableStart,Reference,Dest,_)
+    ),
     !symbol(EA,_,_,_,_,_,_,_,_),
     data_segment(BegData,EndData), BegData <= TableStart, EA+Size <= EndData,
     relative_jump_table_entry_target(EA,TableStart,Size,Reference,Dest,Scale).
@@ -413,6 +417,14 @@ discarded_jump_table_entry(TableStart,Ref,EA):-
     jump_table_start(_,Size,TableStart,Ref,_),
     EA = DiscardEA + Size,
     relative_jump_table_entry_candidate(EA,TableStart,Size,Ref,_,_,_).
+
+discarded_jump_table_entry(TableStart,Ref,EA):-
+    relative_jump_table_entry_candidate(EA,TableStart,Size,Ref,_,_,_),
+    EA != TableStart,
+    jump_table_max(TableStart,TableEnd),
+    !jump_table_max(TableStart,TableEnd+Size),
+    TableEnd < EA,
+    !jump_table_start(_,_,EA,_,_).
 
 /**
 An entry in a relative jump table of the form (Dest-Reference)/Scale.
