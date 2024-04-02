@@ -411,20 +411,20 @@ discarded_jump_table_entry(TableStart,Ref,EA):-
     EA <= Limit, Limit < EA+Size,
     EA != TableStart.
 
+// Truncate a jump table beyond jump_table_max
+discarded_jump_table_entry(TableStart,Ref,EA):-
+    relative_jump_table_entry_candidate(EA,TableStart,_,Ref,_,_,_),
+    EA != TableStart,
+    TableEndMax = max M: {jump_table_max(TableStart,M)},
+    TableEndMax < EA,
+    !jump_table_start(_,_,EA,_,_).
+
 // Recursively discard
 discarded_jump_table_entry(TableStart,Ref,EA):-
     discarded_jump_table_entry(TableStart,Ref,DiscardEA),
     jump_table_start(_,Size,TableStart,Ref,_),
     EA = DiscardEA + Size,
     relative_jump_table_entry_candidate(EA,TableStart,Size,Ref,_,_,_).
-
-discarded_jump_table_entry(TableStart,Ref,EA):-
-    relative_jump_table_entry_candidate(EA,TableStart,Size,Ref,_,_,_),
-    EA != TableStart,
-    jump_table_max(TableStart,TableEnd),
-    !jump_table_max(TableStart,TableEnd+Size),
-    TableEnd < EA,
-    !jump_table_start(_,_,EA,_,_).
 
 /**
 An entry in a relative jump table of the form (Dest-Reference)/Scale.
