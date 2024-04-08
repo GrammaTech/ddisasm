@@ -419,6 +419,23 @@ class AuxDataTests(unittest.TestCase):
                 # verify executable bit
                 self.assertEqual(m.aux_data["elfStackExec"].data, is_exec)
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_soname(self):
+        """
+        Test SONAME dynamic-section entry
+        """
+        binary = "ex.so"
+        with cd(ex_asm_dir / "ex_ifunc"):
+            self.assertTrue(
+                compile("gcc", "g++", "-O0", [f"-Wl,-soname={binary}"])
+            )
+            ir = disassemble(Path(binary)).ir()
+            m = ir.modules[0]
+
+            self.assertEqual(m.aux_data["elfSoname"].data, binary)
+
 
 class RawGtirbTests(unittest.TestCase):
     @unittest.skipUnless(
