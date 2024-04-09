@@ -62,8 +62,8 @@ protected:
 private:
     uint64_t TlsBaseAddress = 0;
 
-    std::string getStringAt(uint32_t Index);
-    LIEF::span<const uint8_t> getStrTabBytes();
+    std::optional<std::string> getStringAt(uint32_t Index);
+    std::pair<LIEF::span<const uint8_t>, uint64_t> getStrTabBytes();
 
     // For sectionless binaries
     std::map<std::string, uint64_t> getDynamicEntries();

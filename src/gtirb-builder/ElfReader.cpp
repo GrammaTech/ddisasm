@@ -305,9 +305,10 @@ void ElfReader::createGPforMIPS(
 }
 
 // Extract STRTAB bytes
-LIEF::span<const uint8_t> ElfReader::getStrTabBytes()
+std::pair<LIEF::span<const uint8_t>, uint64_t> ElfReader::getStrTabBytes()
 {
     static LIEF::span<const uint8_t> StrTabBytes;
+    static uint64_t StrTabSize = 0;
 
     if(StrTabBytes.empty())
     {
@@ -328,18 +329,33 @@ LIEF::span<const uint8_t> ElfReader::getStrTabBytes()
             }
             else
             {
-                uint64_t StrTabSize = It->second;
+                StrTabSize = It->second;
                 StrTabBytes = Elf->get_content_from_virtual_address(StrTabAddr, StrTabSize);
             }
         }
     }
-    return StrTabBytes;
+    return std::pair<LIEF::span<const uint8_t>, uint64_t>(StrTabBytes, StrTabSize);
 }
 
 // Extract a string at the given Index in STRTAB
-std::string ElfReader::getStringAt(uint32_t Index)
+std::optional<std::string> ElfReader::getStringAt(uint32_t Index)
 {
-    LIEF::span<const uint8_t> StrTabBytes = getStrTabBytes();
+    auto P = getStrTabBytes();
+    LIEF::span<const uint8_t> StrTabBytes = P.first;
+    uint64_t StrTabSize = P.second;
+
+    if(StrTabSize == 0)
+    {
+        std::cerr << "getStringAt: STRSZ == 0\n";
+        return std::nullopt;
+    }
+    if((uint64_t)Index >= StrTabSize)
+    {
+        std::cerr << "getStringAt: Index " << Index
+                  << " is greater than the STRTAB size: " << StrTabSize << std::endl;
+        return std::nullopt;
+    }
+
     std::stringstream SS;
     auto It = StrTabBytes.begin() + Index;
     while(It != StrTabBytes.end())
@@ -406,9 +422,16 @@ void ElfReader::resurrectSymbols()
                 LIEF::Convert::swap_endian<LIEF::ELF::details::Elf32_Sym>(P);
             }
             LIEF::ELF::Symbol Symbol(*P);
-            std::string Name = getStringAt(S.st_name);
-            Symbol.name(Name);
-            Elf->add_dynamic_symbol(Symbol);
+            std::optional<std::string> Name = getStringAt(S.st_name);
+            if(Name)
+            {
+                Symbol.name(Name.value());
+                Elf->add_dynamic_symbol(Symbol);
+            }
+            else
+            {
+                std::cerr << "resurrectSymbols: No string found for " << S.st_name << std::endl;
+            }
         }
     }
     return;
@@ -1236,8 +1259,15 @@ void ElfReader::addAuxData()
     auto SonameIt = DynamicEntries.find("SONAME");
     if(SonameIt != DynamicEntries.end())
     {
-        std::string Soname = getStringAt(SonameIt->second);
-        Module->addAuxData<gtirb::schema::ElfSoname>(std::move(Soname));
+        std::optional<std::string> Soname = getStringAt(SonameIt->second);
+        if(Soname)
+        {
+            Module->addAuxData<gtirb::schema::ElfSoname>(std::move(Soname.value()));
+        }
+        else
+        {
+            std::cerr << "\nWARNING: No string found for SONAME\n";
+        }
     }
 
     // Build segment auxdata
