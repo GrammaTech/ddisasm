@@ -19,6 +19,7 @@
 * Generate GOT, PAGE and GOT, OFST symbolic expression attributes for split
   .got loads on MIPS.
 * Correct symbol_minus_symbol in lsda entries with a reference to the end of `.gcc_except_table`: add `boundary_sym_expr` for such reference
+* Improve jump-table detection
 
 # 1.8.0
 

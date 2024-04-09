@@ -75,6 +75,56 @@ relative_address_start(EA,Size,EA,Dest,DestIsFirstOrSecond):-
     possible_ea(Dest),
     possible_ea(Dest2).
 
+// In addition to the general case of `relative_address_start` as above,
+// the following `relative_address_start` pattern is to detect potential
+// jump tables even before any of the data analyses is performed.
+// Note that these use `straight_line_def_used`.
+//
+// This pattern provides more confidence, so we do not check
+// 'Diff != 0' in data_word(TableEntry,Size,Diff) here to find
+// jump-tables padded with zeros in front.
+//
+// A jump-table with the following reference pattern has entries
+// as relative offset from a label (e.g., .L_66b8e here)
+//
+// EA_load_table: lea RDI, QWORD PTR [RIP+step0_jumps.13539]
+// EA_xd:         movsxd RAX, DWORD PTR [RDI+RAX*4]
+// EA_load_ref:   lea RDI, QWORD PTR [RIP+.L_66b8e]
+// EA_add:        add RAX, RDI
+// EA_jmp:        jmp RAX
+//
+// This kind of pattern was observed in libc.so.6 (e.g., libc-2.28.so).
+//
+relative_address_start(TableStartAddr,Size,Reference,Dest,DestIsFirstOrSecond):-
+    reg_jump(EA_jmp,RegTarget),
+    next(EA_add,EA_jmp),
+    register_access(EA_add,RegIn,"W"),
+    reg_map(RegIn,RegTarget),
+    instruction_get_operation(EA_add,Operation),
+    // Sometimes the jump table entry is Diff = Reference-JumpTarget
+    // and sometimes it is Diff = JumpTarget-Reference
+    (
+        Operation = "ADD", Scale=1, DestIsFirstOrSecond = "first"
+        ;
+        Operation = "SUB", Scale=-1, DestIsFirstOrSecond = "second"
+    ),
+    straight_line_def_used(EA_load_ref,_,EA_add,_),
+    take_address(EA_load_ref,BaseAddr),
+    possible_ea(BaseAddr),
+
+    Reference = BaseAddr,
+    Size = 4,
+
+    straight_line_def_used(EA_xd,_,EA_add,_),
+    arch.extend_load(EA_xd,_,8*Size),
+
+    straight_line_def_used(EA_load_table,_,EA_xd,_),
+    take_address(EA_load_table,TableStartAddr),
+
+    data_word(TableStartAddr,Size,Diff),
+    Dest = as(as(BaseAddr,number) + Scale * Diff, address),
+    possible_ea(Dest).
+
 relative_address(EA,Size,EA,Ref,Dest,DestIsFirstOrSecond):-
     relative_address_start(EA,Size,Ref,Dest,DestIsFirstOrSecond).
 
@@ -82,7 +132,15 @@ relative_address(EA+Size,Size,TableStart,Ref,Dest,DestIsFirstOrSecond):-
     relative_address(EA,Size,TableStart,Ref,_,DestIsFirstOrSecond),
     Size != 1,
     data_word(EA+Size,Size,Diff),
-    Diff != 0,
+    (
+        Diff != 0
+        ;
+        // In some cases, table is padded with zeros in front.
+        // If the previous one was zero, make it positive until non-zero
+        // element shows up.
+        data_word(EA,Size,Diff0),
+        Diff0 = 0
+    ),
     RefSigned = as(Ref,number),
     (
         DestIsFirstOrSecond = "second", Dest = as(RefSigned-Diff,address),Size >= 4;
@@ -457,5 +515,17 @@ relative_jump_table_entry(EA,TableStart,Size,Reference,Dest,Scale,Offset):-
     EA = LastEA + Size,
     !symbol(EA,_,_,_,_,_,_,_,_),
     data_segment(BegData,EndData), BegData <= TableStart, EA+Size <= EndData,
-    next_data_limit(Prev, Next), Prev < EA, Next >= EA+Size,
+    next_data_limit(TableStart, Next),
+    (
+        TableStart < EA, Next >= EA+Size
+        ;
+        // In some cases, a jump-table is padded with zeros in front.
+        // If the first byte was zero, look at the second
+        // next_data_limit as well.
+        // NOTE: This kind of pattern was observed in libc.so.6
+        //       (e.g., libc-2.28.so).
+        data_word(TableStart,Size,0),
+        next_data_limit(Next, Next2),
+        TableStart < EA, Next2 >= EA+Size
+    ),
     relative_jump_table_entry_target(EA,TableStart,Size,Reference,Dest,Scale).
