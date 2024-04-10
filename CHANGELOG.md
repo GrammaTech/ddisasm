@@ -20,7 +20,7 @@
   .got loads on MIPS.
 * Correct symbol_minus_symbol in lsda entries with a reference to the end of `.gcc_except_table`: add `boundary_sym_expr` for such reference
 * Add `ElfSoname` aux-data for `SONAME` dynamic-section entry
-* Requires gtirb >=2.1.0, gtirb-pprinter >=2.2.0
+* Requires gtirb >=2.1.0
 
 # 1.8.0
 
