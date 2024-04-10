@@ -305,10 +305,9 @@ void ElfReader::createGPforMIPS(
 }
 
 // Extract STRTAB bytes
-std::pair<LIEF::span<const uint8_t>, uint64_t> ElfReader::getStrTabBytes()
+LIEF::span<const uint8_t> ElfReader::getStrTabBytes()
 {
     static LIEF::span<const uint8_t> StrTabBytes;
-    static uint64_t StrTabSize = 0;
 
     if(StrTabBytes.empty())
     {
@@ -329,27 +328,26 @@ std::pair<LIEF::span<const uint8_t>, uint64_t> ElfReader::getStrTabBytes()
             }
             else
             {
-                StrTabSize = It->second;
+                uint64_t StrTabSize = It->second;
                 StrTabBytes = Elf->get_content_from_virtual_address(StrTabAddr, StrTabSize);
             }
         }
     }
-    return std::pair<LIEF::span<const uint8_t>, uint64_t>(StrTabBytes, StrTabSize);
+    return StrTabBytes;
 }
 
 // Extract a string at the given Index in STRTAB
 std::optional<std::string> ElfReader::getStringAt(uint32_t Index)
 {
-    auto P = getStrTabBytes();
-    LIEF::span<const uint8_t> StrTabBytes = P.first;
-    uint64_t StrTabSize = P.second;
+    LIEF::span<const uint8_t> StrTabBytes = getStrTabBytes();
+    size_t StrTabSize = StrTabBytes.size();
 
     if(StrTabSize == 0)
     {
         std::cerr << "getStringAt: STRSZ == 0\n";
         return std::nullopt;
     }
-    if((uint64_t)Index >= StrTabSize)
+    if(static_cast<size_t>(Index) >= StrTabSize)
     {
         std::cerr << "getStringAt: Index " << Index
                   << " is greater than the STRTAB size: " << StrTabSize << std::endl;
