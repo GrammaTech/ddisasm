@@ -207,6 +207,36 @@ value_reg_limit(EA_target,EA_limited,Reg,Value,LimitType):-
     local_next(EA_target,EA_limited).
 
 /**
+Two live registers are a constant offset from each other at the end of a block.
+*/
+.decl correlated_live_reg(Block:address,Reg1:register,Reg2:register,Offset:number)
+
+correlated_live_reg(Block,DstReg,SrcReg,Offset):-
+    // simple arithmetic operation derives DstReg from SrcReg at OpEA
+    limit_reg_op(OpEA,DstReg,SrcReg,Offset),
+    reg_def_use.last_def_in_block(Block,OpEA,DstReg),
+    (
+        // SrcReg defined in block, same def live at end of block and OpEA
+        reg_def_use.block_last_def(OpEA,SrcFrom,SrcReg),
+        reg_def_use.last_def_in_block(Block,SrcFrom,SrcReg)
+        ;
+        // SrcReg not defined in block
+        !reg_def_use.last_def_in_block(Block,_,SrcReg)
+    ).
+
+// If a comparison defines a limit for a register, and that register is known
+// to be derived from a different live register, we can define a limit for that
+// register as well. For example:
+//      lea EAX, DWORD PTR [R12-32]
+//      cmp AL, 90
+//      jbe .L_...
+// A limit for R12 can be derived the limit on RAX.
+value_reg_limit(EA_jmp,EA_limited,SrcReg,Value-Offset,LimitType):-
+    value_reg_limit(EA_jmp,EA_limited,DstReg,Value,LimitType),
+    block_last_instruction(Block,EA_jmp),
+    correlated_live_reg(Block,DstReg,SrcReg,Offset).
+
+/**
 A register is compared as NE or EQ and used for a conditional jump.
 */
 .decl cmp_defines(EA_jmp:address,EA_dst:address,Reg:register)
@@ -320,8 +350,8 @@ Move or arithmetic operation on a limited register
 limit_reg_op(EA,DstReg,SrcReg,0):-
     arch.move_reg_reg(EA,DstReg,SrcReg).
 
-limit_reg_op(EA,Reg,Reg,Offset):-
-    arch.reg_arithmetic_operation(EA,Reg,Reg,1,Offset).
+limit_reg_op(EA,DstReg,SrcReg,Offset):-
+    arch.reg_arithmetic_operation(EA,DstReg,SrcReg,1,Offset).
 
 // Propagate through:
 // * move to a different register
