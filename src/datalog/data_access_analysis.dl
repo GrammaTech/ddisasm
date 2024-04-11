@@ -351,14 +351,24 @@ data_limit(EA):-
     Len % Size = 0.
 
 /**
+Labeled data boundaries
+*/
+.decl labeled_data_segment_boundary(EA:address)
+
+labeled_data_segment_boundary(EA):-
+    labeled_data_candidate(EA);
+    data_segment(_,EA);
+    data_segment(EA,_).
+
+/**
 The next data limit after 'EA' is at 'Next'.
 */
-.decl next_data_limit(EA:address,Next:address)
+.decl next_labeled_data_segment_boundary(EA:address,Next:address)
 
-next_data_limit(EA,Next):-
-    data_limit(EA),
+next_labeled_data_segment_boundary(EA,Next):-
+    labeled_data_segment_boundary(EA),
     data_segment(Beg,End), EA >= Beg, EA < End,
-    Next = min Next : {data_limit(Next), Next > EA},
+    Next = min Next : {labeled_data_segment_boundary(Next), Next > EA},
     Next <= End.
 
 /**
