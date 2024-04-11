@@ -181,14 +181,46 @@ value_reg_limit(EA_jmp,EA_fallthrough,Reg,FallthroughValue,FallthroughLT):-
     BranchValue = Immediate + BranchOffset,
     FallthroughValue = Immediate + FallthroughOffset.
 
+/**
+Detect where indirect operand used in a comparison is unmodified afterward.
+*/
+.decl compare_and_jump_indirect_op_valid(EA_cmp:address,EA_jmp:address,EA:address,IndirectOp:operand_code,Steps:number)
+
+compare_and_jump_indirect_op_valid(EA_cmp,EA_jmp,EA_cmp,IndirectOp,0):-
+    compare_and_jump_indirect(EA_cmp,EA_jmp,_,IndirectOp,_).
+
+compare_and_jump_indirect_op_valid(EA_cmp,EA_jmp,EA,IndirectOp,Steps+1):-
+    // Propagate forward (hopefully) towards the jump.
+    // We don't support compare/jump pairs that require following complex CFG
+    // edges.
+    compare_and_jump_indirect_op_valid(EA_cmp,EA_jmp,Prev,IndirectOp,Steps),
+    Steps < 3,
+    may_fallthrough(Prev,EA),
+    code(EA),
+    // No store at this address.
+    !arch.memory_access("STORE",EA,_,_,_,_,_,_,_),
+    !arch.store_immediate(EA,_,_,_,_,_,_,_),
+    !arch.memory_access_aggregated("STORE",EA,_,_,_,_,_),
+    // The registers used in the indirect operand aren't modified, either.
+    // Note: we only support the base register for now.
+    op_indirect_mapped(IndirectOp,"NONE",NullableRegBase,"NONE",_,_,_),
+    reg_nonnull(NullableRegBase,RegBase),
+    !reg_def_use.def(EA,RegBase),
+    // We don't account for instructions that would implicitly write the stack
+    // or modify the stack pointer (push/pop), so don't allow stack registers.
+    !arch.stack_pointer(RegBase),
+    !arch.frame_pointer(RegBase).
+
 // Ad-hoc rule for basic indirect comparison cases where the value is moved to
 // a register right after the jump (either at the branch target or the
 // fallthrough).
 value_reg_limit(EA_target,EA_limited,Reg,Value,LimitType):-
     compare_and_jump_indirect(EA_cmp,EA_jmp,CC,IndirectOp,Immediate),
     limit_type_map(CC,BranchLT,FallthroughLT,BranchOffset,FallthroughOffset),
-    // Enforce next to ensure the memory isn't modified between comparison and jump.
-    next(EA_cmp,EA_jmp),
+    // Validate that the memory isn't modified between the comparison and jump.
+    // Difficult to do generally, but we can cover some common cases with
+    // compare_and_jump_indirect_op_valid.
+    compare_and_jump_indirect_op_valid(EA_cmp,EA_jmp,EA_jmp,IndirectOp,_),
     (
         direct_jump(EA_jmp,EA_target),
         LimitType = BranchLT,
