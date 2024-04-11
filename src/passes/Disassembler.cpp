@@ -320,7 +320,7 @@ void removeSectionSymbols(gtirb::Context &Context, gtirb::Module &Module)
     for(const auto Uuid : Remove)
     {
         gtirb::Node *N = gtirb::Node::getByUUID(Context, Uuid);
-        if(auto *Symbol = dyn_cast_or_null<gtirb::Symbol>(N))
+        if(auto *Symbol = gtirb::dyn_cast_or_null<gtirb::Symbol>(N))
         {
             Module.removeSymbol(Symbol);
             SymbolInfo->erase(Uuid);
@@ -864,7 +864,7 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
             if(SectionIndex == SHN_COMMON)
             {
                 gtirb::Node *Node = gtirb::Node::getByUUID(Context, Uuid);
-                if(auto *Symbol = dyn_cast_or_null<gtirb::Symbol>(Node);
+                if(auto *Symbol = gtirb::dyn_cast_or_null<gtirb::Symbol>(Node);
                    Symbol && Symbol->getAddress())
                 {
                     // Alignment is stored in the symbol's value field.
@@ -977,12 +977,12 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
     for(auto [Symbol, T] : ConnectToBlock)
     {
         auto [Node, AtEnd] = T;
-        if(gtirb::CodeBlock *CodeBlock = dyn_cast_or_null<gtirb::CodeBlock>(Node))
+        if(gtirb::CodeBlock *CodeBlock = gtirb::dyn_cast_or_null<gtirb::CodeBlock>(Node))
         {
             Symbol->setReferent(CodeBlock);
             Symbol->setAtEnd(AtEnd);
         }
-        else if(gtirb::DataBlock *DataBlock = dyn_cast_or_null<gtirb::DataBlock>(Node))
+        else if(gtirb::DataBlock *DataBlock = gtirb::dyn_cast_or_null<gtirb::DataBlock>(Node))
         {
             Symbol->setReferent(DataBlock);
             Symbol->setAtEnd(AtEnd);
@@ -995,7 +995,7 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
         for(auto Forward : *SymbolForwarding)
         {
             gtirb::Node *Node = gtirb::Node::getByUUID(Context, std::get<1>(Forward));
-            if(auto *Symbol = dyn_cast_or_null<gtirb::Symbol>(Node))
+            if(auto *Symbol = gtirb::dyn_cast_or_null<gtirb::Symbol>(Node))
             {
                 if(Symbol->hasReferent())
                 {
