@@ -34,7 +34,7 @@ void PaddingLoader::operator()(const gtirb::Module& Module, souffle::SouffleProg
 
     for(auto& [Offset, Size] : *Table)
     {
-        auto* ByteInterval = dyn_cast_or_null<gtirb::ByteInterval>(
+        auto* ByteInterval = gtirb::dyn_cast_or_null<gtirb::ByteInterval>(
             gtirb::Node::getByUUID(*Context, Offset.ElementId));
         assert(ByteInterval && "Failed to find ByteInterval by UUID.");
         if(ByteInterval->getAddress())
@@ -57,7 +57,7 @@ void FdeEntriesLoader::operator()(const gtirb::Module& Module, souffle::SouffleP
 
     for(auto& Pair : *CfiDirectives)
     {
-        auto* Block = dyn_cast_or_null<const gtirb::CodeBlock>(
+        auto* Block = gtirb::dyn_cast_or_null<const gtirb::CodeBlock>(
             gtirb::Node::getByUUID(*Context, Pair.first.ElementId));
         assert(Block && "Found CFI directive that does not belong to a block");
 
@@ -104,7 +104,7 @@ void FunctionEntriesLoader::operator()(const gtirb::Module& Module,
         for(auto& UUID : Pair.second)
         {
             auto* Block =
-                dyn_cast_or_null<gtirb::CodeBlock>(gtirb::Node::getByUUID(*Context, UUID));
+                gtirb::dyn_cast_or_null<gtirb::CodeBlock>(gtirb::Node::getByUUID(*Context, UUID));
             assert(Block && "Found function entry does not belong to a code block");
             assert(Block->getAddress() && "Found code block without address.");
             Functions.push_back(*Block->getAddress());
