@@ -19,7 +19,10 @@
 * Generate GOT, PAGE and GOT, OFST symbolic expression attributes for split
   .got loads on MIPS.
 * Correct symbol_minus_symbol in lsda entries with a reference to the end of `.gcc_except_table`: add `boundary_sym_expr` for such reference
-* Improve jump-table detection
+* Add an additional case of `value_reg_limit` for correlated live registers
+* Add missing `reg_map_rule`s
+* Introduce `labeled_data_segment_boundary` and use it for `next_data_limit`,
+  which is renamed to `next_labeled_data_segment_boundary`
 
 # 1.8.0
 

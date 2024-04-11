@@ -39,14 +39,7 @@ straight_line_def_needed(EA):-
         binary_isa("X86");
         binary_isa("X64")
     ),
-    (
-        arch.pc_relative_addr(EA,_,_)
-        ;
-        instruction_get_op(EA,_,Op),
-        op_indirect_mapped(Op,"NONE",RegBase,RegIndex,_,_,_),
-        reg_nonnull(RegBase,RegBase_nn),
-        reg_nonnull(RegIndex,RegIndex_nn)
-    ).
+    arch.pc_relative_addr(EA,_,_).
 
 straight_line_def_needed(EA):-
     !binary_isa("X86"),
