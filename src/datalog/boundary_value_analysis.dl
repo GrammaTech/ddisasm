@@ -233,10 +233,12 @@ value_reg_limit(EA_target,EA_limited,Reg,Value,LimitType):-
         UNUSED(BranchLT), UNUSED(BranchOffset)
     ),
     // The value is loaded from this IndirectOp into a register immediately after the jump.
+    code(EA_target),
     arch.load(EA_target,_,_,Reg,_,_,_,_),
     track_register(Reg),
     instruction_get_op(EA_target,_,IndirectOp),
-    local_next(EA_target,EA_limited).
+    may_fallthrough(EA_target,EA_limited),
+    code(EA_limited).
 
 /**
 Two live registers are a constant offset from each other at the end of a block.
