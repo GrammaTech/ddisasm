@@ -20,9 +20,9 @@
   .got loads on MIPS.
 * Correct symbol_minus_symbol in lsda entries with a reference to the end of `.gcc_except_table`: add `boundary_sym_expr` for such reference
 * Add an additional case of `value_reg_limit` for correlated live registers
-* Add missing `reg_map_rule`s
-* Introduce `labeled_data_segment_boundary` and use it for `next_data_limit`,
-  which is renamed to `next_labeled_data_segment_boundary`
+* Track values of registers R8B - R15B on x86-64, which are in some cases needed for inferring jump table boundaries.
+* Infer jump table boundaries from comparisons of registers correlated to the index register.
+* Fix bug where a relative jump table starting with consecutive zero offsets was truncated at the first non-zero value.
 
 # 1.8.0
 

@@ -149,11 +149,17 @@ fun:
     call	one
     test rbx, 1
     jnz .L_odd1
-    mov     r12, 2
+    mov     r12, 34
     jmp .L_end1
 .L_odd1:
-    mov     r12, 3
+    mov     r12, 35
 .L_end1:
+    lea rax, dword ptr [r12-32]
+    cmp al, 4
+    jbe .L_jump
+    jmp .LBB5_9
+.L_jump:
+    sub r12, 32
     movsxd  rax, dword ptr [r9 + 4*r12]
     add rax, r9
     jmp rax
