@@ -356,11 +356,9 @@ Labeled data boundaries
 .decl data_limit(EA:address)
 
 data_limit(EA):-
-    labeled_data_candidate(EA),
-    (
-        data_segment(_,EA);
-        data_segment(EA,_)
-    ).
+    labeled_data_candidate(EA);
+    data_segment(_,EA);
+    data_segment(EA,_).
 
 /**
 The next data limit after 'EA' is at 'Next'.
