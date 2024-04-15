@@ -1,5 +1,5 @@
 // This example contains cascaded jump-tables, `jump_table_A` and
-// `jump_table_A`.
+// `jump_table_B`.
 // The jump-table starting address of `jump_table_B` (`r10`) is loaded before
 // the jump associated with `jump_table_A`.
 //
