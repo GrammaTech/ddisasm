@@ -1,4 +1,6 @@
-// this example contains a switch table where
+// Same to ex_relative_jump_tables except that in this example, `jump_table_B`
+// is a table of offsets from `.target1`, not from `jump_table_B`, and also,
+// there are zeros in front of the table.
 
     .text
     .intel_syntax noprefix
@@ -125,57 +127,51 @@ fun:
     push	r9
     push	r10
     push	r12
-    push	r14
+    push	r13
     push	rbx
     mov rbp, rsp
     mov	r13d, esi
     mov	ebx, edi
     cmp	ebx, r13d
     jge	.LBB5_10
-    .p2align	4, 0x90
 .LBB5_2:
-    lea	r9, [rip + .jump_table_B]
+    lea	r9, [rip + .jump_table_A]
     lea	eax, [rbx - 1]
     cmp	eax, 1
-    ja	.LBB5_8
-    lea	r14, [rip + .jump_table_A]
-    movsxd	rax, dword ptr [r14 + 4*rax]
-    add	rax, r14
-    jmp	rax
-.jump_table_target1:
+    ja  .LBB5_9
+    jbe .target1
+    jmp .target2
+.target1:
     mov	edi, ebx
     call	one
     test rbx, 1
     jnz .L_odd1
-    mov     r12, 34
+    mov     r12, 33
     jmp .L_end1
 .L_odd1:
-    mov     r12, 35
+    mov     r12, 34
 .L_end1:
     lea rax, dword ptr [r12-32]
     cmp al, 4
-    jbe .L_jump
+    jbe .L_jump1
     jmp .LBB5_9
-.L_jump:
+.L_jump1:
     sub r12, 32
+    lea	r10, [rip + .jump_table_B]
     movsxd  rax, dword ptr [r9 + 4*r12]
     add rax, r9
     jmp rax
     .p2align	4, 0x90
-.LBB5_8:
-    mov	edi, ebx
-    call	def
-    jmp	.LBB5_9
-    .p2align	4, 0x90
-.jump_table_target2:
+.target2:
     mov	edi, ebx
     call	two
+    lea	r10, [rip + .jump_table_B]
     test rbx, 1
     jnz .L_odd2
-    mov     r12, 2
+    mov     r12, 0
     jmp .L_end2
 .L_odd2:
-    mov     r12, 3
+    mov     r12, 1
 .L_end2:
     movsxd  rax, dword ptr [r9 + 4*r12]
     add rax, r9
@@ -186,20 +182,20 @@ fun:
     call	three
     test rbx, 1
     jnz .L_odd3
-    mov     r12, 10
+    mov     r12, 35
     jmp .L_end3
 .L_odd3:
-    mov     r12, 11
+    mov     r12, 36
 .L_end3:
+    sub r12, 32
     movsxd  rax, dword ptr [r10 + 4*r12]
-    lea r12, qword ptr [rip + .jump_table_target1]
+    lea r12, qword ptr [rip + .target1]
     add rax, r12
     jmp rax
     .p2align	4, 0x90
 .jump_table_target4:
     mov	edi, ebx
     call	four
-    lea	r10, [rip + .jump_table_C]
     jmp	.LBB5_9
     .p2align	4, 0x90
 .jump_table_target5:
@@ -210,14 +206,13 @@ fun:
 .jump_table_target6:
     mov	edi, ebx
     call	six
-    .p2align	4, 0x90
 .LBB5_9:
-    add	ebx, 1
-    cmp	r13d, ebx
-    jne	.LBB5_2
+    add ebx, 1
+    cmp r13d, ebx
+    jne .LBB5_2
 .LBB5_10:
     pop	rbx
-    pop	r14
+    pop	r13
     pop	r12
     pop	r10
     pop	r9
@@ -229,28 +224,16 @@ fun:
     .p2align	2
 
 // here we have tables of relative offsets (symbol minus symbol)
-// padded with zeros
 .jump_table_A:
-    .long	.jump_table_target1-.jump_table_A
-    .long	.jump_table_target2-.jump_table_A
+    .long	.target1-.jump_table_A
+    .long	.jump_table_target3-.jump_table_A
+    .long	.jump_table_target4-.jump_table_A
 .jump_table_B:
-    .long	.jump_table_target1-.jump_table_B
-    .long	.jump_table_target2-.jump_table_B
-    .long	.jump_table_target3-.jump_table_B
-    .long	.jump_table_target4-.jump_table_B
-.jump_table_C:
     .long   0
     .long   0
-    .long   0
-    .long   0
-    .long   0
-    .long   0
-    .long	.jump_table_target1-.jump_table_target1
-    .long	.jump_table_target2-.jump_table_target1
-    .long	.jump_table_target3-.jump_table_target1
-    .long	.jump_table_target4-.jump_table_target1
-    .long	.jump_table_target5-.jump_table_target1
-    .long	.jump_table_target6-.jump_table_target1
+    .long	.jump_table_target3-.target1
+    .long	.jump_table_target5-.target1
+    .long	.jump_table_target6-.target1
 # -- End function
 
     .text
