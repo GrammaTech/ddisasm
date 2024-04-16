@@ -4,17 +4,19 @@
 // the jump associated with `jump_table_A`.
 //
 // To resolve `jump_table_B`, `jump_table_max` (along with `jump_table_target`)
-// needs to be generated for the entries of `jump_table_A` so that use-def
+// needs to be generated for the entries of `jump_table_A` so that def-use
 // relations between the `jump_table_B` load instruction and the associated
 // jump at the `jump_table_A` targets can be generated.
 //
 // Also, this example demonstrates jump table boundaries from comparisons of
 // registers correlated to the index register.
 //
-// Note that we have a heuristic of `relative_address_start` that checks on
-// two elements.
-// The tables consisting of three elements is to avoid the heuristic to come
-// into play.
+// Note that `relative_jump_table_entry_candidate`, along with
+// `jump_table_taret`, can be generated for the first element, which can give
+// us def-use relation enough to resolve `jump_table_B`.
+// To avoid such situation and demonstrate that `jump_table_max` is correctly
+// generated, in this example, an irrelevant jump-target is placed at the first
+// entry of `jump_table_A`.
 
     .text
     .intel_syntax noprefix
@@ -196,10 +198,10 @@ fun:
     call	three
     test rbx, 1
     jnz .L_odd3
-    mov     r12, 33
+    mov     r12, 32
     jmp .L_end3
 .L_odd3:
-    mov     r12, 34
+    mov     r12, 33
 .L_end3:
     sub r12, 32
     movsxd  rax, dword ptr [r10 + 4*r12]
@@ -242,7 +244,6 @@ fun:
     .long	.jump_table_target3-.jump_table_A
     .long	.jump_table_target4-.jump_table_A
 .jump_table_B:
-    .long	.jump_table_target3-.jump_table_B
     .long	.jump_table_target5-.jump_table_B
     .long	.jump_table_target6-.jump_table_B
 # -- End function

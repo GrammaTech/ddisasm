@@ -182,10 +182,10 @@ fun:
     call	three
     test rbx, 1
     jnz .L_odd3
-    mov     r12, 35
+    mov     r12, 34
     jmp .L_end3
 .L_odd3:
-    mov     r12, 36
+    mov     r12, 35
 .L_end3:
     sub r12, 32
     movsxd  rax, dword ptr [r10 + 4*r12]
@@ -231,7 +231,6 @@ fun:
 .jump_table_B:
     .long   0
     .long   0
-    .long	.jump_table_target3-.target1
     .long	.jump_table_target5-.target1
     .long	.jump_table_target6-.target1
 # -- End function
