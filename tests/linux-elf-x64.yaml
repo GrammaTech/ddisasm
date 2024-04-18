@@ -434,6 +434,12 @@ tests:
   - name: ex_weird_sections
     <<: *assembly
 
+  - name: ex_relative_jump_tables
+    <<: *assembly
+
+  - name: ex_relative_jump_tables2
+    <<: *assembly
+
   - name: ex_relative_switch
     <<: *assembly
 
@@ -524,6 +530,14 @@ tests:
       optimizations: [""]
 
   - name: ex_weird_sections
+    <<: *assembly
+    <<: *test-strip-default
+
+  - name: ex_relative_jump_tables
+    <<: *assembly
+    <<: *test-strip-default
+
+  - name: ex_relative_jump_tables2
     <<: *assembly
     <<: *test-strip-default
 

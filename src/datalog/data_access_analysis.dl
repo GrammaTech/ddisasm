@@ -327,9 +327,9 @@ data_access_pattern(Address,Size,Multiplier,From):-
 Data limits are the candidates for labeled data
 and the boundaries of data segments.
 */
-.decl data_limit(EA:address)
+.decl data_access_limit(EA:address)
 
-data_limit(EA):-
+data_access_limit(EA):-
     labeled_data_candidate(EA);
     data_segment(_,EA);
     data_segment(EA,_).
@@ -340,7 +340,7 @@ To avoid false positives here, only consider the case where
 the repeated value is 0, and the array is not singleton, and
 the array size is a multiple of the access size.
 */
-data_limit(EA):-
+data_access_limit(EA):-
     data_access_pattern_non_zero(EA_labeled,Size,Size,_),
     repeated_byte(EA0,0,Count),
     EA = EA0 + Count,
@@ -349,6 +349,16 @@ data_limit(EA):-
     Len = EA - EA_labeled,
     Len > Size * 2,
     Len % Size = 0.
+
+/**
+Labeled data boundaries
+*/
+.decl data_limit(EA:address)
+
+data_limit(EA):-
+    labeled_data_candidate(EA);
+    data_segment(_,EA);
+    data_segment(EA,_).
 
 /**
 The next data limit after 'EA' is at 'Next'.
@@ -371,7 +381,7 @@ The first data limit after the data access at address
 data_limit_after_access(Access,DataLimit):-
     data_access_pattern(Access,_,_,_),
     data_segment(Beg,End), Access >= Beg, Access < End,
-    DataLimit = min DataLimit : {data_limit(DataLimit), DataLimit > Access},
+    DataLimit = min DataLimit : {data_access_limit(DataLimit), DataLimit > Access},
     DataLimit <= End.
 
 /**
