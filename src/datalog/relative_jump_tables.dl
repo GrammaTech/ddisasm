@@ -445,6 +445,5 @@ relative_jump_table_entry(EA,TableStart,Size,Reference,Dest,Scale,Offset):-
     EA = LastEA + Size,
     !symbol(EA,_,_,_,_,_,_,_,_),
     data_segment(BegData,EndData), BegData <= TableStart, EA+Size <= EndData,
-    next_labeled_data_segment_boundary(TableStart, Next),
-    TableStart < EA, Next >= EA+Size,
+    next_data_limit(Prev, Next), Prev < EA, Next >= EA+Size,
     relative_jump_table_entry_target(EA,TableStart,Size,Reference,Dest,Scale).

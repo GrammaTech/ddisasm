@@ -1,4 +1,22 @@
-// this example contains a switch table where
+// This example contains cascaded jump-tables, `jump_table_A` and
+// `jump_table_B`.
+// The jump-table starting address of `jump_table_B` (`r10`) is loaded before
+// the jump associated with `jump_table_A`.
+//
+// To resolve `jump_table_B`, `jump_table_max` (along with `jump_table_target`)
+// needs to be generated for the entries of `jump_table_A` so that def-use
+// relations between the `jump_table_B` load instruction and the associated
+// jump at the `jump_table_A` targets can be generated.
+//
+// Also, this example demonstrates jump table boundaries from comparisons of
+// registers correlated to the index register.
+//
+// Note that `relative_jump_table_entry_candidate`, along with
+// `jump_table_taret`, can be generated for the first element, which can give
+// us def-use relation enough to resolve `jump_table_B`.
+// To avoid such situation and demonstrate that `jump_table_max` is correctly
+// generated, in this example, an irrelevant jump-target is placed at the first
+// entry of `jump_table_A`.
 
     .text
     .intel_syntax noprefix
@@ -125,47 +143,45 @@ fun:
     push	r9
     push	r10
     push	r12
-    push	r14
+    push	r13
     push	rbx
     mov rbp, rsp
     mov	r13d, esi
     mov	ebx, edi
     cmp	ebx, r13d
     jge	.LBB5_10
-    lea	r14, [rip + .jump_table_A]
-    mov [rbp-8], r14
-    mov r14, [rbp-8]
-    .p2align	4, 0x90
 .LBB5_2:
-    lea	r9, [rip + .jump_table_B]
+    lea	r9, [rip + .jump_table_A]
     lea	eax, [rbx - 1]
     cmp	eax, 1
-    ja	.LBB5_8
-    movsxd	rax, dword ptr [r14 + 4*rax]
-    add	rax, r14
-    jmp	rax
-.jump_table_target1:
+    ja  .LBB5_9
+    jbe .target1
+    jmp .target2
+.target1:
     mov	edi, ebx
     call	one
     test rbx, 1
     jnz .L_odd1
-    mov     r12, 2
+    mov     r12, 33
     jmp .L_end1
 .L_odd1:
-    mov     r12, 3
+    mov     r12, 34
 .L_end1:
+    lea rax, dword ptr [r12-32]
+    cmp al, 4
+    jbe .L_jump1
+    jmp .LBB5_9
+.L_jump1:
+    sub r12, 32
+    lea	r10, [rip + .jump_table_B]
     movsxd  rax, dword ptr [r9 + 4*r12]
     add rax, r9
     jmp rax
     .p2align	4, 0x90
-.LBB5_8:
-    mov	edi, ebx
-    call	def
-    jmp	.LBB5_9
-    .p2align	4, 0x90
-.jump_table_target2:
+.target2:
     mov	edi, ebx
     call	two
+    lea	r10, [rip + .jump_table_B]
     test rbx, 1
     jnz .L_odd2
     mov     r12, 0
@@ -182,11 +198,12 @@ fun:
     call	three
     test rbx, 1
     jnz .L_odd3
-    mov     r12, 4
+    mov     r12, 32
     jmp .L_end3
 .L_odd3:
-    mov     r12, 5
+    mov     r12, 33
 .L_end3:
+    sub r12, 32
     movsxd  rax, dword ptr [r10 + 4*r12]
     add rax, r10
     jmp rax
@@ -194,7 +211,6 @@ fun:
 .jump_table_target4:
     mov	edi, ebx
     call	four
-    lea	r10, [rip + .jump_table_C]
     jmp	.LBB5_9
     .p2align	4, 0x90
 .jump_table_target5:
@@ -205,14 +221,13 @@ fun:
 .jump_table_target6:
     mov	edi, ebx
     call	six
-    .p2align	4, 0x90
 .LBB5_9:
-    add	ebx, 1
-    cmp	r13d, ebx
-    jne	.LBB5_2
+    add ebx, 1
+    cmp r13d, ebx
+    jne .LBB5_2
 .LBB5_10:
     pop	rbx
-    pop	r14
+    pop	r13
     pop	r12
     pop	r10
     pop	r9
@@ -225,20 +240,12 @@ fun:
 
 // here we have tables of relative offsets (symbol minus symbol)
 .jump_table_A:
-    .long	.jump_table_target1-.jump_table_A
-    .long	.jump_table_target2-.jump_table_A
+    .long	.target1-.jump_table_A
+    .long	.jump_table_target3-.jump_table_A
+    .long	.jump_table_target4-.jump_table_A
 .jump_table_B:
-    .long	.jump_table_target1-.jump_table_B
-    .long	.jump_table_target2-.jump_table_B
-    .long	.jump_table_target3-.jump_table_B
-    .long	.jump_table_target4-.jump_table_B
-.jump_table_C:
-    .long	.jump_table_target1-.jump_table_C
-    .long	.jump_table_target2-.jump_table_C
-    .long	.jump_table_target3-.jump_table_C
-    .long	.jump_table_target4-.jump_table_C
-    .long	.jump_table_target5-.jump_table_C
-    .long	.jump_table_target6-.jump_table_C
+    .long	.jump_table_target5-.jump_table_B
+    .long	.jump_table_target6-.jump_table_B
 # -- End function
 
     .text
