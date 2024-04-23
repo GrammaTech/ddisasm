@@ -197,19 +197,35 @@ compare_and_jump_indirect_op_valid(EA_cmp,EA_jmp,EA,IndirectOp,Steps+1):-
     Steps < 3,
     may_fallthrough(Prev,EA),
     code(EA),
-    // No store at this address.
-    !arch.memory_access("STORE",EA,_,_,_,_,_,_,_),
-    !arch.store_immediate(EA,_,_,_,_,_,_,_),
-    !arch.memory_access_aggregated("STORE",EA,_,_,_,_,_),
+    (
+        // No store
+        !arch.memory_access("STORE",EA,_,_,_,_,_,_,_),
+        !arch.store_immediate(EA,_,_,_,_,_,_,_),
+        !arch.memory_access_aggregated("STORE",EA,_,_,_,_,_)
+        ;
+        // If there are memory-writes between cmp and jmp,
+        // they must be syntactically different from IndirectOp.
+        // NOTE: This is based on the assumption that as long as the memory
+        // operands are syntactically different, they do not alias.
+        // However, this is a possibly wrong assumption.
+        (
+            arch.memory_access("STORE",EA,_,_,_,_,_,_,_);
+            arch.store_immediate(EA,_,_,_,_,_,_,_);
+            arch.memory_access_aggregated("STORE",EA,_,_,_,_,_)
+        ),
+        instruction_get_op(EA,_,IndirectOp2),
+        IndirectOp2 != IndirectOp
+    ),
     // The registers used in the indirect operand aren't modified, either.
-    // Note: we only support the base register for now.
-    op_indirect_mapped(IndirectOp,"NONE",NullableRegBase,"NONE",_,_,_),
-    reg_nonnull(NullableRegBase,RegBase),
+    op_indirect_mapped(IndirectOp,"NONE",RegBase_nn,RegIndex_nn,_,_,_),
+    reg_nonnull(RegBase_nn,RegBase),
     !reg_def_use.def(EA,RegBase),
-    // We don't account for instructions that would implicitly write the stack
-    // or modify the stack pointer (push/pop), so don't allow stack registers.
-    !arch.stack_pointer(RegBase),
-    !arch.frame_pointer(RegBase).
+    (
+        RegIndex_nn = "NONE"
+        ;
+        reg_nonnull(RegIndex_nn,RegIndex),
+        !reg_def_use.def(EA,RegIndex)
+    ).
 
 // Ad-hoc rule for basic indirect comparison cases where the value is moved to
 // a register right after the jump (either at the branch target or the
