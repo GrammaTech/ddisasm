@@ -193,6 +193,7 @@ compare_and_jump_indirect_op_valid(EA_cmp,EA_jmp,EA,IndirectOp,Steps+1):-
     // Propagate forward (hopefully) towards the jump.
     // We don't support compare/jump pairs that require following complex CFG
     // edges.
+    EA <= EA_jmp,
     compare_and_jump_indirect_op_valid(EA_cmp,EA_jmp,Prev,IndirectOp,Steps),
     Steps < 3,
     may_fallthrough(Prev,EA),
