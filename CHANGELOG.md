@@ -23,6 +23,7 @@
 * Requires gtirb >=2.1.0
 * Track values of registers R8B - R15B on x86-64, which are in some cases needed for inferring jump table boundaries.
 * Infer jump table boundaries from comparisons of registers correlated to the index register.
+* Relax constraints for inferring jump table boundaries from comparisons of indirect operands
 * Fix bug where a relative jump table starting with consecutive zero offsets was truncated at the first non-zero value.
 
 # 1.8.0
