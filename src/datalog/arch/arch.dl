@@ -187,6 +187,15 @@ cmp_zero_operation(""):-
 
 .decl call_operation_op_index(Operation:symbol,operand_index:operand_index)
 
+
+/**
+Operations that require alignment.
+*/
+.decl operation_alignment_required(Operation:symbol)
+
+operation_alignment_required(""):-
+    false.
+
 // ===========================================================================
 // Address-targeted instruction properties
 // ===========================================================================

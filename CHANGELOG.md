@@ -25,6 +25,8 @@
 * Infer jump table boundaries from comparisons of registers correlated to the index register.
 * Relax constraints for inferring jump table boundaries from comparisons of indirect operands
 * Fix bug where a relative jump table starting with consecutive zero offsets was truncated at the first non-zero value.
+* Add alignment for instructions that require alignment (e.g., some SIMD
+  instructions)
 
 # 1.8.0
 

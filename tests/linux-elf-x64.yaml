@@ -512,6 +512,9 @@ tests:
     <<: *assembly
     binary: fun.so
 
+  - name: ex_aligned_data_in_code
+    <<: *assembly
+
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
   # ----------------------------------------------------------------------------
@@ -596,6 +599,10 @@ tests:
     <<: *assembly
     <<: *test-strip-default
     binary: fun.so
+
+  - name: ex_aligned_data_in_code
+    <<: *assembly
+    <<: *test-strip-default
 
   # ----------------------------------------------------------------------------
   # Relocatable ELF objects (.o).
