@@ -698,23 +698,12 @@ alignment(0,0):- false.
 
 // Data in code needs to be aligned sometimes: e.g., SIMD instructions
 // with alignment requirement.
-// For simplicity, the amount of alignment is determined based on the
-// given address here.
-// NOTE: This might introduce alignments larger than necessary.
-// TODO: Typically, such an operation is associated with a fixed size of
-//       alignment, which can be inferred by the operand size.
 alignment(DataEA, AlignInBits):-
     pc_relative_operand(EA,_,DataEA),
-    instruction_get_operation(EA,Operation),
-    arch.operation_alignment_required(Operation),
     data_in_code(Begin,End),
     DataEA >= Begin,
     DataEA < End,
-    (
-        DataEA % 32 = 0, AlignInBits = 32;
-        DataEA % 32 != 0, DataEA % 16 = 0, AlignInBits = 16;
-        DataEA % 32 != 0, DataEA % 16 != 0, DataEA % 8 = 0, AlignInBits = 8
-    ).
+    arch.alignment_required(EA,AlignInBits).
 
 //////////////////////////////////////////////////////////////////////////////////
 // Operations to abstract features of instructions

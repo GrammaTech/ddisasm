@@ -1,8 +1,6 @@
-CC="gcc"
-CFLAGS=
 
 all: ex_original.s
-	$(CC) ex_original.s $(CFLAGS) -o ex
+	gcc ex_original.s -o ex
 	@./ex > out.txt
 clean:
 	rm -f ex out.txt

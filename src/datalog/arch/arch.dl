@@ -188,14 +188,6 @@ cmp_zero_operation(""):-
 .decl call_operation_op_index(Operation:symbol,operand_index:operand_index)
 
 
-/**
-Operations that require alignment.
-*/
-.decl operation_alignment_required(Operation:symbol)
-
-operation_alignment_required(""):-
-    false.
-
 // ===========================================================================
 // Address-targeted instruction properties
 // ===========================================================================
@@ -552,6 +544,14 @@ invalid(), etc.
 
 instruction_at(Instruction,Instruction):-
     instruction(Instruction,_,_,_,_,_,_,_,_,_).
+
+/**
+Instruction at EA requires alignment on the referenced memory.
+*/
+.decl alignment_required(EA:address,AlignInBits:unsigned)
+
+alignment_required(0,0):-
+    false.
 
 /**
 The size of a register, in bytes.
