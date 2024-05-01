@@ -696,8 +696,8 @@ Information about alignment in bits for a given address
 
 alignment(0,0):- false.
 
-// Data in code needs to be aligned sometimes: e.g., SIMD instructions
-// with alignment requirement.
+// Data in code needs to be aligned when referenced by instruction that
+// requires aligned memory: e.g., some SIMD instructions
 alignment(DataEA, AlignInBits):-
     pc_relative_operand(EA,_,DataEA),
     data_in_code(Begin,End),

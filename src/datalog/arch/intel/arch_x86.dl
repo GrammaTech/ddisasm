@@ -298,7 +298,6 @@ operation_alignment_required("VMOVNTDQA").
 alignment_required(EA,AlignInBits):-
     instruction_get_operation(EA,Operation),
     operation_alignment_required(Operation),
-    instruction_get_op(EA,MemIndex,Op),
-    instruction_memory_access_size(EA,MemIndex,AlignInBits).
+    instruction_memory_access_size(EA,_,AlignInBits).
 
 }
