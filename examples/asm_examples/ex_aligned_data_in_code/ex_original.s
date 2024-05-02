@@ -11,8 +11,13 @@
 main:
     call print_message1
 
-    # Load data into XMM register using movdqa: `data128` needs to be aligned.
-    movdqa data128(%rip), %xmm0
+    # Load data into XMM register using movdqa: `data128.1` needs to be aligned.
+    movdqa data128.1(%rip), %xmm0
+
+    # A pair of instructions from an access to `data128.2`, which needs to
+    # be aligned.
+    lea data128.2(%rip), %rax
+    movdqa 0(%rax), %xmm1
 
     # Load data into YMM register using movdqa: `data256` needs to be aligned.
     vmovapd data256(%rip), %ymm0
@@ -44,7 +49,10 @@ print_message2:
     .zero 3
 
 .align 16
-data128:
+data128.1:
+    .byte 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+.align 16
+data128.2:
     .byte 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 .align 32
 data256:

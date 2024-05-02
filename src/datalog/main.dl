@@ -699,11 +699,14 @@ alignment(0,0):- false.
 // Data in code needs to be aligned when referenced by instruction that
 // requires aligned memory: e.g., some SIMD instructions
 alignment(DataEA, AlignInBits):-
-    pc_relative_operand(EA,_,DataEA),
+    arch.alignment_required(EA,AlignInBits),
+    (
+        pc_relative_operand(EA,_,DataEA);
+        composite_data_access(_,EA,DataEA,AlignInBits)
+    ),
     data_in_code(Begin,End),
     DataEA >= Begin,
-    DataEA < End,
-    arch.alignment_required(EA,AlignInBits).
+    DataEA < End.
 
 //////////////////////////////////////////////////////////////////////////////////
 // Operations to abstract features of instructions
