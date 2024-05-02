@@ -452,7 +452,7 @@ class AuxDataTests(unittest.TestCase):
 
             alignments = m.aux_data["alignment"].data.items()
             alignment_list = [alignment for uuid, alignment in alignments]
-            self.assertEqual(alignment_list.count(16), 2)
+            self.assertEqual(alignment_list.count(16), 3)
             self.assertEqual(alignment_list.count(32), 1)
             self.assertEqual(alignment_list.count(64), 2)
 
