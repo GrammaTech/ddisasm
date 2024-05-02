@@ -452,8 +452,12 @@ class AuxDataTests(unittest.TestCase):
 
             alignments = m.aux_data["alignment"].data.items()
             alignment_list = [alignment for uuid, alignment in alignments]
+
+            # alignment=16: `data128.1`, `data128.2`, and `main`
             self.assertEqual(alignment_list.count(16), 3)
+            # alignment=32: `data256`
             self.assertEqual(alignment_list.count(32), 1)
+            # alignment=64: `data512` and `_start`
             self.assertEqual(alignment_list.count(64), 2)
 
 
