@@ -141,13 +141,13 @@ data_access_size("LEA",as(DestReg,register),0):-
 // ADD reg, imm
 reg_arithmetic_operation(EA,Reg,Reg,1,Immediate):-
     instruction(EA,_,_,"ADD",Op1,Op2,0,0,_,_),
-    op_immediate(Op1,Immediate),
+    op_immediate(Op1,Immediate,_),
     op_regdirect_contains_reg(Op2,Reg).
 
 // SUB reg, imm
 reg_arithmetic_operation(EA,Reg,Reg,1,-Immediate):-
     instruction(EA,_,_,"SUB",Op1,Op2,0,0,_,_),
-    op_immediate(Op1,Immediate),
+    op_immediate(Op1,Immediate,_),
     op_regdirect_contains_reg(Op2,Reg).
 
 // INC reg
@@ -163,19 +163,19 @@ reg_arithmetic_operation(EA,Reg,Reg,1,-1):-
 //shl reg immediate
 reg_arithmetic_operation(EA,Reg,Reg,2^Shift,0):-
     instruction(EA,_,_,"SHL",Op1,Op2,0,0,_,_),
-    op_immediate(Op1,Shift),
+    op_immediate(Op1,Shift,_),
     op_regdirect_contains_reg(Op2,Reg).
 
 //mul reg immediate
 reg_arithmetic_operation(EA,Reg,Reg,Mult,0):-
     instruction(EA,_,_,"IMUL",Op1,Op2,0,0,_,_),
-    op_immediate(Op1,Mult),
+    op_immediate(Op1,Mult,_),
     op_regdirect_contains_reg(Op2,Reg).
 
 //mul reg reg immediate
 reg_arithmetic_operation(EA,Dst,Src,Mult,0):-
     instruction(EA,_,_,"IMUL",Op1,Op2,Op3,0,_,_),
-    op_immediate(Op2,Mult),
+    op_immediate(Op2,Mult,_),
     op_regdirect_contains_reg(Op3,Dst),
     op_regdirect_contains_reg(Op1,Src).
 
@@ -192,6 +192,27 @@ reg_arithmetic_operation(EA,Reg,Reg_origin_nn,1,Offset):-
     op_indirect_mapped(Op1,_,Reg_origin,"NONE",1,Offset,_),
     reg_nonnull(Reg_origin,Reg_origin_nn),
     op_regdirect_contains_reg(Op2,Reg).
+
+// push and pop modify the stack pointer
+reg_arithmetic_operation(EA,StackReg,StackReg,1,Offset):-
+    arch.stack_pointer(StackReg),
+    instruction(EA,_,_,OpCode,Op,0,0,0,_,_),
+    (
+        OpCode = "PUSH",
+        Sign = -1
+        ;
+        OpCode = "POP",
+        Sign = 1
+    ),
+    (
+        op_regdirect(Op,Reg),
+        arch.register_size_bytes(Reg,SizeBytes)
+        ;
+        op_indirect(Op,_,_,_,_,_,SizeBytes)
+        ;
+        op_immediate(Op,_,SizeBytes)
+    ),
+    Offset = Sign * as(SizeBytes,number).
 
 reg_reg_arithmetic_operation(EA,Reg2,Reg2,Reg1,-1,0):-
     instruction(EA,_,_,"SUB",Op1,Op2,0,0,_,_),
@@ -211,7 +232,7 @@ reg_reg_arithmetic_operation(EA,Reg_def,Reg1_nn,Reg2_nn,Mult,Offset):-
     reg_nonnull(Reg1,Reg1_nn),
     reg_nonnull(Reg2,Reg2_nn).
 
-extend_reg(EA,SrcMapped,Signed,SrcBits):-
+extend_reg(EA,SrcMapped,Signed,8*SrcBytes):-
     instruction(EA,_,_,Operation,Op1,_,0,0,_,_),
     (
         Operation = "MOVZX", Signed = 0;
@@ -220,7 +241,7 @@ extend_reg(EA,SrcMapped,Signed,SrcBits):-
     ),
     move_operation(Operation),
     op_regdirect(Op1,Src),
-    register_size_bits(Src,SrcBits),
+    register_size_bytes(Src,SrcBytes),
     reg_map(Src,SrcMapped).
 
 extend_load(EA,Signed,8*SizeAccess):-
@@ -232,5 +253,24 @@ extend_load(EA,Signed,8*SizeAccess):-
         Operation = "MOVSXD", Signed = 1
     ),
     instruction_memory_access_size(EA,SrcOpIndex,SizeAccess).
+
+pc_relative_addr(EA,Reg,Base):-
+    instruction_get_operation(EA,"LEA"),
+    instruction_get_dest_op(EA,_,DestOp),
+    op_regdirect_contains_reg(DestOp,Reg),
+    instruction_get_src_op(EA,SrcOpIndex,_),
+    pc_relative_operand(EA,SrcOpIndex,Base).
+
+reg_relative_load(EA,BaseRegNN,Offset,Size):-
+    load(EA,MemOp,_,_,BaseReg,"NONE",_,Offset),
+    reg_nonnull(BaseReg,BaseRegNN),
+    !pc_reg(BaseReg),
+    instruction_memory_access_size(EA,MemOp,Size).
+
+simple_data_load(EA,Data,Size):-
+    pc_relative_operand(EA,MemIndex,Data),
+    load(EA,MemIndex,_,_,_,_,_,_),
+    instruction_memory_access_size(EA,MemIndex,Size),
+    Size != 0.
 
 }

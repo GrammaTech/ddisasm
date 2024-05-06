@@ -123,13 +123,16 @@ std::optional<relations::Operand> X86Loader::build(const cs_x86_op& CsOp)
         case X86_OP_REG:
             return registerName(CsOp.reg);
         case X86_OP_IMM:
-            return static_cast<int32_t>(CsOp.imm);
+        {
+            relations::ImmOp I = {CsOp.imm, CsOp.size};
+            return I;
+        }
         case X86_OP_MEM:
         {
             relations::IndirectOp I = {
                 registerName(CsOp.mem.segment),      registerName(CsOp.mem.base),
                 registerName(CsOp.mem.index),        CsOp.mem.scale,
-                static_cast<int32_t>(CsOp.mem.disp), static_cast<uint32_t>(CsOp.size) * 8};
+                static_cast<int32_t>(CsOp.mem.disp), CsOp.size};
             return I;
         }
         case X86_OP_INVALID:

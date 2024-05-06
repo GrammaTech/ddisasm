@@ -1,8 +1,61 @@
-# 1.6.1 (Unreleased)
+# 1.9.0 (Unreleased)
+
+* Stop generating debian metapackages and packages with the version attached
+  to the package name. Updates in the apt-repository now support multiple
+  package versions and upgrading `ddisasm` with `apt-get upgrade`.
+* Improve def-use and value-reg stack analysis to consider push and pop
+  instructions. These changes also fix a couple of bugs in the stack variable
+  propagation.
+* Update LIEF to 0.13.2
+* No longer consider `_x86.get_pc_thunk*` functions as ABI-intrinsic; this
+  means `_copy` is not appended to the original symbol, and a symbol forwarding
+  entry is not created.
+* Fix handling of BLR instruction in ARM64.
+* Fix size access of LDR instruction in ARM64.
+* Extend value_reg analysis to support memory loads using a register with
+  constant address.
+* Refactor the code inference point system. Decouple heuristics from their weights.
+  Heuristic weights can now be modified by providing user hints.
+* Generate GOT, PAGE and GOT, OFST symbolic expression attributes for split
+  .got loads on MIPS.
+* Correct symbol_minus_symbol in lsda entries with a reference to the end of `.gcc_except_table`: add `boundary_sym_expr` for such reference
+* Add `ElfSoname` aux-data for `SONAME` dynamic-section entry
+* Requires gtirb >=2.1.0
+* Track values of registers R8B - R15B on x86-64, which are in some cases needed for inferring jump table boundaries.
+* Infer jump table boundaries from comparisons of registers correlated to the index register.
+* Relax constraints for inferring jump table boundaries from comparisons of indirect operands
+* Fix bug where a relative jump table starting with consecutive zero offsets was truncated at the first non-zero value.
+
+# 1.8.0
+
+* Prefer LOCAL symbols over GLOBAL ones when selecting symbols for symbolic
+  expressions for ISAs other than MIPS.
+* Support GTIRB sections with holes (byte intervals only covering part of the section).
+* Use pre-existing code blocks as hints when disassembling a RAW binary.
+* Better data access computation for MIPS binaries.
+* Detect incremental linking regions in PE binaries.
+* Create elfStackSize and elfStackExec auxdata from ELF PT_GNU_STACK segments.
+* In PE binaries, every exported code symbol is considered a function entry.
+* Fixed bug where `elfSymbolTabIdxInfo` aux data could refer to non-existent UUIDs.
+* Fixed unrecognized `tls_get_addr` pattern that could result in missed
+  symbolic expressions.
+* Binaries with zero-sized `OBJECT` symbols no longer produce missing code
+  blocks.
+* `$t` symbols in ARM binaries now force creation of Thumb-mode code blocks.
+* In PE binaries, duplicate imports no longer create duplicate symbols.
+* Added pattern to match missed symbolic data in pointer arrays.
+* Fix symbols associated to functions (Auxdata functionNames) for PE binaries
+  when Ddisasm is run with option `-F`.
+* Requires gtirb >=2.0.0, gtirb-pprinter >=2.0.0
+
+# 1.7.0
 * Update code inference to use weighted interval scheduling to resolve blocks;
   this improves code inference results, especially on ARM.
 * ARM: Discover unreferenced code blocks occurring after literal pools.
+* Refactored CFG inference. It now infers more kinds of indirect calls and
+  and branches using value analysis, data accesses, and relocations.
 * ELF: Infer `SHARED` or `PIE` for `DYN` binary type
+* ELF: Generate `elfDynamicInit` and `elfDynamicFini` auxdata
 
 # 1.6.0
 * ARM: Improve code inference using unwind information from .ARM.exidx section

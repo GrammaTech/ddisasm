@@ -4,6 +4,8 @@ from disassemble_reassemble_check import compile, cd, disassemble
 from pathlib import Path
 import gtirb
 
+from snippets import parse_souffle_output
+
 ex_arm_asm_dir = Path("./examples/arm_asm_examples")
 
 
@@ -15,7 +17,7 @@ class ArmMiscTest(unittest.TestCase):
         """
         Test ARM32 invalid load instructions are not disassembled as code.
         """
-        binary = "ex"
+        binary = Path("ex")
         adder_dir = ex_arm_asm_dir / "ex_ldr"
         with cd(adder_dir):
             self.assertTrue(
@@ -29,8 +31,7 @@ class ArmMiscTest(unittest.TestCase):
             )
 
             # collect the invalid symbols
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
             invalid_syms = [
                 sym.name
@@ -41,17 +42,13 @@ class ArmMiscTest(unittest.TestCase):
             for sym in invalid_syms:
                 extra_strip_flags.append("--keep-symbol={}".format(sym))
 
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    strip_exe="arm-linux-gnueabihf-strip",
-                    strip=True,
-                    format="--ir",
-                    extra_strip_flags=extra_strip_flags,
-                )[0]
-            )
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(
+                binary,
+                Path("ex_stripped.gtirb"),
+                strip_exe="arm-linux-gnueabihf-strip",
+                strip=True,
+                extra_strip_flags=extra_strip_flags,
+            ).ir()
             m = ir_library.modules[0]
 
             main_first_block = None
@@ -78,7 +75,7 @@ class ArmMiscTest(unittest.TestCase):
         """
         Test that Thumb code is discovered at the start of a section
         """
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_arm_asm_dir / "ex_thumb_at_section_start"):
             self.assertTrue(
                 compile(
@@ -90,15 +87,11 @@ class ArmMiscTest(unittest.TestCase):
                 )
             )
 
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    format="--ir",
-                    strip_exe="arm-linux-gnueabihf-strip",
-                    strip=True,
-                )[0]
-            )
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(
+                binary,
+                strip_exe="arm-linux-gnueabihf-strip",
+                strip=True,
+            ).ir()
 
             m = ir_library.modules[0]
 
@@ -113,7 +106,7 @@ class ArmMiscTest(unittest.TestCase):
         Test that ldcl instructions, valid only on ARMv7 and earlier, decode
         correctly.
         """
-        binary = "ex"
+        binary = Path("ex")
         adder_dir = ex_arm_asm_dir / "ex_ldcl"
         with cd(adder_dir):
             self.assertTrue(
@@ -126,8 +119,7 @@ class ArmMiscTest(unittest.TestCase):
                 )
             )
 
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
 
             for sym in m.symbols:
@@ -159,7 +151,7 @@ class ArmMiscTest(unittest.TestCase):
         code that we did not detect.
         """
 
-        binary = "ex"
+        binary = Path("ex")
         dir = ex_arm_asm_dir / "ex_code_after_literal_pool"
         with cd(dir):
             self.assertTrue(
@@ -172,16 +164,12 @@ class ArmMiscTest(unittest.TestCase):
                 )
             )
 
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    format="--ir",
-                    strip_exe="arm-linux-gnueabihf-strip",
-                    strip=True,
-                )[0]
-            )
+            ir_library = disassemble(
+                binary,
+                strip_exe="arm-linux-gnueabihf-strip",
+                strip=True,
+            ).ir()
 
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             module = ir_library.modules[0]
 
             # ensure we have a block with the dead code:
@@ -199,6 +187,38 @@ class ArmMiscTest(unittest.TestCase):
                     break
             else:
                 self.fail("Expected block not found")
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_arm_known_block(self):
+        """
+        Ensure $a and $t symbols create known_block on ARM.
+        """
+        binary = Path("ex")
+        dir = ex_arm_asm_dir / "ex_bx_pc"
+        with cd(dir):
+            self.assertTrue(
+                compile(
+                    "arm-linux-gnueabihf-gcc",
+                    "arm-linux-gnueabihf-g++",
+                    "",
+                    [],
+                    "qemu-arm -L /usr/arm-linux-gnueabihf",
+                )
+            )
+
+            ir_library = disassemble(
+                binary,
+                extra_args=["--with-souffle-relations"],
+            ).ir()
+            module = ir_library.modules[0]
+
+            known_blocks = parse_souffle_output(module, "known_block")
+
+            reasons = set(kb[3] for kb in known_blocks)
+            self.assertIn("$a", reasons)
+            self.assertIn("$t", reasons)
 
 
 if __name__ == "__main__":

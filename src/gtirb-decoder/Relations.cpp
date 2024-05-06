@@ -56,6 +56,12 @@ namespace souffle
         return T;
     }
 
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::ByteInterval& ByteInterval)
+    {
+        T << ByteInterval.BegAddr << ByteInterval.EndAddr;
+        return T;
+    }
+
     souffle::tuple& operator<<(souffle::tuple& T, const relations::SectionProperty& Property)
     {
         T << Property.Name << Property.Property;
@@ -87,9 +93,15 @@ namespace souffle
         return T;
     }
 
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::ImmOp& Op)
+    {
+        T << Op.Value << static_cast<uint64_t>(Op.Size);
+        return T;
+    }
+
     souffle::tuple& operator<<(souffle::tuple& T, const relations::IndirectOp& Op)
     {
-        T << Op.Reg1 << Op.Reg2 << Op.Reg3 << Op.Mult << Op.Disp << Op.Size;
+        T << Op.Reg1 << Op.Reg2 << Op.Reg3 << Op.Mult << Op.Disp << static_cast<uint64_t>(Op.Size);
         return T;
     }
 
@@ -211,6 +223,12 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::ArchInfo& ArchInfo)
     {
         T << ArchInfo.Key << ArchInfo.Value;
+        return T;
+    }
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::RepeatedByte& RepeatedByte)
+    {
+        T << RepeatedByte.Addr << static_cast<uint64_t>(RepeatedByte.Byte) << RepeatedByte.Count;
         return T;
     }
 

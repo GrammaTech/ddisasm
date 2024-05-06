@@ -222,12 +222,12 @@ endif()
 # ---------------------------------------------------------------------------
 # gtirb
 # ---------------------------------------------------------------------------
-find_package(gtirb 1.10.5 REQUIRED)
+find_package(gtirb 2.1.0 REQUIRED)
 
 # ---------------------------------------------------------------------------
 # pretty-printer
 # ---------------------------------------------------------------------------
-find_package(gtirb_pprinter 1.8.1 REQUIRED)
+find_package(gtirb_pprinter 2.0.0 REQUIRED)
 
 # ---------------------------------------------------------------------------
 # libehp
@@ -353,7 +353,7 @@ endif()
 if(ENABLE_CONAN)
   set(LIEF_LIBRARIES CONAN_PKG::lief)
 else()
-  find_package(LIEF 0.13.0 REQUIRED COMPONENTS STATIC)
+  find_package(LIEF 0.13.2 REQUIRED COMPONENTS STATIC)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -421,6 +421,36 @@ if(DDISASM_ENABLE_TESTS)
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/")
 endif()
 
+# ---------------------------------------------------------------------------
+# Package policy enforcement
+# ---------------------------------------------------------------------------
+
+if(DDISASM_PACKAGE_POLICY)
+  set(PACKAGE_POLICY ${DDISASM_PACKAGE_POLICY})
+elseif(ENABLE_CONAN OR WIN32)
+  set(PACKAGE_POLICY conan)
+else()
+  set(PACKAGE_POLICY unix)
+endif()
+
+if(PACKAGE_POLICY STREQUAL "unix")
+
+  # Provides copyright file for Unix packages.
+  install(
+    FILES ${CMAKE_SOURCE_DIR}/LICENSE.txt
+    COMPONENT license
+    DESTINATION share/doc/ddisasm
+    RENAME copyright)
+
+elseif(PACKAGE_POLICY STREQUAL "conan")
+
+  # Provides LICENSE.txt for Conan packages
+  install(
+    FILES ${CMAKE_SOURCE_DIR}/LICENSE.txt
+    COMPONENT license
+    DESTINATION licenses)
+
+endif()
 # ---------------------------------------------------------------------------
 # Package generation with cpack
 # ---------------------------------------------------------------------------

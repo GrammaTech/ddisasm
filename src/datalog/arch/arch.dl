@@ -215,7 +215,7 @@ Dst may be an untracked register.
 move_reg_imm(EA,Dst,Value,1):-
     instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
     move_operation(Operation),
-    op_immediate(Op1,Value),
+    op_immediate(Op1,Value,_),
     op_regdirect_contains_reg(Op2,Dst).
 
 .decl move(EA:address)
@@ -271,7 +271,7 @@ AccesSize: The size of the entire consecutive memory that the given
 memory_access_aggregated("",0,"","",0,0,0):- false.
 
 /**
-Represents a load or store.
+Represents a load or store of a register.
 
 The address of the accessed memory is of the form:
 
@@ -315,6 +315,20 @@ See arch.memory_access().
 
 store(EA,SrcOp,DstOp,SrcReg,BaseReg,IndexReg,Mult,Offset):-
     memory_access("STORE",EA,SrcOp,DstOp,SrcReg,BaseReg,IndexReg,Mult,Offset).
+
+/**
+Represents the store of an immediate to memory.
+The address of the written memory is: BaseReg + IndexReg * Mult + Offset.
+The immediate stored to memory is Immediate.
+
+This is not instantiatied for all architectures but it is defined here
+to maintain a uniform interface. E.g. It is possible in x86 but
+not in ARM.
+*/
+.decl store_immediate(EA:address,SrcOp:operand_index,DstOp:operand_index,
+    Immediate:number,BaseReg:reg_nullable,IndexReg:reg_nullable,Mult:number,Offset:number)
+
+store_immediate(0,0,0,0,"NONE","NONE",0,0):- false.
 
 .decl delay_slot(BranchEA:address,EA:address)
 
@@ -421,6 +435,22 @@ instruction_op_access (Enable = 0).
 op_access_override(0,0,"",0):-
     false.
 
+/**
+Data is loaded from a register-relative address.
+*/
+.decl reg_relative_load(LoadEA:address,Reg:register,Offset:number,Size:unsigned)
+
+reg_relative_load(0,"",0,0):-
+    false.
+
+/**
+A single instruction reads data with a predetermined size and location
+*/
+.decl simple_data_load(EA:address,Data:address,Size:unsigned)
+
+simple_data_load(0,0,0):-
+    false.
+
 // ===========================================================================
 // Registers
 // ===========================================================================
@@ -515,9 +545,9 @@ instruction_at(Instruction,Instruction):-
     instruction(Instruction,_,_,_,_,_,_,_,_,_).
 
 /**
-The size of a register, in bits.
+The size of a register, in bytes.
 */
-.decl register_size_bits(Reg:input_reg,Size:unsigned)
+.decl register_size_bytes(Reg:input_reg,Size:unsigned)
 
 // ===========================================================================
 // Other architectural attributes

@@ -240,7 +240,9 @@ cfg_edge(Src,Dest,Conditional,"false","fallthrough"):-
     !no_return_call_propagated(EA),
     !nop_block(Src),
     code_in_refined_block(Dest,Dest),
-    next_refined_block_in_section(Src,Dest),
+    // Do not cross a section boundary
+    block_information(Src,_,_,End),
+    !loaded_section(_,End,_),
     // Assume no fallthrough edge from one plt block to another.
     !plt_block(Src,_),
     (
@@ -259,7 +261,12 @@ cfg_edge(Src,Dest,Conditional,"false","fallthrough"):-
 cfg_edge(Src,Dest,"false","false","fallthrough"):-
     cfg_edge(_,Src,_,_,_),
     nop_block(Src),
-    next_refined_block_in_section(Src,Dest).
+    refined_block_control_instruction(Src,EA),
+    may_fallthrough(EA,Dest),
+    code_in_refined_block(Dest,Dest),
+    // Do not cross a section boundary
+    block_information(Src,_,_,End),
+    !loaded_section(_,End,_).
 
 
 cfg_edge(Src,Dest,Conditional,Indirect,Type):-

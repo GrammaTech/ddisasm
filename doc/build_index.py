@@ -7,7 +7,8 @@ import subprocess
 
 DDISASM_ROOT = Path(__file__).resolve().parent.parent
 
-DL_DOCS = DDISASM_ROOT / "doc" / "src_docs"
+DL_DOCS = DDISASM_ROOT / "doc" / "source" / "DATALOG-API" / "src_docs"
+CSV_DOCS = DDISASM_ROOT / "doc" / "source" / "DATALOG-API" / "src_docs"
 
 
 ARCHITECTURES = [
@@ -28,7 +29,7 @@ def build_main_index() -> None:
         glob.glob(f"{DDISASM_ROOT}/src/datalog/**/*.dl", recursive=True)
     ):
         dl_file = dl_file[len(f"{DDISASM_ROOT}/src/datalog/") : -len(".dl")]
-        print(f"creating {dl_file} in /doc/src_docs/")
+        print(f"creating {dl_file} in /doc/sources/DATALOG-API/src_docs/")
         source_doc_page = (DL_DOCS / dl_file).with_suffix(".rst")
         if not source_doc_page.parent.exists():
             source_doc_page.parent.mkdir(parents=True, exist_ok=True)
@@ -61,7 +62,7 @@ def build_dependecy_graph() -> None:
             dependencies[edge.get_source().replace('"', "")].add(
                 edge.get_destination().replace('"', "")
             )
-    with open(DL_DOCS / "dependencies.csv", mode="w") as f:
+    with open(CSV_DOCS / "dependencies.csv", mode="w") as f:
         for src in sorted(dependencies):
             for dest in sorted(dependencies[src]):
                 print(src, dest, file=f)

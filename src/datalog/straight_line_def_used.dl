@@ -26,12 +26,34 @@ Basic def-used implementation for the code inference pass
 .init basic_reg_def_use = BasicRegDefUse
 
 /**
+On x86, we use this relation to limit from which defs we must propagate
+`straight_line_last_def`. This is a yields significant performance and memory
+improvements.
+
+On other architectures, we do not use this mechanism.
+*/
+.decl straight_line_def_needed(EA:address) inline
+
+straight_line_def_needed(EA):-
+    (
+        binary_isa("X86");
+        binary_isa("X64")
+    ),
+    arch.pc_relative_addr(EA,_,_).
+
+straight_line_def_needed(EA):-
+    !binary_isa("X86"),
+    !binary_isa("X64"),
+    UNUSED(EA).
+
+/**
 The last address where a register was defined within the block
 */
 .decl straight_line_last_def(EA:address,EA_def:address,Reg:register)
 
 straight_line_last_def(EA_next,EA,Reg):-
     basic_reg_def_use.def(EA,Reg),
+    straight_line_def_needed(EA),
     possible_ea(EA),
     must_fallthrough(EA,EA_next),
     possible_ea(EA_next).

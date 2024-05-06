@@ -77,6 +77,11 @@ void registerAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<SouffleOutputs>();
     gtirb::AuxDataContainer::registerAuxDataType<RawEntries>();
     gtirb::AuxDataContainer::registerAuxDataType<Overlay>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfDynamicInit>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfDynamicFini>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfStackSize>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfStackExec>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfSoname>();
 }
 
 void registerDatalogLoaders()

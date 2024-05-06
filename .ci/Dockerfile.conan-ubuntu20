@@ -14,7 +14,6 @@ FROM ubuntu:20.04
 # Use bash for more convenient variable substitution syntax
 SHELL ["/bin/bash", "-c"]
 
-RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 
 # Install APT packages
@@ -66,7 +65,7 @@ RUN python3 -m pip install --no-cache-dir --upgrade pip && \
     python3 -m pip install --no-cache-dir \
     pyyaml \
     psycopg2-binary \
-    lief==0.13.0
+    lief==0.13.2
 
 COPY --from=UASM /usr/local/bin/uasm /usr/local/bin/uasm
 COPY etc/sstrip /usr/bin/sstrip

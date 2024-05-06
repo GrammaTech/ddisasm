@@ -78,7 +78,16 @@ namespace relations
         };
     };
 
-    using ImmOp = int64_t;
+    struct ImmOp
+    {
+        int64_t Value;
+        uint8_t Size;
+        bool operator<(const ImmOp& Op) const noexcept
+        {
+            return std::tie(Value, Size) < std::tie(Op.Value, Op.Size);
+        };
+    };
+
     using RegOp = std::string;
     struct IndirectOp
     {
@@ -87,7 +96,7 @@ namespace relations
         std::string Reg3;
         int64_t Mult;
         int64_t Disp;
-        uint64_t Size;
+        uint8_t Size;
 
         constexpr bool operator<(const IndirectOp& Op) const noexcept
         {
@@ -150,6 +159,12 @@ namespace relations
         gtirb::Addr Addr;
         uint64_t Align;
         uint64_t Index;
+    };
+
+    struct ByteInterval
+    {
+        gtirb::Addr BegAddr;
+        gtirb::Addr EndAddr;
     };
 
     struct SectionProperty
@@ -277,6 +292,13 @@ namespace relations
         std::string Value;
     };
 
+    struct RepeatedByte
+    {
+        gtirb::Addr Addr;
+        uint8_t Byte;
+        uint64_t Count;
+    };
+
 } // namespace relations
 
 namespace souffle
@@ -291,6 +313,8 @@ namespace souffle
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Section& S);
 
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::ByteInterval& B);
+
     souffle::tuple& operator<<(souffle::tuple& T, const relations::SectionProperty& S);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::SectionType& S);
@@ -298,6 +322,8 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::Instruction& I);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::IndirectOp& I);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::ImmOp& I);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::SpecialOp& I);
 
@@ -353,6 +379,8 @@ namespace souffle
     souffle::tuple& operator<<(souffle::tuple& T, const relations::InstructionOpAccess& OpAccess);
 
     souffle::tuple& operator<<(souffle::tuple& T, const relations::ArchInfo& ArchInfo);
+
+    souffle::tuple& operator<<(souffle::tuple& T, const relations::RepeatedByte& RepeatedByte);
 
 } // namespace souffle
 

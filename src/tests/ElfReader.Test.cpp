@@ -63,8 +63,6 @@ TEST_P(ElfReaderTest, sections)
     for(const auto& Section : Module.sections())
     {
         const std::string& Name = Section.getName();
-        if(Name == ".note.GNU-stack")
-            continue;
         EXPECT_EQ(Names.count(Name), 1);
         EXPECT_EQ(Sizes[Name], Section.getSize());
         EXPECT_EQ(Addresses[Name], static_cast<uint64_t>(Section.getAddress().value()));

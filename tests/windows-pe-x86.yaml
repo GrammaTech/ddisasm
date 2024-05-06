@@ -14,13 +14,11 @@ default: &default
 
   # Disassembly configuration.
   disassemble:
-    flags: ["-F", "--generate-import-libs"]
+    flags: ["-F"]
 
   # Reassembly configuration.
   reassemble:
     compiler: "ml"
-    flags: ["/link", "/subsystem:console", "/entry:_EntryPoint"]
-    skip: false
 
   # Test configuration.
   test:
@@ -127,16 +125,18 @@ tests:
         cpp: ["cl"]
         optimizations: ["/Od"]
         flags: []
-      reassemble:
-        compiler: "ml"
-        flags: ["/link", "/DLL", "/ENTRY:_EntryPoint", "/SUBSYSTEM:console"]
-        skip: false
 
     - name: ex1
       <<: *default
       build:
         <<: *default-build
         flags: ["/link", "/merge:.rdata=.text"]
+
+    - name: ex1
+      <<: *default
+      build:
+        <<: *default-build
+        flags: ["/link", "/merge:.rdata=.text", "/incremental"]
 
     - name: ex_seh
       <<: *default

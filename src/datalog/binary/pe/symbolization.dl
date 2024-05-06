@@ -137,7 +137,7 @@ base_relative_operand(EA_def2,Op_index_access,RVA):-
 
 .decl base_relative_symbolic_operand(EA:address,Index:operand_index,Dest:address)
 
-symbol_minus_symbol(EA+Disp_offset,Size/8,ImageBase,ImageBase+Value,1,0),
+symbol_minus_symbol(EA+Disp_offset,Size,ImageBase,ImageBase+Value,1,0),
 base_relative_symbolic_operand(EA,Op_index,Value):-
     base_relative_operand(EA,Op_index,Value),
     !pc_relative_operand(EA,Op_index,_),
@@ -185,7 +185,7 @@ labeled_data_candidate(ImageBase+Dest):-
 
 .decl dos_header_symbolic_operand(EA:address,Dest:unsigned)
 
-symbolic_expr_from_relocation(EA+Disp_offset,Size/8,"__ImageBase",as(Dest-ImageBase,number),Dest),
+symbolic_expr_from_relocation(EA+Disp_offset,Size,"__ImageBase",as(Dest-ImageBase,number),Dest),
 dos_header_symbolic_operand(EA,Dest):-
     binary_format("PE"),
     base_address(ImageBase),
@@ -196,7 +196,7 @@ dos_header_symbolic_operand(EA,Dest):-
     Dest > ImageBase,
     Dest < ImageBase + 64.
 
-symbolic_expr_from_relocation(EA+Disp_offset,Size/8,"__ImageBase",as(Dest-ImageBase,number),Dest),
+symbolic_expr_from_relocation(EA+Disp_offset,Size,"__ImageBase",as(Dest-ImageBase,number),Dest),
 dos_header_symbolic_operand(EA+Disp_offset,Dest):-
     binary_format("PE"),
     base_address(ImageBase),
@@ -211,7 +211,7 @@ symbolic_expr_from_relocation(EA+Disp_offset,Size/8,"__ImageBase",as(Dest-ImageB
 dos_header_symbolic_operand(EA+Disp_offset,Dest):-
     binary_format("PE"),
     base_address(ImageBase),
-    op_immediate(Op,Offset),
+    op_immediate(Op,Offset,_),
     instruction_get_op(EA,Op_index,Op),
     instruction_immediate_offset(EA,Op_index,Disp_offset,_),
     Size = 8,

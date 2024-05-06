@@ -127,11 +127,18 @@ void PeReader::buildSymbols()
 {
     std::vector<gtirb::UUID> ImportedSymbols;
     std::vector<gtirb::UUID> ExportedSymbols;
+    // Some binaries can have duplicated import entries
+    // but we want to avoid creating duplicated symbols.
+    std::set<std::string> ImportedNames;
     for(auto &Entry : importEntries())
     {
         std::string &Function = std::get<2>(Entry);
-        gtirb::Symbol *Symbol = Module->addSymbol(*Context, Function);
-        ImportedSymbols.push_back(Symbol->getUUID());
+        if(!ImportedNames.count(Function))
+        {
+            gtirb::Symbol *Symbol = Module->addSymbol(*Context, Function);
+            ImportedSymbols.push_back(Symbol->getUUID());
+            ImportedNames.insert(Function);
+        }
     }
     for(auto &Entry : exportEntries())
     {

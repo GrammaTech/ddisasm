@@ -29,7 +29,7 @@
 #include "../AuxDataSchema.h"
 #include "../gtirb-decoder/Relations.h"
 
-using ImmOp = relations::ImmOp;
+using ImmOp = int64_t;
 using IndirectOp = relations::IndirectOp;
 
 souffle::tuple &operator>>(souffle::tuple &t, gtirb::Addr &ea)
@@ -58,61 +58,61 @@ struct DecodedInstruction
 };
 
 std::map<gtirb::Addr, DecodedInstruction> recoverInstructions(souffle::SouffleProgram &Program,
-                                                              std::set<gtirb::Addr> &code)
+                                                              std::set<gtirb::Addr> &Code)
 {
     std::map<uint64_t, ImmOp> Immediates;
-    for(auto &output : *Program.getRelation("op_immediate"))
+    for(auto &Output : *Program.getRelation("op_immediate"))
     {
-        uint64_t operandCode;
-        ImmOp immediate;
-        output >> operandCode >> immediate;
-        Immediates[operandCode] = immediate;
+        uint64_t OperandCode, Size;
+        ImmOp Immediate;
+        Output >> OperandCode >> Immediate >> Size;
+        Immediates[OperandCode] = Immediate;
     };
     std::map<uint64_t, IndirectOp> Indirects;
-    for(auto &output : *Program.getRelation("op_indirect"))
+    for(auto &Output : *Program.getRelation("op_indirect"))
     {
-        uint64_t operandCode, size;
-        IndirectOp indirect;
-        output >> operandCode >> indirect.Reg1 >> indirect.Reg2 >> indirect.Reg3 >> indirect.Mult
-            >> indirect.Disp >> size;
-        Indirects[operandCode] = indirect;
+        uint64_t OperandCode, Size;
+        IndirectOp Indirect;
+        Output >> OperandCode >> Indirect.Reg1 >> Indirect.Reg2 >> Indirect.Reg3 >> Indirect.Mult
+            >> Indirect.Disp >> Size;
+        Indirects[OperandCode] = Indirect;
     };
 
-    std::map<gtirb::Addr, DecodedInstruction> insns;
-    for(auto &output : *Program.getRelation("instruction"))
+    std::map<gtirb::Addr, DecodedInstruction> Insns;
+    for(auto &Output : *Program.getRelation("instruction"))
     {
         gtirb::Addr EA;
-        output >> EA;
+        Output >> EA;
 
         // Don't bother recovering instructions that aren't considered code.
-        if(code.count(EA) == 0)
+        if(Code.count(EA) == 0)
         {
             continue;
         }
 
-        DecodedInstruction insn;
-        uint64_t size;
-        std::string prefix, opcode;
-        output >> size >> prefix >> opcode;
+        DecodedInstruction Insn;
+        uint64_t Size;
+        std::string Prefix, Opcode;
+        Output >> Size >> Prefix >> Opcode;
 
         for(size_t i = 1; i <= 4; i++)
         {
-            uint64_t operandIndex;
-            output >> operandIndex;
-            auto foundImmediate = Immediates.find(operandIndex);
-            if(foundImmediate != Immediates.end())
-                insn.Operands[i] = foundImmediate->second;
+            uint64_t OperandIndex;
+            Output >> OperandIndex;
+            auto FoundImmediate = Immediates.find(OperandIndex);
+            if(FoundImmediate != Immediates.end())
+                Insn.Operands[i] = FoundImmediate->second;
             else
             {
-                auto foundIndirect = Indirects.find(operandIndex);
-                if(foundIndirect != Indirects.end())
-                    insn.Operands[i] = foundIndirect->second;
+                auto FoundIndirect = Indirects.find(OperandIndex);
+                if(FoundIndirect != Indirects.end())
+                    Insn.Operands[i] = FoundIndirect->second;
             }
         }
-        output >> insn.immediateOffset >> insn.displacementOffset;
-        insns[EA] = insn;
+        Output >> Insn.immediateOffset >> Insn.displacementOffset;
+        Insns[EA] = Insn;
     }
-    return insns;
+    return Insns;
 }
 
 struct CodeInBlock
@@ -304,6 +304,7 @@ void removeEntryPoint(gtirb::Module &Module)
 void removeSectionSymbols(gtirb::Context &Context, gtirb::Module &Module)
 {
     auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
+    auto *SymbolTabIdxInfo = Module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfo>();
     if(!SymbolInfo)
     {
         return;
@@ -323,6 +324,12 @@ void removeSectionSymbols(gtirb::Context &Context, gtirb::Module &Module)
         {
             Module.removeSymbol(Symbol);
             SymbolInfo->erase(Uuid);
+        }
+
+        // Remove auxdata that refer to the symbol.
+        if(SymbolTabIdxInfo)
+        {
+            SymbolTabIdxInfo->erase(Uuid);
         }
     }
 }
@@ -389,6 +396,12 @@ void buildInferredSymbols(gtirb::Context &Context, gtirb::Module &Module,
     {
         Module.removeSymbol(Symbol);
         SymbolInfo->erase(Symbol->getUUID());
+
+        // Remove auxdata that refer to the symbol.
+        if(SymbolTabIdxInfo)
+        {
+            SymbolTabIdxInfo->erase(Symbol->getUUID());
+        }
     }
 }
 
@@ -494,6 +507,7 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(
         {"TPOFF", gtirb::SymAttribute::TPOFF},
         {"DTPOFF", gtirb::SymAttribute::DTPOFF},
         {"NTPOFF", gtirb::SymAttribute::NTPOFF},
+        {"PAGE", gtirb::SymAttribute::PAGE},
         {"TLSGD", gtirb::SymAttribute::TLSGD},
         {"TLSLD", gtirb::SymAttribute::TLSLD},
         {"TLSLDM", gtirb::SymAttribute::TLSLDM},
@@ -506,6 +520,7 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(
         // MIPS
         {"HI", gtirb::SymAttribute::HI},
         {"LO", gtirb::SymAttribute::LO},
+        {"OFST", gtirb::SymAttribute::OFST},
         // X86
         {"INDNTPOFF", gtirb::SymAttribute::INDNTPOFF},
     };
@@ -1467,6 +1482,44 @@ void updateEntryPoint(gtirb::Module &module, souffle::SouffleProgram &Program)
     }
 }
 
+void buildDynamicAuxdata(gtirb::Module &Module)
+{
+    auto DynamicEntries = Module.getAuxData<gtirb::schema::DynamicEntries>();
+    if(DynamicEntries)
+    {
+        for(auto &[Key, Value] : *DynamicEntries)
+        {
+            if(Key == "INIT")
+            {
+                auto CB = Module.findCodeBlocksAt(gtirb::Addr(Value));
+                if(CB.empty())
+                {
+                    std::cerr << "WARNING: No code block created at DT_INIT\n";
+                }
+                else
+                {
+                    gtirb::UUID UUID = CB.begin()->getUUID();
+                    Module.addAuxData<gtirb::schema::ElfDynamicInit>(std::move(UUID));
+                }
+            }
+            else if(Key == "FINI")
+            {
+                auto CB = Module.findCodeBlocksAt(gtirb::Addr(Value));
+                if(CB.empty())
+                {
+                    std::cerr << "WARNING: No code block created at DT_FINI\n";
+                    continue;
+                }
+                else
+                {
+                    gtirb::UUID UUID = CB.begin()->getUUID();
+                    Module.addAuxData<gtirb::schema::ElfDynamicFini>(std::move(UUID));
+                }
+            }
+        }
+    }
+}
+
 void shiftThumbBlocks(gtirb::Module &Module)
 {
     // Find thumb code blocks.
@@ -1531,11 +1584,45 @@ void buildArchInfo(gtirb::Module &Module, souffle::SouffleProgram &Program)
     }
 }
 
+void removePreviousModuleContent(gtirb::Module &Module)
+{
+    for(auto &Bi : Module.byte_intervals())
+    {
+        std::vector<gtirb::CodeBlock *> CodeToRemove;
+        for(auto &Block : Bi.code_blocks())
+        {
+            CodeToRemove.push_back(&Block);
+        }
+        for(auto Block : CodeToRemove)
+        {
+            Bi.removeBlock(Block);
+        }
+        std::vector<gtirb::DataBlock *> DataToRemove;
+        for(auto &Block : Bi.data_blocks())
+        {
+            DataToRemove.push_back(&Block);
+        }
+        for(auto Block : DataToRemove)
+        {
+            Bi.removeBlock(Block);
+        }
+        std::vector<uint64_t> SymExprOffset;
+        for(auto SymExpr : Bi.symbolic_expressions())
+        {
+            SymExprOffset.push_back(SymExpr.getOffset());
+        }
+        for(auto Offset : SymExprOffset)
+        {
+            Bi.removeSymbolicExpression(Offset);
+        }
+    }
+}
 void disassembleModule(gtirb::Context &Context, gtirb::Module &Module,
                        souffle::SouffleProgram &Program, bool SelfDiagnose)
 {
     removeSectionSymbols(Context, Module);
     removeEntryPoint(Module);
+    removePreviousModuleContent(Module);
     buildInferredSymbols(Context, Module, Program);
     buildSymbolForwarding(Context, Module, Program);
     buildCodeBlocks(Context, Module, Program);
@@ -1551,6 +1638,7 @@ void disassembleModule(gtirb::Context &Context, gtirb::Module &Module,
     buildCFG(Context, Module, Program);
     buildPadding(Module, Program);
     buildComments(Module, Program, SelfDiagnose);
+    buildDynamicAuxdata(Module);
     updateEntryPoint(Module, Program);
     removeSymbolVersionsFromNames(Module);
     buildArchInfo(Module, Program);
@@ -1626,6 +1714,30 @@ void performSanityChecks(AnalysisPassResult &Result, souffle::SouffleProgram &Pr
                 << "\t$ printf 'disassembly.known_block\\t0x" << std::hex << BlockB << "\\t"
                 << BlockKindB << "\\t" << std::dec << SizeB << "\\thint\\n' >> hints.csv\n"
                 << "\t$ ddisasm --hints ./hints.csv [...]\n";
+        Result.Warnings.push_back(WarnMsg.str());
+    }
+
+    auto MissingWeight = Program.getRelation("missing_weight");
+    for(auto &Output : *MissingWeight)
+    {
+        std::stringstream ErrorMsg;
+        std::string Missing;
+        Output >> Missing;
+        ErrorMsg << "Missing Weight:" << Missing << std::endl;
+        Messages.push_back(ErrorMsg.str());
+    }
+
+    auto UnexpectedNegativeWeight = Program.getRelation("unexpected_negative_heuristic_weight");
+    for(auto &Output : *UnexpectedNegativeWeight)
+    {
+        std::stringstream WarnMsg;
+        std::string Heuristic;
+        int64_t Weight;
+        Output >> Heuristic >> Weight;
+        WarnMsg << Heuristic << " was assigned a negative weight " << Weight
+                << " but it is designed as a positive heuristic.\n"
+                << "Positive heuristics are only computed for unresolved blocks "
+                << "but will not cause blocks to become unresolved." << std::endl;
         Result.Warnings.push_back(WarnMsg.str());
     }
 }

@@ -3,7 +3,6 @@
 # ------------------------------------------------------------------------------
 FROM ubuntu:20.04 AS souffle
 
-RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 
 RUN apt-get -y update && \
@@ -35,7 +34,6 @@ RUN git clone -b 2.4 https://github.com/souffle-lang/souffle && \
 # ------------------------------------------------------------------------------
 FROM ubuntu:20.04 AS lief
 
-RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 
 RUN apt-get -y update && \
@@ -45,7 +43,7 @@ RUN apt-get -y update && \
       git \
       python3
 
-RUN git clone -b 0.13.0 --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF && \
+RUN git clone -b 0.13.2 --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF && \
     cmake -DLIEF_PYTHON_API=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF /usr/local/src/LIEF -B/usr/local/src/LIEF/build && \
     cmake --build /usr/local/src/LIEF/build -j4 --target install
 
@@ -54,7 +52,6 @@ RUN git clone -b 0.13.0 --depth 1 https://github.com/lief-project/LIEF.git /usr/
 # ------------------------------------------------------------------------------
 FROM ubuntu:20.04 AS libehp
 
-RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 
 RUN apt-get -y update && \
@@ -73,7 +70,6 @@ RUN git clone https://github.com/GrammaTech/libehp.git /usr/local/src/libehp && 
 # ------------------------------------------------------------------------------
 FROM ubuntu:14.04 as UASM
 
-RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 
 RUN apt-get update -y && \
@@ -96,7 +92,6 @@ FROM ubuntu:20.04
 # Use BASH for downstream projects that rely on it (e.g. ddisasm-exp).
 SHELL ["/bin/bash", "-c"]
 
-RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 
 # Install APT packages
@@ -111,6 +106,7 @@ RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 #
 RUN apt-get -y update && \
     apt-get -y install \
+        aptitude \
         autoconf \
         build-essential \
         ccache \
@@ -186,7 +182,7 @@ RUN python3 -m pip install --no-cache-dir --upgrade pip && \
     pre-commit \
     pydot \
     sphinx \
-    lief==0.13.0
+    lief==0.13.2
 
 # Setup pre-commit hooks.
 WORKDIR /ddisasm

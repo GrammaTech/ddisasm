@@ -304,32 +304,72 @@ void ElfReader::createGPforMIPS(
     SymbolTabIdxInfo[S->getUUID()] = Indexes;
 }
 
+// Extract STRTAB bytes
+LIEF::span<const uint8_t> ElfReader::getStrTabBytes()
+{
+    static LIEF::span<const uint8_t> StrTabBytes;
+
+    if(StrTabBytes.empty())
+    {
+        std::map<std::string, uint64_t> DynamicEntries = getDynamicEntries();
+
+        auto It = DynamicEntries.find("STRTAB");
+        if(It == DynamicEntries.end())
+        {
+            std::cerr << "\nWARNING: STRTAB not found.";
+        }
+        else
+        {
+            uint64_t StrTabAddr = It->second;
+            It = DynamicEntries.find("STRSZ");
+            if(It == DynamicEntries.end())
+            {
+                std::cerr << "\nWARNING: STRSZ not found.";
+            }
+            else
+            {
+                uint64_t StrTabSize = It->second;
+                StrTabBytes = Elf->get_content_from_virtual_address(StrTabAddr, StrTabSize);
+            }
+        }
+    }
+    return StrTabBytes;
+}
+
+// Extract a string at the given Index in STRTAB
+std::optional<std::string> ElfReader::getStringAt(uint32_t Index)
+{
+    LIEF::span<const uint8_t> StrTabBytes = getStrTabBytes();
+    size_t StrTabSize = StrTabBytes.size();
+
+    if(StrTabSize == 0)
+    {
+        std::cerr << "getStringAt: STRSZ == 0\n";
+        return std::nullopt;
+    }
+    if(static_cast<size_t>(Index) >= StrTabSize)
+    {
+        std::cerr << "getStringAt: Index " << Index
+                  << " is greater than the STRTAB size: " << StrTabSize << std::endl;
+        return std::nullopt;
+    }
+
+    std::stringstream SS;
+    auto It = StrTabBytes.begin() + Index;
+    while(It != StrTabBytes.end())
+    {
+        uint8_t V = *It++;
+        if(V == 0)
+            break;
+        SS << V;
+    }
+    return SS.str();
+};
+
 void ElfReader::resurrectSymbols()
 {
     // Get dynamic entries
     std::map<std::string, uint64_t> DynamicEntries = getDynamicEntries();
-
-    // Extract bytes from STRTAB -------------------------------------
-    LIEF::span<const uint8_t> StrTabBytes;
-    auto It = DynamicEntries.find("STRTAB");
-    if(It == DynamicEntries.end())
-    {
-        std::cerr << "\nWARNING: resurrectSymbols: STRTAB not found.";
-    }
-    else
-    {
-        uint64_t StrTabAddr = It->second;
-        It = DynamicEntries.find("STRSZ");
-        if(It == DynamicEntries.end())
-        {
-            std::cerr << "\nWARNING: resurrectSymbols: STRSZ not found.";
-        }
-        else
-        {
-            uint64_t StrTabSize = It->second;
-            StrTabBytes = Elf->get_content_from_virtual_address(StrTabAddr, StrTabSize);
-        }
-    }
 
     // Extract symbols -----------------------------------------------
     // NOTE: The following code is specific to MIPS32 because it makes use of
@@ -366,20 +406,6 @@ void ElfReader::resurrectSymbols()
         auto Bytes = Elf->get_content_from_virtual_address(Addr, Size);
         auto Iter = Bytes.begin();
 
-        // Extract a string at the given Index in STRTAB
-        auto getStringAt = [&StrTabBytes](uint32_t Index) {
-            std::stringstream SS;
-            auto It = StrTabBytes.begin() + Index;
-            while(It != StrTabBytes.end())
-            {
-                uint8_t V = *It++;
-                if(V == 0)
-                    break;
-                SS << V;
-            }
-            return SS.str();
-        };
-
         for(uint64_t I = 0; I < DynSymNum; ++I)
         {
             // NOTE:
@@ -394,9 +420,16 @@ void ElfReader::resurrectSymbols()
                 LIEF::Convert::swap_endian<LIEF::ELF::details::Elf32_Sym>(P);
             }
             LIEF::ELF::Symbol Symbol(*P);
-            std::string Name = getStringAt(S.st_name);
-            Symbol.name(Name);
-            Elf->add_dynamic_symbol(Symbol);
+            std::optional<std::string> Name = getStringAt(S.st_name);
+            if(Name)
+            {
+                Symbol.name(Name.value());
+                Elf->add_dynamic_symbol(Symbol);
+            }
+            else
+            {
+                std::cerr << "resurrectSymbols: No string found for " << S.st_name << std::endl;
+            }
         }
     }
     return;
@@ -600,7 +633,6 @@ void ElfReader::buildSections()
         relocateSections();
     }
 
-    bool GnuStackSectionExist = false;
     uint64_t Index = 0;
     for(auto &Section : Elf->sections())
     {
@@ -712,11 +744,6 @@ void ElfReader::buildSections()
         SectionProperties[S->getUUID()] = {static_cast<uint64_t>(Section.type()),
                                            static_cast<uint64_t>(Section.flags())};
 
-        if(Section.name() == ".note.GNU-stack")
-        {
-            GnuStackSectionExist = true;
-        }
-
         // In case of ARM32, inspect .ARM.attributes section to see
         // if the binary is Microcontroller.
         if(Module->getISA() == gtirb::ISA::ARM && Section.name() == ".ARM.attributes")
@@ -728,53 +755,6 @@ void ElfReader::buildSections()
             }
         }
         Index++;
-    }
-
-    // If .note.GNU-stack section does not exist and there is a segment
-    // type of PT_GNU_STACK, create an artificial section for it.
-    if(!GnuStackSectionExist)
-    {
-        auto GnuStackSegment = std::find_if(
-            Elf->segments().begin(), Elf->segments().end(),
-            [](auto &S) { return S.type() == LIEF::ELF::SEGMENT_TYPES::PT_GNU_STACK; });
-
-        if(GnuStackSegment != Elf->segments().end())
-        {
-            gtirb::Section *S = Module->addSection(*Context, ".note.GNU-stack");
-            S->addFlag(gtirb::SectionFlag::Loaded);
-            S->addFlag(gtirb::SectionFlag::Readable);
-            S->addFlag(gtirb::SectionFlag::Initialized);
-            uint64_t Addr = GnuStackSegment->virtual_address();
-            // If Addr is 0, create an address after TLS.
-            if(Addr == 0)
-            {
-                uint64_t TlsSize = 0;
-                std::optional<std::pair<uint64_t, uint64_t>> TlsAddr = getTls();
-                if(TlsAddr)
-                {
-                    TlsSize = TlsAddr->second - TlsAddr->first;
-                }
-                Addr = tlsBaseAddress() + TlsSize;
-                // Use the next available page.
-                Addr = (Addr & ~(0x1000 - 1)) + 0x1000;
-
-                SectionRelocations[S->getName()] = Addr;
-            }
-
-            uint64_t Size = GnuStackSegment->virtual_size();
-            auto Bytes = Elf->get_content_from_virtual_address(Addr, Size);
-            gtirb::ByteInterval *BI = S->addByteInterval(*Context, gtirb::Addr(Addr), Bytes.begin(),
-                                                         Bytes.end(), Size, Bytes.size());
-            auto DataBlock = gtirb::DataBlock::Create(*Context, Size);
-            BI->addBlock(0, DataBlock);
-
-            uint64_t Type = static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS);
-            uint64_t Flags = 0;
-
-            Alignment[S->getUUID()] = 0;
-            SectionIndex[Index++] = S->getUUID();
-            SectionProperties[S->getUUID()] = {Type, Flags};
-        }
     }
 
     // Add `overlay` aux data table.
@@ -1271,7 +1251,45 @@ void ElfReader::addAuxData()
     {
         DynamicEntryTuples.insert({it->first, it->second});
     }
-    Module->addAuxData<gtirb::provisional_schema::DynamicEntries>(std::move(DynamicEntryTuples));
+    Module->addAuxData<gtirb::schema::DynamicEntries>(std::move(DynamicEntryTuples));
+
+    // Add soname
+    auto SonameIt = DynamicEntries.find("SONAME");
+    if(SonameIt != DynamicEntries.end())
+    {
+        std::optional<std::string> Soname = getStringAt(SonameIt->second);
+        if(Soname)
+        {
+            Module->addAuxData<gtirb::schema::ElfSoname>(std::move(Soname.value()));
+        }
+        else
+        {
+            std::cerr << "\nWARNING: No string found for SONAME\n";
+        }
+    }
+
+    // Build segment auxdata
+    bool FoundStackSegment = false;
+    for(auto &Segment : Elf->segments())
+    {
+        switch(Segment.type())
+        {
+            case LIEF::ELF::SEGMENT_TYPES::PT_GNU_STACK:
+            {
+                if(FoundStackSegment)
+                {
+                    std::cerr << "\nWARNING: multiple PT_GNU_STACK segments\n";
+                    continue;
+                }
+                Module->addAuxData<gtirb::schema::ElfStackSize>(Segment.virtual_size());
+                Module->addAuxData<gtirb::schema::ElfStackExec>(
+                    Segment.has(LIEF::ELF::ELF_SEGMENT_FLAGS::PF_X));
+            }
+            default:
+                // all other segments types are currently ignored.
+                continue;
+        }
+    }
 }
 
 std::string ElfReader::getRelocationType(const LIEF::ELF::Relocation &Entry)

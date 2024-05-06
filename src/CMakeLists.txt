@@ -138,6 +138,7 @@ set(DATALOG_BASE_SOURCES
     datalog/binary/elf/elf_binaries.dl
     datalog/binary/elf/exceptions.dl
     datalog/binary/elf/relocations.dl
+    datalog/binary/elf/symbolization.dl
     datalog/binary/elf/tls.dl
     datalog/binary/pe/pe_binaries.dl
     datalog/binary/pe/exceptions.dl
@@ -147,6 +148,7 @@ set(DATALOG_BASE_SOURCES
     datalog/boundary_value_analysis.dl
     datalog/code_inference.dl
     datalog/code_inference_postprocess.dl
+    datalog/code_inference_weights.dl
     datalog/cfg.dl
     datalog/data.dl
     datalog/data_access_analysis.dl
@@ -308,6 +310,7 @@ if(DDISASM_ARM_32)
       datalog/arch/arm_binaries.dl
       datalog/arch/arm32_binaries.dl
       datalog/arch/arm32_code_inference.dl
+      datalog/arch/arm32_code_inference_weights.dl
       datalog/arch/arm32_jump_tables.dl
       datalog/arch/arm32_symbolization.dl)
 

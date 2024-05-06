@@ -21,12 +21,10 @@ class MovedLabelTests(unittest.TestCase):
         Test that labels are correctly moved.
         """
 
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_asm_dir / "ex_moved_label"):
             self.assertTrue(compile("gcc", "g++", "-Os", []))
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
 
             symbol_of_interest = next(m.symbols_named("point.1"))
@@ -54,12 +52,10 @@ class MovedLabelTests(unittest.TestCase):
         and boundary symbolic expressions.
         """
 
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_asm_dir / "ex_moved_label_imm"):
             self.assertTrue(compile("gcc", "g++", "-Os", []))
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
 
             # Code block symbol, sym expr index, data section, non-zero offset

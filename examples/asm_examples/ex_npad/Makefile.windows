@@ -2,7 +2,7 @@ all:
 	ml.exe ex.asm /link /opt:ref /entry:main /subsystem:console
 	@ ex > out.txt
 clean:
-	del /F /Q *.exe *.obj *.lib out.txt check.txt mllink$$.lnk
+	del /F /Q *.exe *.obj *.lib out.txt check.txt mllink$$.lnk *.def *.lib
 check:
 	@ ex > check.txt
 	@ FC out.txt check.txt && echo TEST OK

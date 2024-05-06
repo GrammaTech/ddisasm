@@ -15,8 +15,6 @@ default: &default
   # Reassembly configuration.
   reassemble:
     compiler: "ml64"
-    flags: ["/link", "/subsystem:console", "/entry:__EntryPoint"]
-    skip: false
 
   # Test configuration.
   test:
@@ -107,10 +105,6 @@ tests:
         cpp: ["cl"]
         optimizations: ["/Od"]
         flags: []
-      reassemble:
-        compiler: "ml64"
-        flags: ["/link", "/DLL", "/entry:__EntryPoint", "/subsystem:console"]
-        skip: false
 
     - name: ex_switch_in_code4
       <<: *assembly

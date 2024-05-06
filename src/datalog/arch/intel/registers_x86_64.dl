@@ -26,11 +26,22 @@ This module stablishes basic information about register:
  - Whether they all callee or caller saved according to the ABI
 
 */
-
 reg_map_rule("AL","RAX").
 reg_map_rule("BL","RBX").
 reg_map_rule("CL","RCX").
 reg_map_rule("DL","RDX").
+reg_map_rule("R8B","R8").
+reg_map_rule("R9B","R9").
+reg_map_rule("R10B","R10").
+reg_map_rule("R11B","R11").
+reg_map_rule("R12B","R12").
+reg_map_rule("R13B","R13").
+reg_map_rule("R14B","R14").
+reg_map_rule("R15B","R15").
+reg_map_rule("AX","RAX").
+reg_map_rule("BX","RBX").
+reg_map_rule("CX","RCX").
+reg_map_rule("DX","RDX").
 reg_map_rule("DI","RDI").
 reg_map_rule("SI","RSI").
 reg_map_rule("BP","RBP").
@@ -110,13 +121,13 @@ integer_reg_param("R8",5),
 integer_reg_param("R9",6):-
     binary_format("ELF").
 
-register_size_bits(Reg,8):-
+register_size_bytes(Reg,1):-
     Reg = "DIL";
     Reg = "SIL";
     Reg = "BPL";
     Reg = "SPL".
 
-register_size_bits(Reg,64):-
+register_size_bytes(Reg,8):-
     Reg = "RAX";
     Reg = "RBX";
     Reg = "RCX";
@@ -126,12 +137,12 @@ register_size_bits(Reg,64):-
     Reg = "RDI";
     Reg = "RSP".
 
-register_size_bits(Reg8,8),
-register_size_bits(Reg16,16),
-register_size_bits(Reg32,32),
-register_size_bits(Reg64,64):-
+register_size_bytes(Reg8,1),
+register_size_bytes(Reg16,2),
+register_size_bytes(Reg32,4),
+register_size_bytes(Reg64,8):-
     Index = range(8,16,1),
-    Reg8 = cat("R", to_string(Index), "L"),
+    Reg8 = cat("R", to_string(Index), "B"),
     Reg16 = cat("R", to_string(Index), "W"),
     Reg32 = cat("R", to_string(Index), "D"),
     Reg64 = cat("R", to_string(Index)).

@@ -110,6 +110,8 @@ block_needs_merging(Block):-
     !function_symbol(Block,_),
     !defined_symbol(Block,_,_,_,_,_,_,_,_),
     !entry_point(Block),
+    !dynamic_entry("INIT",Block),
+    !dynamic_entry("FINI",Block),
     !instruction_has_loop_prefix(Block),
     !fde_addresses(Block,_),
     !fde_addresses(_,Block),
@@ -155,16 +157,16 @@ block_information(Block,BlockSize,FirstEA,FirstEA+BlockSize):-
 /**
 Blocks are either contiguous or separated by data segments
 This assumes there are no remaining overlapping blocks.
-This is similar to next_block_in_section, but this uses the refined
+This is similar to next_block_in_byte_interval, but this uses the refined
 block information (i.e., block_information).
 */
-.decl next_refined_block_in_section(Block:address, NextBlock:address)
+.decl next_refined_block_in_byte_interval(Block:address, NextBlock:address)
 
-next_refined_block_in_section(Block,NextBlock):-
+next_refined_block_in_byte_interval(Block,NextBlock):-
     block_information(Block,_,_,End),
     block_information(NextBlock,_,End,_).
 
-next_refined_block_in_section(Block,NextBlock):-
+next_refined_block_in_byte_interval(Block,NextBlock):-
     block_information(Block,_,_,End),
     data_in_code(End,DataEnd),
     block_information(NextBlock,_,DataEnd,_).
@@ -192,10 +194,7 @@ padding(EA,Size):-
 .decl block_has_non_nop(Block:address)
 
 block_has_non_nop(Block):-
-    block_boundaries(Block,BegAddr,EndAddr),
     code_in_refined_block(EA,Block),
-    EA >= BegAddr,
-    EA < EndAddr,
     !arch.is_nop(EA).
 
 .decl nop_block(Block:address)

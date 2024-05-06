@@ -99,14 +99,28 @@ symbol_type_score(Type,1):-
 
 /**
 Auxiliary predicate to define `symbol_score`
-Prefer symbols with GLOBAL scope.
 */
 .decl symbol_scope_score(Scope:symbol,Score:unsigned)
 
-symbol_scope_score("GLOBAL",1).
+/**
+Prefer symbols with LOCAL scope for non-MIPS.
+*/
+symbol_scope_score("LOCAL",2):-
+    !binary_isa("MIPS").
+symbol_scope_score("GLOBAL",1):-
+    !binary_isa("MIPS").
+
+/**
+Prefer symbols with GLOBAL scope for MIPS.
+*/
+symbol_scope_score("LOCAL",1):-
+    binary_isa("MIPS").
+symbol_scope_score("GLOBAL",2):-
+    binary_isa("MIPS").
 
 symbol_scope_score(Scope,0):-
     symbol(_,_,_,Scope,_,_,_,_,_),
+    Scope != "LOCAL",
     Scope != "GLOBAL".
 
 /**
@@ -151,8 +165,8 @@ symbol_score(EA,SymbolName,Type,Pos,Score):-
         DynSymScore = 0
     ),
     // Encode lexicographic ordering into a single score.
-    Score = (RelocScore bshl 36)
-            bor (TypeScore bshl 35)
+    Score = (RelocScore bshl 37)
+            bor (TypeScore bshl 36)
             bor (ScopeScore bshl 34)
             bor (VisibilityScore bshl 33)
             bor (DynSymScore bshl 32)
@@ -189,13 +203,26 @@ elf_avoid_symbols("__TMC_END__").
 // and no pre-existing function symbols.
 
 best_func_symbol(EA,SymbolName):-
-   symbol_score(EA,SymbolName,"FUNC","Beg",Score),
-   Score = max S: {symbol_score(EA,_,"FUNC","Beg",S)}.
+    binary_format("ELF"),
+    symbol_score(EA,SymbolName,"FUNC","Beg",Score),
+    Score = max S: {symbol_score(EA,_,"FUNC","Beg",S)}.
+
+// For non-ELF (e.g. PE), symbols might not have a type
+best_func_symbol(EA,SymbolName):-
+    !binary_format("ELF"),
+    symbol_score(EA,SymbolName,_,"Beg",Score),
+    Score = max S: {symbol_score(EA,_,_,"Beg",S)}.
 
 inferred_symbol(EA,SymbolName,Scope,"DEFAULT","FUNC","Beg"),
 best_func_symbol(EA,SymbolName):-
     function_inference.function_entry(EA),
-    !symbol_score(EA,_,"FUNC","Beg",_),
+    (
+        binary_format("ELF"),
+        !symbol_score(EA,_,"FUNC","Beg",_)
+        ;
+        !binary_format("ELF"),
+        !symbol_score(EA,_,_,"Beg",_)
+    ),
     SymbolName = cat("FUN_",@to_string_hex(EA)),
     (
         binary_isa("MIPS"), Scope = "GLOBAL";

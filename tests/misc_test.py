@@ -1,12 +1,13 @@
 import os
 import platform
 import unittest
+import re
 import subprocess
 from disassemble_reassemble_check import (
+    binary_print,
     compile,
     cd,
     disassemble,
-    reassemble,
     test,
     make,
 )
@@ -14,9 +15,9 @@ from pathlib import Path
 from typing import Optional, Tuple
 from gtirb.cfg import EdgeType
 import gtirb
+import lief
 
-if platform.system() == "Linux":
-    import lief
+from tests.snippets import parse_souffle_output
 
 ex_dir = Path("./examples/")
 ex_asm_dir = ex_dir / "asm_examples"
@@ -33,20 +34,18 @@ class LibrarySymbolsTests(unittest.TestCase):
         do not point to proxy blocks.
         """
 
-        library = "ex.so"
+        library = Path("ex.so")
         with cd(ex_dir / "ex_lib_symbols"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(disassemble(library, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(library + ".gtirb")
+            ir_library = disassemble(library).ir()
             m = ir_library.modules[0]
 
             # foo is a symbol pointing to a code block
-            foo = [s for s in m.symbols if s.name == "foo"][0]
+            foo = next(m.symbols_named("foo"))
             assert isinstance(foo.referent, gtirb.CodeBlock)
 
             # bar calls through the plt
-            bar = [s for s in m.symbols if s.name == "bar"][0]
+            bar = next(m.symbols_named("bar"))
             bar_block = bar.referent
             callee = [
                 e.target
@@ -70,23 +69,13 @@ class IFuncSymbolsTests(unittest.TestCase):
         chosen over global symbols.
         """
 
-        binary = "ex.so"
+        binary = Path("ex.so")
         with cd(ex_asm_dir / "ex_ifunc"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(disassemble(binary, format="--asm")[0])
-            self.assertTrue(
-                reassemble(
-                    "gcc",
-                    binary,
-                    extra_flags=[
-                        "-shared",
-                        "-Wl,--version-script=ex.map",
-                        "-nostartfiles",
-                    ],
-                )
-            )
+            result = disassemble(binary)
+            binary_print(result.ir_path, binary)
 
-            binlief = lief.parse(binary)
+            binlief = lief.parse(str(binary))
             for relocation in binlief.relocations:
                 # The rewritten binary should not contain any JUMP_SLOT
                 # relocation: the relocation for strcmp should be
@@ -102,12 +91,12 @@ class OverlappingInstructionTests(unittest.TestCase):
         """
         Subtest body for test_lock_cmpxchg
         """
-        binary = "ex"
+        binary = Path("ex")
         self.assertTrue(compile("gcc", "g++", "-O0", []))
-        gtirb_file = "ex.gtirb"
-        self.assertTrue(disassemble(binary, gtirb_file, format="--ir")[0])
+        ir_path = Path("ex.gtirb")
+        disassemble(binary, ir_path)
 
-        ir_library = gtirb.IR.load_protobuf(gtirb_file)
+        ir_library = gtirb.IR.load_protobuf(ir_path)
         m = ir_library.modules[0]
 
         main_sym = next(m.symbols_named("main"))
@@ -155,6 +144,7 @@ class OverlappingInstructionTests(unittest.TestCase):
         examples = (
             "ex_overlapping_instruction",
             "ex_overlapping_instruction_2",
+            "ex_overlapping_instruction_3",
         )
 
         for example in examples:
@@ -171,12 +161,10 @@ class AuxDataTests(unittest.TestCase):
         Test that cfi directives are correctly generated.
         """
 
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_asm_dir / "ex_cfi_directives"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
             cfi = m.aux_data["cfiDirectives"].data
             # we simplify directives to make queries easier
@@ -203,12 +191,10 @@ class AuxDataTests(unittest.TestCase):
         """
         Test that binary types for DYN SHARED are correctly generated.
         """
-        binary = "fun.so"
+        binary = Path("fun.so")
         with cd(ex_dir / "ex_dyn_library"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
             dyn = m.aux_data["binaryType"].data
 
@@ -223,12 +209,10 @@ class AuxDataTests(unittest.TestCase):
         """
         Test that binary types for DYN PIE are correctly generated.
         """
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_asm_dir / "ex_plt_nop"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
             dyn = m.aux_data["binaryType"].data
 
@@ -243,12 +227,10 @@ class AuxDataTests(unittest.TestCase):
         """
         Test that binary types for non-DYN are correctly generated.
         """
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_asm_dir / "ex_moved_label"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
             dyn = m.aux_data["binaryType"].data
 
@@ -264,7 +246,7 @@ class AuxDataTests(unittest.TestCase):
         """
         Test that misaligned_fde_start is correctly generated.
         """
-        binary = "ex"
+        binary = Path("ex")
         modes = [
             False,  # no strip
             True,  # strip
@@ -274,16 +256,10 @@ class AuxDataTests(unittest.TestCase):
             with self.subTest(mode=mode):
                 with cd(ex_asm_dir / "ex_misaligned_fde"):
                     self.assertTrue(compile("gcc", "g++", "-O0", []))
-                    self.assertTrue(
-                        disassemble(binary, format="--ir", strip=mode)[0]
-                    )
-
-                    ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+                    ir_library = disassemble(binary, strip=mode).ir()
                     m = ir_library.modules[0]
 
-                    main_sym = next(
-                        sym for sym in m.symbols if sym.name == "main"
-                    )
+                    main_sym = next(m.symbols_named("main"))
                     main_block = main_sym.referent
                     outedges = [
                         edge
@@ -318,21 +294,17 @@ class AuxDataTests(unittest.TestCase):
             # disassemble
             if not os.path.exists("dbg"):
                 os.mkdir("dbg")
-            self.assertTrue(
-                disassemble(
-                    "ex",
-                    format="--ir",
-                    extra_args=[
-                        "-F",
-                        "--with-souffle-relations",
-                        "--debug-dir",
-                        "dbg",
-                    ],
-                )[0]
-            )
+            ir = disassemble(
+                Path("ex"),
+                extra_args=[
+                    "-F",
+                    "--with-souffle-relations",
+                    "--debug-dir",
+                    "dbg",
+                ],
+            ).ir()
 
             # load the gtirb
-            ir = gtirb.IR.load_protobuf("ex.gtirb")
             m = ir.modules[0]
 
             # dump relations to directory
@@ -353,30 +325,136 @@ class AuxDataTests(unittest.TestCase):
             # compare the relations directories
             subprocess.check_call(["diff", "dbg", "aux"])
 
+    def assert_regex_match(self, text, pattern):
+        """
+        Like unittest's assertRegex, but also return the match object on
+        success.
+
+        assertRegex provides a nice output on failure, but doesn't return the
+        match object, so we assert, and then search.
+        """
+        compiled = re.compile(pattern)
+        self.assertRegex(text, compiled)
+        return re.search(compiled, text)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_dynamic_init_fini(self):
+        """
+        Test generating auxdata from DT_INIT and DT_FINI dynamic entries
+        """
+        binary = Path("ex")
+        with cd(ex_dir / "ex_dynamic_initfini"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+
+            # Ensure INIT / FINI are present (so that this breaks if compiler
+            # behavior changes in the future)
+            readelf = subprocess.run(
+                ["readelf", "--dynamic", binary],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            template = r"0x[0-9a-f]+\s+\({}\)\s+(0x[0-9a-f]+)"
+            init_match = self.assert_regex_match(
+                readelf.stdout, template.format("INIT")
+            )
+            fini_match = self.assert_regex_match(
+                readelf.stdout, template.format("FINI")
+            )
+
+            ir = disassemble(binary).ir()
+            m = ir.modules[0]
+            init = m.aux_data["elfDynamicInit"].data
+            fini = m.aux_data["elfDynamicFini"].data
+
+            self.assertIsInstance(init, gtirb.CodeBlock)
+            self.assertIsInstance(fini, gtirb.CodeBlock)
+
+            self.assertEqual(int(init_match.group(1), 16), init.address)
+            self.assertEqual(int(fini_match.group(1), 16), fini.address)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_stack_size(self):
+        """
+        Test that a PT_GNU_STACK segment with size populates elfStackSize
+        """
+        binary = Path("ex")
+        with cd(ex_dir / "ex1"):
+            stack_size = 0x200000
+            self.assertTrue(
+                compile(
+                    "gcc", "g++", "-O0", [f"-Wl,-z,stack-size={stack_size}"]
+                )
+            )
+            ir = disassemble(binary).ir()
+            m = ir.modules[0]
+
+            self.assertEqual(m.aux_data["elfStackSize"].data, stack_size)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_stack_exec(self):
+        """
+        Test that a PT_GNU_STACK segment populates correct executable flags
+        """
+        cases = (
+            ("execstack", True),
+            ("noexecstack", False),
+        )
+
+        for ld_keyword, is_exec in cases:
+            binary = Path("ex")
+            with self.subTest(keyword=ld_keyword), cd(ex_dir / "ex1"):
+                self.assertTrue(
+                    compile("gcc", "g++", "-O0", [f"-Wl,-z,{ld_keyword}"])
+                )
+                ir = disassemble(binary).ir()
+                m = ir.modules[0]
+
+                # verify executable bit
+                self.assertEqual(m.aux_data["elfStackExec"].data, is_exec)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_soname(self):
+        """
+        Test SONAME dynamic-section entry
+        """
+        binary = "ex.so"
+        with cd(ex_asm_dir / "ex_ifunc"):
+            self.assertTrue(
+                compile("gcc", "g++", "-O0", [f"-Wl,-soname={binary}"])
+            )
+            ir = disassemble(Path(binary)).ir()
+            m = ir.modules[0]
+
+            self.assertEqual(m.aux_data["elfSoname"].data, binary)
+
 
 class RawGtirbTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
     def test_read_gtirb(self):
-
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_dir / "ex1"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
 
             # Output GTIRB file without disassembling.
-            self.assertTrue(
-                disassemble(
-                    binary, format="--ir", extra_args=["--no-analysis"]
-                )[0]
-            )
+            ir_path = "ex.gtirb"
+            ir_path_analyzed = "ex_analyzed.gtirb"
+            disassemble(binary, extra_args=["--no-analysis"], output=ir_path)
 
             # Disassemble GTIRB input file.
-            self.assertTrue(disassemble("ex.gtirb", format="--asm")[0])
+            disassemble(ir_path, output=ir_path_analyzed)
 
-            self.assertTrue(
-                reassemble("gcc", "ex.gtirb", extra_flags=["-nostartfiles"])
-            )
+            binary_print(ir_path_analyzed, binary)
             self.assertTrue(test())
 
 
@@ -396,10 +474,7 @@ class DataDirectoryTests(unittest.TestCase):
             self.assertEqual(proc.returncode, 0)
 
             # Disassemble to GTIRB file.
-            self.assertTrue(disassemble("ex.exe", format="--ir")[0])
-
-            # Load the GTIRB file.
-            ir = gtirb.IR.load_protobuf("ex.exe.gtirb")
+            ir = disassemble(Path("ex.exe")).ir()
             module = ir.modules[0]
 
             def is_code(section):
@@ -435,33 +510,11 @@ class PeResourcesTests(unittest.TestCase):
             self.assertEqual(proc.returncode, 0)
 
             # Disassemble to GTIRB file.
-            self.assertTrue(
-                disassemble(
-                    "ex.exe",
-                    format="--asm",
-                    extra_args=[
-                        "--generate-import-libs",
-                        "--generate-resources",
-                    ],
-                )
-            )
+            binary_path = Path("ex.exe")
+            ir_path = Path("ex.gtirb")
+            disassemble(binary_path, output=ir_path)
 
-            # Reassemble with regenerated RES file.
-            ml, entry = "ml64", "__EntryPoint"
-            if os.environ.get("VSCMD_ARG_TGT_ARCH") == "x86":
-                ml, entry = "ml", "_EntryPoint"
-            self.assertTrue(
-                reassemble(
-                    ml,
-                    "ex.exe",
-                    extra_flags=[
-                        "/link",
-                        "ex.res",
-                        "/entry:" + entry,
-                        "/subsystem:console",
-                    ],
-                )
-            )
+            binary_print(ir_path, binary_path)
 
             proc = subprocess.run(make("check"), stdout=subprocess.DEVNULL)
             self.assertEqual(proc.returncode, 0)
@@ -476,7 +529,7 @@ class SymbolSelectionTests(unittest.TestCase):
         with symbol 'block_name' points to a symbol with
         name 'target_name'
         """
-        sym = next(s for s in m.symbols if s.name == block_name)
+        sym = next(m.symbols_named(block_name))
         self.assertIsInstance(sym.referent, gtirb.CodeBlock)
         block = sym.referent
         sexpr = sorted(
@@ -498,25 +551,25 @@ class SymbolSelectionTests(unittest.TestCase):
         and for functions.
         """
 
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_asm_dir / "ex_symbol_selection"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
 
-            self.check_first_sym_expr(m, "Block_hello", "hello_not_hidden")
+            self.check_first_sym_expr(m, "Block_hello", "hello_local")
             self.check_first_sym_expr(m, "Block_how", "how_global")
             self.check_first_sym_expr(m, "Block_bye", "bye_obj")
 
             # check symbols at the end of sections
-            syms = [
-                s
-                for s in m.symbols
-                if s.name
-                in ["__init_array_end", "end_of_data_section", "edata", "_end"]
-            ]
+            syms = []
+            for s in [
+                "__init_array_end",
+                "end_of_data_section",
+                "edata",
+                "_end",
+            ]:
+                syms += m.symbols_named(s)
             self.assertTrue(all(s.at_end for s in syms))
 
             # check chosen function names
@@ -525,6 +578,36 @@ class SymbolSelectionTests(unittest.TestCase):
             }
             self.assertIn("fun", fun_names)
             self.assertNotIn("_fun", fun_names)
+
+    @unittest.skipUnless(
+        platform.system() == "Windows", "This test is Windows only"
+    )
+    def test_pe_function_symbol_selection(self):
+        """
+        Test that function names are correctly selected
+        in PE binaries.
+        """
+        library = Path("baz.dll")
+        with cd(ex_dir / "ex_ml_sym_mangling"):
+            proc = subprocess.run(make("clean"), stdout=subprocess.DEVNULL)
+            self.assertEqual(proc.returncode, 0)
+            proc = subprocess.run(make("all"), stdout=subprocess.DEVNULL)
+            self.assertEqual(proc.returncode, 0)
+            for extra_args in ([], ["-F"]):
+                with self.subTest(extra_args=extra_args):
+                    ir_library = disassemble(
+                        library, extra_args=extra_args
+                    ).ir()
+                    m = ir_library.modules[0]
+
+                    # check chosen function names
+                    fun_names = {
+                        sym.name
+                        for sym in m.aux_data["functionNames"].data.values()
+                    }
+                    self.assertIn("Baz", fun_names)
+                    self.assertIn("_Baz", fun_names)
+                    self.assertIn("__Baz", fun_names)
 
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
@@ -536,11 +619,10 @@ class SymbolSelectionTests(unittest.TestCase):
         the symbol at the end of the section.
         """
 
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_asm_dir / "ex_boundary_sym_expr"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
             self.check_first_sym_expr(m, "load_end", "nums_end")
 
@@ -554,12 +636,10 @@ class ElfSymbolAuxdataTests(unittest.TestCase):
         Test that symbols have the right version.
         """
 
-        binary = "libfoo.so"
+        binary = Path("libfoo.so")
         with cd(ex_dir / "ex_symver"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
 
             (defs, needed, symver_entries) = m.aux_data[
@@ -573,7 +653,7 @@ class ElfSymbolAuxdataTests(unittest.TestCase):
             self.assertIn((["libfoo.so"], VER_FLG_BASE), defs.values())
 
             foo_symbols = sorted(
-                [sym for sym in m.symbols if sym.name == "foo"],
+                m.symbols_named("foo"),
                 key=lambda x: x.referent.address,
             )
             self.assertEqual(len(foo_symbols), 3)
@@ -597,7 +677,7 @@ class ElfSymbolAuxdataTests(unittest.TestCase):
             self.assertTrue(symver_entries[foo2][1])
             self.assertFalse(symver_entries[foo3][1])
 
-            bar_symbols = [sym for sym in m.symbols if sym.name == "bar"]
+            bar_symbols = m.symbols_named("bar")
 
             bar1, bar2 = bar_symbols
             # Check needed symbol versions
@@ -629,13 +709,11 @@ class ElfSymbolAuxdataTests(unittest.TestCase):
                 else:
                     raise KeyError(f"No ver need: {ver_id}")
 
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_dir / "ex_copy_relo"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
 
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
 
             # The proxy symbol should have an elfSymbolVersion entry
@@ -680,10 +758,9 @@ class OverlayTests(unittest.TestCase):
                 pe.write("OVERLAY")
 
             # Disassemble to GTIRB file.
-            self.assertTrue(disassemble("ex.exe", format="--ir")[0])
+            ir = disassemble(Path("ex.exe")).ir()
 
             # Check overlay aux data.
-            ir = gtirb.IR.load_protobuf("ex.exe.gtirb")
             module = ir.modules[0]
             overlay = module.aux_data["overlay"].data
             self.assertEqual(bytes(overlay), b"OVERLAY")
@@ -705,10 +782,9 @@ class OverlayTests(unittest.TestCase):
                 binary.write("OVERLAY")
 
             # Disassemble to GTIRB file.
-            self.assertTrue(disassemble("ex", format="--ir")[0])
+            ir = disassemble(Path("ex")).ir()
 
             # Check overlay aux data.
-            ir = gtirb.IR.load_protobuf("ex.gtirb")
             module = ir.modules[0]
             overlay = module.aux_data["overlay"].data
             self.assertEqual(bytes(overlay), b"OVERLAY")
@@ -762,19 +838,17 @@ class NpadTests(unittest.TestCase):
             subprocess.run(make("all"), stdout=subprocess.DEVNULL)
 
             # Disassemble to GTIRB file.
-            self.assertTrue(disassemble("ex.exe", format="--ir")[0])
+            binary = Path("ex.exe")
+            result = disassemble(binary)
 
             # Reassemble test case.
-            proc = subprocess.run(
-                ["gtirb-pprinter", "-b", "ex.exe", "ex.exe.gtirb"]
-            )
-            self.assertEqual(proc.returncode, 0)
+            binary_print(result.ir_path, binary)
 
             # Check reassembled outputs.
             self.assertTrue(test())
 
             # Load the GTIRB file and check padding.
-            ir = gtirb.IR.load_protobuf("ex.exe.gtirb")
+            ir = result.ir()
             module = ir.modules[0]
             table = module.aux_data["padding"].data
             padding = sorted(
@@ -783,6 +857,73 @@ class NpadTests(unittest.TestCase):
             )
             sizes = [n for _, n in padding]
             self.assertEqual(sizes, list(range(1, 16)))
+
+
+class IncrementalLinkingTests(unittest.TestCase):
+    @unittest.skipUnless(
+        platform.system() == "Windows", "This test is Windows only."
+    )
+    def test_incremental_linking_boundaries(self):
+        with cd(ex_dir / "ex1"):
+            self.assertTrue(
+                compile("cl", "cl", "/O0", ["/link", "/incremental"], [])
+            )
+            ir = disassemble(
+                Path("ex.exe"),
+                extra_args=["--with-souffle-relations"],
+            ).ir()
+            module = ir.modules[0]
+
+            # Read first and last address in incremental linking code.
+            first, last = next(
+                parse_souffle_output(module, "incremental_linking")
+            )
+
+            # locate the .text section byte interval.
+            section = next(s for s in module.sections if s.name == ".text")
+            bi = next(section.byte_intervals_at(section.address))
+
+            # Pattern match INT3 + JMP sequence prepended to .text section.
+            match = re.match(b"^\xCC+(\xe9....)+", bi.contents, re.DOTALL)
+            self.assertTrue(match)
+
+            # Test boundaries of the inferred span against matched code.
+            code = bi.contents[match.start() : match.end()].lstrip(b"\xCC")
+            offset = match.end() - len(code)
+            self.assertEqual(section.address + offset, first)
+            self.assertEqual(last - first + 5, len(code))
+
+
+class MalformedPEBinaries(unittest.TestCase):
+    @unittest.skipUnless(
+        platform.system() == "Windows", "This test is Windows only."
+    )
+    def test_repeated_import(self):
+        """
+        Test a binary with repeated import entries
+        """
+        with cd(ex_dir / "ex1"):
+            self.assertTrue(compile("cl", "cl", "/O0", ["/link"], []))
+
+            # We add a duplicate import entry
+            bin = lief.PE.parse("ex.exe")
+            lib = bin.add_library("KERNEL32.dll")
+            lib.add_entry("WriteConsoleW")
+            builder = lief.PE.Builder(bin)
+            builder.build_imports(True).patch_imports(True)
+            builder.build()
+            builder.write("ex_mod.exe")
+
+            ir = disassemble(Path("ex_mod.exe")).ir()
+
+            # No duplicate import symbols
+            module = ir.modules[0]
+            self.assertEqual(
+                len(list(module.symbols_named("WriteConsoleW"))), 1
+            )
+            # LIEF does non-standard things with the IAT.
+            # This makes reassembling into a working binary challenging
+            # so we don't check that here.
 
 
 if __name__ == "__main__":

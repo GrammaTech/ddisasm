@@ -1,0 +1,5 @@
+all:
+	ml64.exe /c ex.asm
+	link.exe ex.obj /DLL /SUBSYSTEM:WINDOWS
+clean:
+	del /F /Q *.dll *.obj

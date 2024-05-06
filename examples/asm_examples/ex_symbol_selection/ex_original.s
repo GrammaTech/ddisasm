@@ -47,7 +47,7 @@ Block_bye:
 
 	.section	.rodata
 
-# hello is preferred over hello_local and hello_hidden
+# hello_local is preferred over hello_not_hidden and hello_hidden
 hello_local:
 	.globl hello_hidden
 	.hidden hello_hidden

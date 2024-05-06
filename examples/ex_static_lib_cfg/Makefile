@@ -46,6 +46,6 @@ clean:
 	rm -f ex out.txt libtest.a ex.o $(LIB_OBJ) $(LIB_ASM_OBJ_ALL)
 	rm -fr ex.unstripped libtest-tmp libtest.gtirb
 
-check:
+check: ex
 	@ $(EXEC) ./ex >/tmp/res.txt
 	@ diff out.txt /tmp/res.txt && echo TEST OK

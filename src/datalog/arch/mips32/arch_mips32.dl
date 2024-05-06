@@ -41,7 +41,7 @@ move_operation("MOVZ").
 
 move_reg_imm(EA,Reg,Value,1):-
     instruction(EA,_,_,"LUI",Op1,Op2,0,0,_,_),
-    op_immediate(Op1,Immediate),
+    op_immediate(Op1,Immediate,_),
     Value = Immediate bshl 16,
     op_regdirect_contains_reg(Op2,Reg).
 
@@ -127,6 +127,22 @@ load_operation("LWX").
 load_operation("LWXC1").
 load_operation("LWXS").
 load_operation("LI").
+
+data_access_size("LB",as(DestReg,register),1):-
+    op_regdirect(_,DestReg).
+data_access_size("LBU",as(DestReg,register),1):-
+    op_regdirect(_,DestReg).
+
+data_access_size("LH",as(DestReg,register),2):-
+    op_regdirect(_,DestReg).
+data_access_size("LHU",as(DestReg,register),2):-
+    op_regdirect(_,DestReg).
+
+data_access_size("SB",as(DestReg,register),1):-
+    op_regdirect(_,DestReg).
+
+data_access_size("SH",as(DestReg,register),2):-
+    op_regdirect(_,DestReg).
 
 // Do not treat nop in delay_slot as padding:
 // see the usage of is_nop in code_inference*.dl
@@ -436,13 +452,13 @@ reg_arithmetic_operation(EA,Dst,Src,1,Immediate):-
     ),
     op_regdirect_contains_reg(Op3,Dst),
     op_regdirect_contains_reg(Op1,Src),
-    op_immediate(Op2,Immediate).
+    op_immediate(Op2,Immediate,_).
 
 reg_arithmetic_operation(EA,Dst,Src,2^Immediate,0):-
     instruction(EA,_,_,"SLL",Op1,Op2,Op3,0,_,_),
     op_regdirect_contains_reg(Op3,Dst),
     op_regdirect_contains_reg(Op1,Src),
-    op_immediate(Op2,Immediate).
+    op_immediate(Op2,Immediate,_).
 
 // ADD/ADDU <Register> <Register> <Register>
 reg_reg_arithmetic_operation(EA,Reg,Reg1,Reg2,1,0):-

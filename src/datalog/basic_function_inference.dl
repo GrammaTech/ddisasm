@@ -52,6 +52,7 @@ function_entry_initial(EA):-
         function_symbol(EA,_);
         start_function(EA);
         loaded_section(EA,_,_);
+        pe_export_entry(EA,_,_);
         // TODO: Fold pc_load_call into generic arch component.
         direct_call(EA_caller,EA), code(EA_caller), !pc_load_call(EA_caller,EA)
     ).
@@ -81,6 +82,14 @@ function_entry(EA):-
     loaded_section(Base,End,Name),
     Src >= Base,
     Src < End.
+
+// Windows PE 'incremental linking' targets.
+function_entry(EA):-
+    incremental_linking(First,Last),
+    code(Src),
+    First <= Src, Src <= Last,
+    direct_jump(Src,EA),
+    code(EA).
 
 function_without_callframe(EA):-
     function_entry(EA),
@@ -117,7 +126,7 @@ in_function(Function,Function):-
 in_function(Block,Function):-
     in_function(Block_prev,Function),
     function_without_callframe(Function),
-    next_refined_block_in_section(Block_prev,Block),
+    next_refined_block_in_byte_interval(Block_prev,Block),
     not_in_function_initial(Block),
     !function_without_callframe(Block).
 

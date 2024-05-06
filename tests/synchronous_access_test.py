@@ -2,7 +2,6 @@ import platform
 import unittest
 from disassemble_reassemble_check import compile, cd, disassemble
 from pathlib import Path
-import gtirb
 
 
 ex_dir = Path("./examples/")
@@ -20,14 +19,10 @@ class SynchronousAccessTests(unittest.TestCase):
         """
         for exdir in (ex_dir, ex_asm_dir):
             with self.subTest(example=exdir / "ex_synchronous_access"):
-                binary = "ex"
+                binary = Path("ex")
                 with cd(exdir / "ex_synchronous_access"):
                     self.assertTrue(compile("gcc", "g++", "-O0", []))
-                    self.assertTrue(
-                        disassemble(binary, format="--ir", strip=True)[0]
-                    )
-
-                    ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+                    ir_library = disassemble(binary, strip=True).ir()
                     m = ir_library.modules[0]
 
                     bss_section = next(
@@ -47,19 +42,14 @@ class SynchronousAccessTests(unittest.TestCase):
         synchronous accesses all the way.
         """
 
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_asm_dir / "ex_synchronous_access2"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    format="--ir",
-                    strip=True,
-                    extra_args=["--with-souffle-relations"],
-                )[0]
-            )
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(
+                binary,
+                strip=True,
+                extra_args=["--with-souffle-relations"],
+            ).ir()
             m = ir_library.modules[0]
 
             data_section = next(s for s in m.sections if s.name == ".data")
@@ -90,19 +80,14 @@ class SynchronousAccessTests(unittest.TestCase):
         given a barrier between candidate synchronous accesses.
         """
 
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_asm_dir / "ex_synchronous_access4"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    format="--ir",
-                    strip=True,
-                    extra_args=["--with-souffle-relations"],
-                )[0]
-            )
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(
+                binary,
+                strip=True,
+                extra_args=["--with-souffle-relations"],
+            ).ir()
             m = ir_library.modules[0]
 
             synchronous_access = m.aux_data["souffleOutputs"].data[

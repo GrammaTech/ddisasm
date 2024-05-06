@@ -14,8 +14,6 @@ default: &default
   # Reassembly configuration.
   reassemble:
     compiler: "arm-linux-gnueabihf-gcc"
-    flags: ["-nostartfiles"]
-    skip: false
 
   # Test configuration.
   test: &default-test
@@ -23,6 +21,8 @@ default: &default
     strip_exe: "arm-linux-gnueabihf-strip"
     strip: false
     skip: false
+    cfg_checks:
+      - dangling_auxdata
 
 assembly: &assembly
   <<: *default
@@ -41,20 +41,12 @@ c-object: &c-object
     flags: ["--save-temps"]
     optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
 
-  reassemble:
-    compiler: "arm-linux-gnueabihf-gcc"
-    flags: ["-c", "-no-pie"]
-
   link:
     linker: "arm-linux-gnueabihf-gcc"
     flags: []
 
 cpp-object: &cpp-object
   <<: *c-object
-
-  reassemble:
-    compiler: "arm-linux-gnueabihf-g++"
-    flags: ["-c", "-no-pie"]
 
   link:
     linker: "arm-linux-gnueabihf-g++"
@@ -68,18 +60,12 @@ tests:
 
   - name: ex1_no_pie
     <<: *assembly
-    reassemble:
-      compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-no-pie", "-nostartfiles"]
     build:
       <<: *assembly-build
       flags: ["-no-pie"]
 
   - name: ex_movw_movt
     <<: *assembly
-    reassemble:
-      compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-no-pie", "-nostartfiles"]
     build:
       <<: *assembly-build
       flags: ["-no-pie"]
@@ -101,21 +87,12 @@ tests:
 
   - name: ex_litpool
     <<: *assembly
-    reassemble:
-      compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-no-pie", "-nostartfiles"]
 
   - name: ex_vld
     <<: *assembly
-    reassemble:
-      compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-no-pie", "-nostartfiles"]
 
   - name: ex_add_as_jump
     <<: *assembly
-    reassemble:
-      compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-no-pie", "-nostartfiles"]
 
   - name: ex_blx_interwork
     <<: *assembly
@@ -125,9 +102,6 @@ tests:
 
   - name: ex_movw_movt_pie
     <<: *assembly
-    reassemble:
-      compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-pie", "-nostartfiles"]
 
   - name: ex_tbb_zero
     <<: *assembly
@@ -136,16 +110,16 @@ tests:
     <<: *assembly
     reassemble:
       compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-march=armv8-a", "-nostartfiles"]
+      flags: ["-march=armv8-a"]
 
   - name: ex_aliased_data
     <<: *assembly
 
   - name: ex_ldr_pc_rel_reg
     <<: *assembly
-    reassemble:
-      compiler: "arm-linux-gnueabihf-gcc"
-      flags: ["-no-pie", "-nostartfiles"]
+
+  - name: ex_zero_size_object_sym
+    <<: *assembly
 
   - name: ex1
     <<: *default
@@ -182,16 +156,9 @@ tests:
       <<: *default-build
       # Testing one version is enough.
       optimizations: ["-O0"]
-    reassemble:
-      compiler: "arm-linux-gnueabihf-g++"
-      flags: ["-nostartfiles"]
 
   - name: ex_memberPointer
     <<: *default
-    reassemble:
-      compiler: "arm-linux-gnueabihf-g++"
-      flags: ["-nostartfiles"]
-      skip: false
 
   - name: ex_noreturn
     <<: *default
@@ -213,10 +180,6 @@ tests:
 
   - name: ex_virtualDispatch
     <<: *default
-    reassemble:
-      compiler: "arm-linux-gnueabihf-g++"
-      flags: ["-nostartfiles"]
-      skip: false
 
   - name: ex_uninitialized_data
     <<: *default
@@ -228,24 +191,15 @@ tests:
   # TODO:
   # - name: ex_threads
   #   <<: *default
-  #   reassemble:
-  #     compiler: "arm-linux-gnueabihf-g++"
-  #     flags: ["-no-pie", "-lpthread"]
 
   # TODO:
   # - name: ex_dynamic_tls
   #   <<: *default
   #   binary: fun.so
-  #   reassemble:
-  #     compiler: "arm-linux-gnueabihf-gcc"
-  #     flags: ["-shared"]
 
   # TODO:
   # - name: ex_call_once
   #   <<: *default
-  #   reassemble:
-  #     compiler: "g++"
-  #     flags: ["-no-pie", "-lpthread"]
 
   # ----------------------------------------------------------------------------
   # Relocatable ELF objects (.o).
@@ -319,11 +273,8 @@ tests:
   # TODO:
   # - name: ex_threads
   #   <<: *cpp-object
-  #   reassemble:
-  #     compiler: "g++"
-  #     flags: ["-c", "-no-pie", "-lpthread"]
   #   link:
-  #     compiler: "g++"
+  #     compiler: "arm-linux-gnueabihf-g++"
   #     flags: ["-lpthread"]
 
   - name: ex_obj_debug_reloc
@@ -334,10 +285,6 @@ tests:
       <<: *default-build
       optimizations: ["-Og"]
       flags: ["-g"]
-
-    reassemble:
-      compiler: "arm-linux-gnueabihf-g++"
-      flags: ["-c"]
 
     link:
       linker: "arm-linux-gnueabihf-g++"

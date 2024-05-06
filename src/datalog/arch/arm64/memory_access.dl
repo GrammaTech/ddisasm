@@ -40,7 +40,7 @@ reg_arithmetic_operation(EA,BaseReg_nn,BaseReg_nn,1,Offset):-
     ),
     op_indirect_mapped(Op1,"NONE",BaseReg,"NONE",_,0,_),
     reg_nonnull(BaseReg,BaseReg_nn),
-    op_immediate(Op2,Offset),
+    op_immediate(Op2,Offset,_),
     op_regdirect_contains_reg(Op3,DirectReg).
 
 // immediate - pre-index / writeback
@@ -78,7 +78,7 @@ memory_access(AccessType,EA,SrcIndex,DstIndex,DirectReg,BaseReg,"NONE",0,Offset)
 memory_access("LOAD",EA,1,2,DstReg,"NONE","NONE",0,Immediate):-
     instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
     load_operation(Operation),
-    op_immediate(Op1,Immediate),
+    op_immediate(Op1,Immediate,_),
     op_regdirect_contains_reg(Op2,DstReg).
 
 // LDR (register)
@@ -99,7 +99,7 @@ memory_access(AccessType,EA,SrcIndex,DstIndex,DirectReg,BaseReg,IndexReg,Mult,0)
 // LDP <Wt1>, <Wt2>, [<Xn|SP>], #<imm>
 // STP <Wt1>, <Wt2>, [<Xn|SP>], #<imm>
 memory_access(AccessType,EA,SrcIndex1,DstIndex1,DirectReg1,BaseReg,"NONE",0,0),
-memory_access(AccessType,EA,SrcIndex2,DstIndex2,DirectReg2,BaseReg,"NONE",0,as(SizeBits/8,number)),
+memory_access(AccessType,EA,SrcIndex2,DstIndex2,DirectReg2,BaseReg,"NONE",0,as(SizeBytes,number)),
 reg_arithmetic_operation(EA,BaseReg_nn,BaseReg_nn,1,Offset):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,Op4,_,_),
     instruction_writeback(EA),
@@ -113,15 +113,15 @@ reg_arithmetic_operation(EA,BaseReg_nn,BaseReg_nn,1,Offset):-
     op_regdirect_contains_reg(Op1,DirectReg2),
     op_indirect_mapped(Op2,"NONE",BaseReg,"NONE",_,0,_),
     reg_nonnull(BaseReg,BaseReg_nn),
-    op_immediate(Op3,Offset),
+    op_immediate(Op3,Offset,_),
     op_regdirect_contains_reg(Op4,DirectReg1),
-    register_size_bits(DirectReg2_unmapped,SizeBits).
+    register_size_bytes(DirectReg2_unmapped,SizeBytes).
 
 // pair pre-index
 // LDP <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]! (pre-index)
 // STP <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]!
 memory_access(AccessType,EA,SrcIndex1,DstIndex1,DirectReg1,BaseReg,"NONE",0,Offset),
-memory_access(AccessType,EA,SrcIndex2,DstIndex2,DirectReg2,BaseReg,"NONE",0,Offset+as(SizeBits/8,number)),
+memory_access(AccessType,EA,SrcIndex2,DstIndex2,DirectReg2,BaseReg,"NONE",0,Offset+as(SizeBytes,number)),
 reg_arithmetic_operation(EA,BaseReg_nn,BaseReg_nn,1,Offset):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
     instruction_writeback(EA),
@@ -136,13 +136,13 @@ reg_arithmetic_operation(EA,BaseReg_nn,BaseReg_nn,1,Offset):-
     op_indirect_mapped(Op2,"NONE",BaseReg,"NONE",_,Offset,_),
     reg_nonnull(BaseReg,BaseReg_nn),
     op_regdirect_contains_reg(Op3,DirectReg1),
-    register_size_bits(DirectReg2_unmapped,SizeBits).
+    register_size_bytes(DirectReg2_unmapped,SizeBytes).
 
 // pair (no writeback)
 // LDP <Wt1>, <Wt2>, [<Xn|SP>{, #<imm>}]
 // STP <Wt1>, <Wt2>, [<Xn|SP>{, #<imm>}]
 memory_access(AccessType,EA,SrcIndex1,DstIndex1,DirectReg1,BaseReg,"NONE",0,Offset),
-memory_access(AccessType,EA,SrcIndex2,DstIndex2,DirectReg2,BaseReg,"NONE",0,Offset+as(SizeBits/8,number)):-
+memory_access(AccessType,EA,SrcIndex2,DstIndex2,DirectReg2,BaseReg,"NONE",0,Offset+as(SizeBytes,number)):-
     instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
     !instruction_writeback(EA),
     (
@@ -156,4 +156,4 @@ memory_access(AccessType,EA,SrcIndex2,DstIndex2,DirectReg2,BaseReg,"NONE",0,Offs
     op_indirect_mapped(Op2,"NONE",BaseReg,"NONE",_,Offset,_),
     reg_nonnull(BaseReg,_),
     op_regdirect_contains_reg(Op3,DirectReg1),
-    register_size_bits(DirectReg2_unmapped,SizeBits).
+    register_size_bytes(DirectReg2_unmapped,SizeBytes).

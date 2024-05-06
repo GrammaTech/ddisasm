@@ -192,7 +192,7 @@ reg_arithmetic_operation(EA,Rn_nn,Rn_nn,1,Offset):-
     op_indirect_mapped(Op1,_,Rn,"NONE",_,0,_),
     !non_mult_shift(EA,Op1),
     reg_nonnull(Rn,Rn_nn),
-    op_immediate(Op2,Offset).
+    op_immediate(Op2,Offset,_).
 
 // Post-index register (3)
 memory_access(AccessType,EA,SrcIdx,DstIdx,Rt,Rn,"NONE",0,0),
@@ -244,7 +244,7 @@ reg_arithmetic_operation(EA,Rn_nn,Rn_nn,1,Offset):-
     op_indirect_mapped(Op2,_,Rn,"NONE",_,0,_),
     !non_mult_shift(EA,Op2),
     reg_nonnull(Rn,Rn_nn),
-    op_immediate(Op3,Offset).
+    op_immediate(Op3,Offset,_).
 
 // Post-index register (6)
 memory_access(AccessType,EA,SrcIdx1,DstIdx1,Rt,Rn,"NONE",0,0),

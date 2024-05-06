@@ -188,7 +188,6 @@ A TLS data segment, which may contain contiguous sections (i.e. '.tbss' and
 to 'Align' bytes.
 */
 .decl tls_segment(Start:address,End:address,Align:unsigned)
-.output tls_segment
 
 tls_segment(Start,End,Align):-
     Start = min EA:{ tls_section(Name), loaded_section(Addr,_,Name), EA=Addr },
@@ -210,7 +209,6 @@ at some 'Offset' into the TLS block.
 Note that 'Offset' is initialized for @TLSGD relocations and zero for @TLSLD.
 */
 .decl tls_index(EA:address,Offset:unsigned)
-.output tls_index
 
 tls_index(EA,as(Offset,unsigned)):-
     binary_format("ELF"),
@@ -220,6 +218,36 @@ tls_index(EA,as(Offset,unsigned)):-
     ),
     arch.pointer_size(Size),
     data_word(EA+Size,Size,Offset).
+
+/**
+Identify Call to the builtin function '__tls_get_addr'.
+
+Reg: the register loaded with the resolved address (either the beginning of the
+TLS segment for @TLSLD relocations, or the address of the variable for @TLSGD
+relocations.)
+*/
+.decl call_tls_get_addr(Call:address,Reg:register)
+
+call_tls_get_addr(Call,Reg):-
+    binary_format("ELF"),
+    // Call __tls_get_addr to resolve, either the:
+    //   1. Address of TLS variable (GD), or
+    //   2. Address of the TLS block (LD).
+    direct_call(Call,Dest),
+    plt_block(Dest,Name),
+    (
+        binary_isa("X64"),
+        Reg = "RDI",
+        Prefix = "__tls_get_addr" // double underscore
+        ;
+        binary_isa("X86"),
+        Reg = "EAX",
+        Prefix = "___tls_get_addr" // triple underscore
+    ),
+    substr(Name,0,strlen(Prefix)) = Prefix.
+
+call_uses_reg(Call,Reg):-
+    call_tls_get_addr(Call,Reg).
 
 /**
 A TLS address is resolved dynamically with a call to the builtin
@@ -232,30 +260,20 @@ The resolved address 'Dest' is either the beginning of the TLS segment for
 @TLSLD relocations, or the address of the variable for @TLSGD relocations.
 */
 .decl tls_get_addr(Load:address,Call:address,Dest:address)
-.output tls_get_addr
 
 tls_get_addr(Load,Call,Start+Offset):-
     binary_format("ELF"),
     (
         binary_isa("X64"),
-        pc_relative_operand(Load,_,EA),
-        Reg = "RDI",
-        Prefix = "__tls_get_addr" // double underscore
+        pc_relative_operand(Load,_,EA)
         ;
         binary_isa("X86"),
-        got_relative_operand(Load,_,EA),
-        Reg = "EAX",
-        Prefix = "___tls_get_addr" // triple underscore
+        got_relative_operand(Load,_,EA)
     ),
     // Load address of tls_index structure in GOT.
     tls_index(EA,Offset),
-    reg_def_use.block_last_def(Call,Load,Reg),
-    // Call __tls_get_addr to resolve, either the:
-    //   1. Address of TLS variable (GD), or
-    //   2. Address of the TLS block (LD).
-    direct_call(Call,Dest),
-    plt_block(Dest,Name),
-    substr(Name,0,strlen(Prefix)) = Prefix,
+    reg_def_use.def_used(Load,Reg,Call,_),
+    call_tls_get_addr(Call,Reg),
     tls_segment(Start,_,_).
 
 /**
@@ -266,7 +284,6 @@ The address of the variable's tls_desc struct is loaded in the instruction at
 address 'Load'.
 */
 .decl tls_desc_call(Load:address,Call:address,Dest:address)
-.output tls_desc_call
 
 tls_desc_call(Load,Call,Dest):-
     tls_segment(Start,_,_),
@@ -312,7 +329,6 @@ models are ambigous in this case.
 https://docs.oracle.com/cd/E19120-01/open.solaris/819-0690/chapter8-60/index.html
 */
 .decl tls_global_dynamic(EA:address)
-.output tls_global_dynamic
 
 tls_global_dynamic(EA):-
     binary_format("ELF"),
@@ -365,21 +381,17 @@ Local Dynamic TLS uses a single DTPMOD relocation, and __tls_get_addr returns
 the start of the TLS block. Variables are addressed with integral offsets in
 indirect operands.
 
-We identify @TLSLD relocations by a call to __tls_get_address followed by the
-use of non-zero offsets in indirect operands. For x86-64, we distinguish @TLSGD
+We identify @TLSLD relocations by a call to __tls_get_address that
+are not global dynamic. For x86-64, we distinguish @TLSGD
 from @TLSLD with the code template described in 'tls_global_dynamic'.
 */
 .decl tls_local_dynamic(EA:address)
-.output tls_local_dynamic
 
 tls_local_dynamic(Load):-
     binary_format("ELF"),
     tls_segment(Start,_,_),
-    tls_get_addr(Load,Call,Start),
-    !tls_global_dynamic(Load),
-    reg_def_use.def_used(Call,Reg,EA,Index),
-    instruction_get_op(EA,Index,Op),
-    op_indirect_mapped(Op,"NONE",Reg,_,_,_,_).
+    tls_get_addr(Load,_,Start),
+    !tls_global_dynamic(Load).
 
 /**
 A 'tlsdesc' struct is located in the GOT at address 'EA' and references a
@@ -441,7 +453,6 @@ for consecutive static variables.
 Use TLSDESC with the '-mtls-dialect=gnu2' option for GCC.
 */
 .decl tls_descriptor(EA:address,Offset:unsigned)
-.output tls_descriptor
 
 tls_descriptor(EA,Offset):-
     (
@@ -484,7 +495,6 @@ Note that TLSGD and TLSLD attributes are excluded as they reference GOT, not
 TLS offsets. Likewise for "Initial Executable" relocations (e.g. @GOTTPOFF).
 */
 .decl tls_relative_operand(EA:address,Index:operand_index,Dest:address,Type:symbol)
-.output tls_relative_operand
 
 // Local Dynamic (LD) TLS model:
 //   i.e. X@DTPOFF operands.
@@ -606,7 +616,7 @@ got_reference(EA,Symbol):-
     ),
     Symbol != "".
 
-// Infer indirect symbol references from DTPOFF offsets in GOT (GD).
+// Infer indirect symbol references from DTPOFF offsets in GOT (GD and LD).
 got_reference(EA,Symbol):-
     (
         relocation(EA,"DTPMOD64","",_,_,_,_);
@@ -614,20 +624,6 @@ got_reference(EA,Symbol):-
     ),
     arch.pointer_size(Size),
     symbolic_expr_symbol_minus_symbol(EA+Size,Size,_,Symbol,_,_).
-
-// Infer indirect symbol references from @DTPOFF operands (LD).
-got_reference(EA,Symbol):-
-    (
-        relocation(EA,"DTPMOD64","",_,_,_,_),
-        pc_relative_operand(Load,_,EA)
-        ;
-        relocation(EA,"TLS_DTPMOD32","",_,_,_,_),
-        got_relative_operand(Load,_,EA)
-    ),
-    tls_get_addr(Load,Call,_),
-    reg_def_use.def_used(Call,_,Ref,_),
-    tls_relative_operand(Ref,_,Dest,"DTPOFF"),
-    symbol(Dest,_,"TLS",_,_,_,_,_,Symbol).
 
 got_reference(EA,Symbol):-
     tls_segment(Start,_,_),
@@ -649,13 +645,10 @@ inferred_symbol(EA,"_TLS_MODULE_BASE_","LOCAL","DEFAULT","NONE","Beg"):-
     tls_segment(EA,_,_).
 
 // Symbolize tls_index.ti_offset value in GOT (i.e. DTPOFF relocation).
-symbol_minus_symbol(EA+Size,Size,Start,Dest,1,0):-
+symbol_minus_symbol(EA+Size,Size,Start,Start+Offset,1,0):-
     arch.pointer_size(Size),
     tls_segment(Start,_,_),
-    tls_global_dynamic(Load),
-    tls_get_addr(Load,_,Dest),
-    symbolic_operand(Load,_,EA,"data"),
-    tls_index(EA,_).
+    tls_index(EA,Offset).
 
 // General Dynamic (GD) TLS reference to GOT:
 //   i.e.  X@TLSGD + __tls_get_addr()
@@ -679,6 +672,7 @@ symbolic_operand_attribute(EA,Index,Type):-
         relocation(Dest,"TLS_DTPMOD32",_,_,_,_,_),
         Type = "TLSLDM"
     ).
+
 
 // Initial Executable (IE) TLS reference to GOT:
 //   i.e.  X@GOTTPOFF + FS:[REG]

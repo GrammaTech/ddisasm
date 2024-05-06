@@ -1,11 +1,13 @@
 import platform
 import unittest
-from disassemble_reassemble_check import compile, disassemble, cd
-import gtirb
+from disassemble_reassemble_check import compile, disassemble, cd, make
+import os
+import subprocess
 
 from pathlib import Path
 
 ex_dir = Path("./examples/")
+ex_asm_dir = ex_dir / "asm_examples"
 
 
 class TestFunctionInference(unittest.TestCase):
@@ -35,26 +37,22 @@ class TestFunctionInference(unittest.TestCase):
             self.assertTrue(
                 compile(c_compiler, cxx_compiler, optimization, [])
             )
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    format="--ir",
-                    extra_args=["--skip-function-analysis"],
-                )[0]
-            )
-            module = gtirb.IR.load_protobuf(binary + ".gtirb").modules[0]
+            ir = disassemble(
+                Path(binary),
+                extra_args=["--skip-function-analysis"],
+            ).ir()
+            module = ir.modules[0]
 
-            self.assertTrue(
-                disassemble(
-                    binary, strip_exe=strip_exe, strip=True, format="--ir"
-                )[0]
-            )
-            moduleStripped = gtirb.IR.load_protobuf(binary + ".gtirb").modules[
-                0
-            ]
+            ir_stripped = disassemble(
+                Path(binary),
+                Path("ex_stripped.gtirb"),
+                strip_exe=strip_exe,
+                strip=True,
+            ).ir()
+            module_stripped = ir_stripped.modules[0]
             self.assertEqual(
                 self.get_function_addresses(module),
-                self.get_function_addresses(moduleStripped),
+                self.get_function_addresses(module_stripped),
             )
 
     @unittest.skipUnless(
@@ -384,6 +382,30 @@ class TestFunctionInference(unittest.TestCase):
         self.check_function_inference(
             ex_dir / "ex_virtualDispatch", "ex", "clang", "clang++", "-O3"
         )
+
+
+class PEFunctionInferenceTests(unittest.TestCase):
+    @unittest.skipUnless(
+        platform.system() == "Windows"
+        and os.environ.get("VSCMD_ARG_TGT_ARCH") == "x64",
+        "This test is Windows (x64) only.",
+    )
+    def test_code_exports_are_functions(self):
+        """
+        Test that any code that is exported is
+        considered as a function entry.
+        """
+        with cd(ex_asm_dir / "ex_dll_export_thunk"):
+            subprocess.run(make("all"), stdout=subprocess.DEVNULL)
+            ir = disassemble(Path("ex.dll")).ir()
+            module = ir.modules[0]
+            functionNames = {
+                sym.name
+                for sym in module.aux_data["functionNames"].data.values()
+            }
+            self.assertIn("print_ok1", functionNames)
+            self.assertIn("print_ok2", functionNames)
+            self.assertIn("print_ok3", functionNames)
 
 
 if __name__ == "__main__":

@@ -51,3 +51,10 @@ Signed representation of the data at EA.
 data_word(EA,Size,Value):-
     @functor_data_valid(EA,Size) = 1,
     Value = @functor_data_signed(EA,Size).
+
+/**
+Identifies sequences of repeated byte values in loaded section data. Byte of
+'Value' is repeated 'Count' times beginning at address 'EA'.
+*/
+.decl repeated_byte(EA:address,Value:unsigned,Count:unsigned)
+.input repeated_byte

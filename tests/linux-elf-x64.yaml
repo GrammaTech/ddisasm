@@ -11,12 +11,6 @@ default: &default
     optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
     flags: []
 
-  # Reassembly configuration.
-  reassemble:
-    compiler: "gcc"
-    flags: ["-no-pie", "-nostartfiles"]
-    skip: false
-
   # Test configuration.
   test: &default-test
     wrapper: null
@@ -32,13 +26,10 @@ default: &default
       - outgoing_edges
       - edge_instruction_group
       - cfg_completeness
+      - dangling_auxdata
 
 cpp: &default-cpp
   <<: *default
-  reassemble:
-    compiler: "g++"
-    flags: ["-no-pie", "-nostartfiles"]
-    skip: false
   test:
     <<: *default-test
     # some code is reachable only through exceptions
@@ -88,10 +79,6 @@ c-object: &c-object
     flags: ["--save-temps"]
     optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
 
-  reassemble:
-    compiler: "gcc"
-    flags: ["-c", "-no-pie"]
-
   link:
     linker: "gcc"
     flags: []
@@ -100,10 +87,6 @@ c-object: &c-object
 
 cpp-object: &cpp-object
   <<: *c-object
-
-  reassemble:
-    compiler: "g++"
-    flags: ["-c", "-no-pie"]
 
   link:
     linker: "g++"
@@ -165,6 +148,9 @@ tests:
     <<: *default-cpp
 
   - name: ex_exceptions3
+    <<: *default-cpp
+
+  - name: ex_exceptions4
     <<: *default-cpp
 
   - name: ex_false_pointer_array
@@ -230,25 +216,14 @@ tests:
 
   - name: ex_threads
     <<: *default-cpp
-    reassemble:
-      compiler: "g++"
-      flags: ["-no-pie", "-lpthread", "-nostartfiles"]
 
   - name: ex_dynamic_tls
     <<: *default
     binary: fun.so
-    reassemble:
-      compiler: "gcc"
-      flags: ["-shared", "-nostartfiles"]
-      skip: false
 
   - name: ex_dynamic_tls
     <<: *default
     binary: fun_initial_exec.so
-    reassemble:
-      compiler: "gcc"
-      flags: ["-shared", "-nostartfiles"]
-      skip: false
 
   - name: ex_dynamic_tls
     <<: *default
@@ -258,10 +233,6 @@ tests:
       c: ["gcc"]
       cpp: ["g++"]
       flags: ["-mtls-dialect=gnu2"]
-    reassemble:
-      compiler: "gcc"
-      flags: ["-shared", "-nostartfiles"]
-      skip: false
 
     test:
       <<: *default-test
@@ -276,17 +247,23 @@ tests:
         - edge_instruction_group
         #- cfg_completeness
 
+  - name: ex_dynamic_tls2
+    <<: *default
+    binary: fun.so
+
   - name: ex_call_once
     <<: *default-cpp
-    reassemble:
-      compiler: "g++"
-      flags: ["-no-pie", "-lpthread", "-nostartfiles"]
 
   - name: ex_imported_tls_syms
     <<: *default-cpp
+
+  - name: ex_data_limit
+    <<: *default
+    binary: ex
     reassemble:
-      compiler: "g++"
-      flags: ["-no-pie", "-lpthread", "-nostartfiles"]
+      # 0x500000 is to make the addresses of .text and .data changed from the
+      # original.
+      flags: ["fun.so", "-Wl,-Ttext=0x500000"]
 
   # ----------------------------------------------------------------------------
   # Static examples
@@ -298,9 +275,6 @@ tests:
       c: ["gcc"]
       cpp: ["g++"]
       optimizations: ["-O0"]
-    reassemble:
-      flags: ["-nostdlib", "-no-pie", "-nostartfiles"]
-      compiler: "gcc"
     test:
       strip_exe: "strip"
       strip: false
@@ -316,9 +290,6 @@ tests:
       c: ["gcc"]
       cpp: ["g++"]
       optimizations: ["-O0"]
-    reassemble:
-      flags: ["-nostdlib", "-no-pie", "-nostartfiles"]
-      compiler: "gcc"
     test:
       strip_exe: "strip"
       strip: true
@@ -353,6 +324,10 @@ tests:
     <<: *test-strip-default
 
   - name: ex_exceptions3
+    <<: *default-cpp
+    <<: *test-strip-default
+
+  - name: ex_exceptions4
     <<: *default-cpp
     <<: *test-strip-default
 
@@ -416,6 +391,29 @@ tests:
     <<: *default
     <<: *test-strip-default
 
+  - name: ex_dynamic_tls
+    <<: *default
+    <<: *test-strip-default
+    binary: fun.so
+
+  - name: ex_dynamic_tls
+    <<: *default
+    <<: *test-strip-default
+    binary: fun_initial_exec.so
+
+  - name: ex_dynamic_tls2
+    <<: *default
+    <<: *test-strip-default
+    binary: fun.so
+
+  - name: ex_data_limit
+    <<: *default
+    <<: *test-strip-default
+    reassemble:
+      # 0x500000 is to make the addresses of .text and .data changed from the
+      # original.
+      flags: ["fun.so", "-Wl,-Ttext=0x500000"]
+
   # ----------------------------------------------------------------------------
   # Assembly examples.
   # ----------------------------------------------------------------------------
@@ -434,6 +432,15 @@ tests:
       optimizations: [""]
 
   - name: ex_weird_sections
+    <<: *assembly
+
+  - name: ex_relative_jump_tables
+    <<: *assembly
+
+  - name: ex_relative_jump_tables2
+    <<: *assembly
+
+  - name: ex_relative_jump_tables3
     <<: *assembly
 
   - name: ex_relative_switch
@@ -498,6 +505,13 @@ tests:
     <<: *assembly
     flags: ["-no-pie", "-nostartfiles"]
 
+  - name: ex_boundary_sym_expr2
+    <<: *assembly
+
+  - name: ex_tls
+    <<: *assembly
+    binary: fun.so
+
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
   # ----------------------------------------------------------------------------
@@ -519,6 +533,18 @@ tests:
       optimizations: [""]
 
   - name: ex_weird_sections
+    <<: *assembly
+    <<: *test-strip-default
+
+  - name: ex_relative_jump_tables
+    <<: *assembly
+    <<: *test-strip-default
+
+  - name: ex_relative_jump_tables2
+    <<: *assembly
+    <<: *test-strip-default
+
+  - name: ex_relative_jump_tables3
     <<: *assembly
     <<: *test-strip-default
 
@@ -562,6 +588,15 @@ tests:
     <<: *assembly
     <<: *test-strip-default
 
+  - name: ex_boundary_sym_expr2
+    <<: *assembly
+    <<: *test-strip-default
+
+  - name: ex_tls
+    <<: *assembly
+    <<: *test-strip-default
+    binary: fun.so
+
   # ----------------------------------------------------------------------------
   # Relocatable ELF objects (.o).
   # ----------------------------------------------------------------------------
@@ -581,6 +616,10 @@ tests:
 
   # TODO:
   # - name: ex_exceptions3
+  #   <<: *cpp-object
+
+  # TODO:
+  # - name: ex_exceptions4
   #   <<: *cpp-object
 
   - name: ex_false_pointer_array
@@ -643,11 +682,8 @@ tests:
 
   - name: ex_threads
     <<: *cpp-object
-    reassemble:
-      compiler: "g++"
-      flags: ["-c", "-no-pie", "-lpthread"]
     link:
-      compiler: "g++"
+      linker: "g++"
       flags: ["-lpthread"]
 
 # Tests with special flags
