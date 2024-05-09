@@ -436,6 +436,30 @@ class AuxDataTests(unittest.TestCase):
 
             self.assertEqual(m.aux_data["elfSoname"].data, binary)
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_aligned_data_in_code(self):
+        """
+        Test that alignment directives are correctly generated for
+        data_in_code referenced by instructions that require aligned memory.
+        """
+        binary = "ex"
+        with cd(ex_asm_dir / "ex_aligned_data_in_code"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            ir = disassemble(Path(binary)).ir()
+            m = ir.modules[0]
+
+            alignments = m.aux_data["alignment"].data.items()
+            alignment_list = [alignment for uuid, alignment in alignments]
+
+            # alignment=16: `data128.1`, `data128.2`, and `main`
+            self.assertEqual(alignment_list.count(16), 3)
+            # alignment=32: `data256`
+            self.assertEqual(alignment_list.count(32), 1)
+            # alignment=64: `data512` and `_start`
+            self.assertEqual(alignment_list.count(64), 2)
+
 
 class RawGtirbTests(unittest.TestCase):
     @unittest.skipUnless(
