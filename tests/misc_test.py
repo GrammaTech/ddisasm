@@ -152,6 +152,15 @@ class OverlappingInstructionTests(unittest.TestCase):
                 self.subtest_lock_cmpxchg(example)
 
 
+def check_avx512f_support():
+    try:
+        import cpuid
+
+        return cpuid.get_cpuid().ext_avx512f
+    except ImportError:
+        return False
+
+
 class AuxDataTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
@@ -455,8 +464,28 @@ class AuxDataTests(unittest.TestCase):
 
             # alignment=16: `data128.1`, `data128.2`, and `main`
             self.assertEqual(alignment_list.count(16), 3)
-            # alignment=32: `data256`
-            self.assertEqual(alignment_list.count(32), 1)
+            # alignment=32: `data256` and `_start`
+            self.assertEqual(alignment_list.count(32), 2)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux",
+        "This test is linux only." and not check_avx512f_support(),
+    )
+    def test_aligned_data_in_code512(self):
+        """
+        Test that alignment directives are correctly generated for
+        data_in_code referenced by instructions that require 64-byte
+        alignment
+        """
+        binary = "ex2"
+        with cd(ex_asm_dir / "ex_aligned_data_in_code"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            ir = disassemble(Path(binary)).ir()
+            m = ir.modules[0]
+
+            alignments = m.aux_data["alignment"].data.items()
+            alignment_list = [alignment for uuid, alignment in alignments]
+
             # alignment=64: `data512` and `_start`
             self.assertEqual(alignment_list.count(64), 2)
 
