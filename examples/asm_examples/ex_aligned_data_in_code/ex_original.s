@@ -14,7 +14,7 @@ main:
     # Load data into XMM register using movdqa: `data128.1` needs to be aligned.
     movdqa data128.1(%rip), %xmm0
 
-    # A pair of instructions from an access to `data128.2`, which needs to
+    # A pair of instructions forms an access to `data128.2`, which needs to
     # be aligned.
     lea data128.2(%rip), %rax
     movdqa 0(%rax), %xmm1
@@ -22,11 +22,8 @@ main:
     # Load data into YMM register using movdqa: `data256` needs to be aligned.
     vmovapd data256(%rip), %ymm0
 
-    # Load data into ZMM register using movdqa: `data512` needs to be aligned.
-    vmovaps data512(%rip), %zmm0
-
-    # Load data into ZMM register using vmovups: `data512u` does not need to be aligned.
-    vmovups data512u(%rip), %zmm1
+    # Load data into YMM register using vmovups: `data256u` does not need to be aligned.
+    vmovups data256u(%rip), %ymm1
 
     call print_message2
 
@@ -58,17 +55,9 @@ data128.2:
 data256:
     .byte 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
     .byte 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
-.align 64
-data512:
-    .byte 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
-    .byte 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
-    .byte 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
-    .byte 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 
     .zero 3
-data512u:
-    .byte 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
-    .byte 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+data256u:
     .byte 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
     .byte 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 
