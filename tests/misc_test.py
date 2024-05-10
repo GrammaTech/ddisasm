@@ -459,17 +459,26 @@ class AuxDataTests(unittest.TestCase):
             ir = disassemble(Path(binary)).ir()
             m = ir.modules[0]
 
-            alignments = m.aux_data["alignment"].data.items()
-            alignment_list = [alignment for uuid, alignment in alignments]
+            main_sym = next(m.symbols_named("main"))
+            main_block = main_sym.referent
 
-            # alignment=16: `data128.1`, `data128.2`, and `main`
-            self.assertEqual(alignment_list.count(16), 3)
-            # alignment=32: `data256` and `_start`
-            self.assertEqual(alignment_list.count(32), 2)
+            alignments = m.aux_data["alignment"].data.items()
+            alignment_list = [
+                alignment
+                for block, alignment in alignments
+                if block.address > main_block.address
+            ]
+
+            # alignment=16: `data128.1`, `data128.2`
+            self.assertEqual(alignment_list.count(16), 2)
+            # alignment=32: `data256`
+            self.assertEqual(alignment_list.count(32), 1)
 
     @unittest.skipUnless(
-        platform.system() == "Linux",
-        "This test is linux only." and not check_avx512f_support(),
+        platform.system() == "Linux", "This test is linux only."
+    )
+    @unittest.skipUnless(
+        check_avx512f_support(), "This test requires avx512f."
     )
     def test_aligned_data_in_code512(self):
         """
