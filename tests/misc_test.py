@@ -492,11 +492,18 @@ class AuxDataTests(unittest.TestCase):
             ir = disassemble(Path(binary)).ir()
             m = ir.modules[0]
 
-            alignments = m.aux_data["alignment"].data.items()
-            alignment_list = [alignment for uuid, alignment in alignments]
+            main_sym = next(m.symbols_named("main"))
+            main_block = main_sym.referent
 
-            # alignment=64: `data512` and `_start`
-            self.assertEqual(alignment_list.count(64), 2)
+            alignments = m.aux_data["alignment"].data.items()
+            alignment_list = [
+                alignment
+                for block, alignment in alignments
+                if block.address > main_block.address
+            ]
+
+            # alignment=64: `data512`
+            self.assertEqual(alignment_list.count(64), 1)
 
 
 class RawGtirbTests(unittest.TestCase):
