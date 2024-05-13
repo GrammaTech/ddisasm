@@ -153,12 +153,15 @@ class OverlappingInstructionTests(unittest.TestCase):
 
 
 def check_avx512f_support():
-    try:
-        import cpuid
-
-        return cpuid.get_cpuid().ext_avx512f
-    except ImportError:
-        return False
+    if platform.system() == "Linux":
+        try:
+            output = subprocess.check_output(["lscpu"])
+            output = output.decode("utf-8")
+            if "avx512f" in output:
+                return True
+        except FileNotFoundError:
+            print("lscpu command not found.")
+    return False
 
 
 class AuxDataTests(unittest.TestCase):
