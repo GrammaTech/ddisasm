@@ -154,13 +154,10 @@ class OverlappingInstructionTests(unittest.TestCase):
 
 def check_avx512f_support():
     if platform.system() == "Linux":
-        try:
-            output = subprocess.check_output(["lscpu"])
-            output = output.decode("utf-8")
-            if "avx512f" in output:
-                return True
-        except FileNotFoundError:
-            print("lscpu command not found.")
+        output = subprocess.check_output(["lscpu"])
+        output = output.decode("utf-8")
+        if "avx512f" in output:
+            return True
     return False
 
 
