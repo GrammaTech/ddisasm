@@ -480,14 +480,14 @@ class AuxDataTests(unittest.TestCase):
     @unittest.skipUnless(
         check_avx512f_support(), "This test requires avx512f."
     )
-    def test_aligned_data_in_code512(self):
+    def test_aligned_data_in_code_avx512f(self):
         """
         Test that alignment directives are correctly generated for
         data_in_code referenced by instructions that require 64-byte
         alignment
         """
-        binary = "ex2"
-        with cd(ex_asm_dir / "ex_aligned_data_in_code"):
+        binary = "ex"
+        with cd(ex_asm_dir / "ex_aligned_data_in_code_avx512f"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
             ir = disassemble(Path(binary)).ir()
             m = ir.modules[0]
