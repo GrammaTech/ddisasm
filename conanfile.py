@@ -91,13 +91,13 @@ class DdisasmConan(Properties, ConanFile):
     boost_version = "1.69.0"
     gtirb_version = "dev"
     gtirb_pprinter_version = "dev"
-    capstone_version = "5.0.1-gt"
+    capstone_version = "dev"
     requires = (
         "boost/%s" % (boost_version),
         "gtirb/%s@rewriting+gtirb/master" % (gtirb_version),
-        "gtirb-pprinter/%s@rewriting+gtirb-pprinter/official-capstone-5"
+        "gtirb-pprinter/%s@rewriting+gtirb-pprinter/master"
         % (gtirb_pprinter_version),
-        "capstone/%s@rewriting+extra-packages/v5" % (capstone_version),
+        "capstone/%s@rewriting+extra-packages/next" % (capstone_version),
     )
 
     def imports(self):
