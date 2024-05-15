@@ -696,6 +696,18 @@ Information about alignment in bits for a given address
 
 alignment(0,0):- false.
 
+// Data in code needs to be aligned when referenced by instruction that
+// requires aligned memory: e.g., some SIMD instructions
+alignment(DataEA, AlignInBits):-
+    arch.alignment_required(EA,AlignInBits),
+    (
+        pc_relative_operand(EA,_,DataEA);
+        composite_data_access(_,EA,DataEA,AlignInBits)
+    ),
+    data_in_code(Begin,End),
+    DataEA >= Begin,
+    DataEA < End.
+
 //////////////////////////////////////////////////////////////////////////////////
 // Operations to abstract features of instructions
 

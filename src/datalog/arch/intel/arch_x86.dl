@@ -273,4 +273,31 @@ simple_data_load(EA,Data,Size):-
     instruction_memory_access_size(EA,MemIndex,Size),
     Size != 0.
 
+// Operation that requires aligned memory
+.decl operation_alignment_required(Operation:symbol)
+
+// The following AVX instructions require explicitly aligned memory
+// (See Table 15-6 in https://cdrdv2.intel.com/v1/dl/getContent/671200):
+
+operation_alignment_required("MOVDQA").
+operation_alignment_required("MOVAPS").
+operation_alignment_required("MOVAPD").
+operation_alignment_required("MOVNTPS").
+operation_alignment_required("MOVNTPD").
+operation_alignment_required("MOVNTDQ").
+operation_alignment_required("MOVNTDQA").
+
+operation_alignment_required("VMOVDQA").
+operation_alignment_required("VMOVAPS").
+operation_alignment_required("VMOVAPD").
+operation_alignment_required("VMOVNTPS").
+operation_alignment_required("VMOVNTPD").
+operation_alignment_required("VMOVNTDQ").
+operation_alignment_required("VMOVNTDQA").
+
+alignment_required(EA,AlignInBits):-
+    instruction_get_operation(EA,Operation),
+    operation_alignment_required(Operation),
+    instruction_memory_access_size(EA,_,AlignInBits).
+
 }
