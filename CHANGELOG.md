@@ -27,6 +27,7 @@
 * Fix bug where a relative jump table starting with consecutive zero offsets was truncated at the first non-zero value.
 * Add alignment for x86-64 instructions that require explicitly aligned memory
   (e.g., some SIMD instructions)
+* Update capstone version from 4.0.1 to 5.0.1
 
 # 1.8.0
 
