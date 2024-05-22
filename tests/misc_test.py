@@ -995,5 +995,26 @@ class MalformedPEBinaries(unittest.TestCase):
             # so we don't check that here.
 
 
+class ZeroEntryPointTests(unittest.TestCase):
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_zero_entry_point(self):
+        """
+        Test a shared library that has value 0 as its entry point.
+        We should not create an inferred symbol for `_start` for
+        entry-point 0 for shared libraries.
+        """
+
+        library = Path("ex.so")
+        with cd(ex_asm_dir / "ex_ifunc"):
+            self.assertTrue(compile("gcc", "g++", "-O0 --entry 0", []))
+            ir_library = disassemble(library).ir()
+            m = ir_library.modules[0]
+
+            # `_start` should not exist in the module.
+            self.assertEqual(len(list(m.symbols_named("_start"))), 0)
+
+
 if __name__ == "__main__":
     unittest.main()
