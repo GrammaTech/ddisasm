@@ -136,9 +136,8 @@ start_function(EA):-
 start_function(Start_location):-
     binary_format("ELF"),
     !function_symbol(Start_location,"_start"),
-    // Igore entry-point 0 for shared library
-    !(binary_type("DYN"), Start_location = 0),
-    entry_point(Start_location).
+    entry_point(Start_location),
+    code(Start_location).
 
 main_function(EA):-
     binary_format("ELF"),

@@ -28,8 +28,7 @@
 * Add alignment for x86-64 instructions that require explicitly aligned memory
   (e.g., some SIMD instructions)
 * Update capstone version from 4.0.1 to 5.0.1
-* Avoid generating `_start` symbol when the entry-point is 0 in shared
-  libraries
+* Avoid generating `_start` symbol when the entry-point address is not a code block.
 
 # 1.8.0
 
