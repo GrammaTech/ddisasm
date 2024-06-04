@@ -19,7 +19,9 @@ main:
     lea data128.2(%rip), %rax
     movdqa 0(%rax), %xmm1
 
-    # Load data into YMM register using movdqa: `data256` needs to be aligned.
+    # Load data into XMM and YMM using vmovapd: `data256` needs to be 32-bit
+    # aligned (YMM) instead of being 16-bit aligned (XMM).
+    vmovapd data256(%rip), %xmm0
     vmovapd data256(%rip), %ymm0
 
     # Load data into YMM register using vmovups: `data256u` does not need to be aligned.
