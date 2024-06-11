@@ -712,8 +712,6 @@ Information about alignment in bits for a given address
 .decl alignment(EA:address,AlignInBits:unsigned)
 .output alignment
 
-alignment(0,0):- false.
-
 alignment(DataEA, AlignInBits):-
     alignment_candidate(DataEA, AlignInBits),
     AlignInBits = max X: {alignment_candidate(DataEA, X)}.
