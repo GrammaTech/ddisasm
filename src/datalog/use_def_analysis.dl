@@ -155,6 +155,8 @@ analysis for both registers and stack variables.
 
     /**
     The last address prior to EA where Var was defined within the block
+
+    Multiple are possible in conditional cases.
     */
     .decl block_last_def(EA:address,EA_def:address,Var:T)
 
@@ -167,6 +169,15 @@ analysis for both registers and stack variables.
         !must_def(EA,Var),
         ea_propagates_def(EA,Var),
         local_next(EA,EA_next).
+
+    /**
+    The last sole address prior to EA where Var was defined within the block
+    */
+    .decl block_last_sole_def(EA:address,EA_def:address,Var:T)
+
+    block_last_sole_def(EA,EA_def,Var):-
+        block_last_def(EA,EA_def,Var),
+        1 = count : {block_last_def(EA,_,Var)}.
 
     /**
     The last definition(s) of <T> in a given block.
@@ -185,6 +196,15 @@ analysis for both registers and stack variables.
             ea_propagates_def(BlockEnd,Var),
             block_last_def(BlockEnd,EA_def,Var)
         ).
+
+    /**
+    The last sole definition of <T> in a given block.
+    */
+    .decl last_sole_def_in_block(Block:address,EA_def:address,Var:T)
+
+    last_sole_def_in_block(Block,EA_def,Var):-
+        last_def_in_block(Block,EA_def,Var),
+        1 = count : {last_def_in_block(Block,_,Var)}.
 
     /**
     A <T> is referenced in a block
