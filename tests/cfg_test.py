@@ -48,6 +48,34 @@ class CfgTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
+    def test_relative_jump_table_with_cmov(self):
+        """
+        Make sure that the jump-table is not resolved when jump-table
+        bounary cannot be conservatively found due to multiple correlations
+        between the index register and the correlated register.
+        """
+
+        binary = Path("ex")
+        with cd(ex_asm_dir / "ex_relative_jump_tables4"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            ir_library = disassemble(binary).ir()
+            m = ir_library.modules[0]
+
+            # check that the jump_table entry targets do not have
+            # any incoming edge.
+            jt_target5_sym = next(m.symbols_named(".jump_table_target5"))
+            assert isinstance(jt_target5_sym.referent, gtirb.CodeBlock)
+            jt_target5_block = jt_target5_sym.referent
+            self.assertEqual(len(list(jt_target5_block.incoming_edges)), 0)
+
+            jt_target6_sym = next(m.symbols_named(".jump_table_target6"))
+            assert isinstance(jt_target6_sym.referent, gtirb.CodeBlock)
+            jt_target6_block = jt_target6_sym.referent
+            self.assertEqual(len(list(jt_target6_block.incoming_edges)), 0)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_switch_limited_by_cmp(self):
         """
         Ensure jump table propagation is limited by comparsions.
