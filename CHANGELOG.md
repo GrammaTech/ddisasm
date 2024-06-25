@@ -1,5 +1,7 @@
 # 1.9.1 (Unreleased)
 
+* Fix bug where incorrect jump-table boundaries could be inferred due to irrelevant register correlations to the index register
+
 # 1.9.0
 
 * Stop generating debian metapackages and packages with the version attached
