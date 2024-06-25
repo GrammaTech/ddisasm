@@ -1,4 +1,6 @@
-# 1.9.0 (Unreleased)
+# 1.9.1 (Unreleased)
+
+# 1.9.0
 
 * Stop generating debian metapackages and packages with the version attached
   to the package name. Updates in the apt-repository now support multiple
