@@ -1,6 +1,6 @@
 # 1.9.1 (Unreleased)
 
-* Fix bug where incorrect jump-table boundaries could be inferred due to irrelevant register correlations to the index register
+* Fix a hang due to incorrect jump-table boundaries inferred from irrelevant register correlations to the index register
 
 # 1.9.0
 
