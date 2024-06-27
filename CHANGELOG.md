@@ -1,4 +1,6 @@
-# 1.9.0 (Unreleased)
+# 1.9.1 (Unreleased)
+
+# 1.9.0
 
 * Stop generating debian metapackages and packages with the version attached
   to the package name. Updates in the apt-repository now support multiple
@@ -25,6 +27,10 @@
 * Infer jump table boundaries from comparisons of registers correlated to the index register.
 * Relax constraints for inferring jump table boundaries from comparisons of indirect operands
 * Fix bug where a relative jump table starting with consecutive zero offsets was truncated at the first non-zero value.
+* Add alignment for x86-64 instructions that require explicitly aligned memory
+  (e.g., some SIMD instructions)
+* Update capstone version from 4.0.1 to 5.0.1
+* Avoid generating `_start` symbol when the entry-point address is not a code block.
 
 # 1.8.0
 

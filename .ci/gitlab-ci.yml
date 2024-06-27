@@ -55,23 +55,23 @@ default:
   # Use aptitude to make sure gtirb-pprinter is installed even if that means installing an old gtirb
   - >-
     aptitude install --download-only -y -o "Aptitude::ProblemResolver::Hints::=reject gtirb-pprinter :UNINST"
-    libcapstone-dev${CAPSTONE_VERSION:+=$CAPSTONE_VERSION}
-    libgtirb-dev${GTIRB_VERSION:+=$GTIRB_VERSION}
-    libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+=$GTIRB_PPRINTER_VERSION}
-    gtirb-pprinter${GTIRB_PPRINTER_VERSION:+=$GTIRB_PPRINTER_VERSION}
+    libcapstone-dev${CAPSTONE_VERSION:+=1:$CAPSTONE_VERSION}
+    libgtirb-dev${GTIRB_VERSION:+=$GTIRB_VERSION-$(lsb_release -sc)}
+    libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+=$GTIRB_PPRINTER_VERSION-$(lsb_release -sc)}
+    gtirb-pprinter${GTIRB_PPRINTER_VERSION:+=$GTIRB_PPRINTER_VERSION-$(lsb_release -sc)}
   - mv /var/cache/apt/archives/*.deb .
 
 .install-deps:
   # Use aptitude to make sure gtirb-pprinter is installed even if that means installing an old gtirb
   - >-
     aptitude install -y -o "Aptitude::ProblemResolver::Hints::=reject gtirb-pprinter :UNINST"
-    libcapstone-dev${CAPSTONE_VERSION:+=$CAPSTONE_VERSION}
-    libgtirb-dev${GTIRB_VERSION:+=$GTIRB_VERSION}
-    libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+=$GTIRB_PPRINTER_VERSION}
-    gtirb-pprinter${GTIRB_PPRINTER_VERSION:+=$GTIRB_PPRINTER_VERSION}
+    libcapstone-dev${CAPSTONE_VERSION:+=1:$CAPSTONE_VERSION}
+    libgtirb-dev${GTIRB_VERSION:+=$GTIRB_VERSION-$(lsb_release -sc)}
+    libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+=$GTIRB_PPRINTER_VERSION-$(lsb_release -sc)}
+    gtirb-pprinter${GTIRB_PPRINTER_VERSION:+=$GTIRB_PPRINTER_VERSION-$(lsb_release -sc)}
 
 .install-capstone:
-  - apt-get install -y libcapstone-dev${CAPSTONE_VERSION:+=$CAPSTONE_VERSION}
+  - apt-get install -y libcapstone-dev${CAPSTONE_VERSION:+=1:$CAPSTONE_VERSION}
 
 # Set up ccache and report initial stats.
 .setup-ccache:

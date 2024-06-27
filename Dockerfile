@@ -104,7 +104,7 @@ RUN apt-get -y update \
       git \
       wget
 
-RUN wget https://download.grammatech.com/gtirb/files/apt-repo/pool/unstable/libc/libcapstone-dev/libcapstone-dev_5.0.0-gtdev_amd64.deb \
+RUN wget https://download.grammatech.com/gtirb/files/apt-repo/pool/unstable/libc/libcapstone-dev/libcapstone-dev_5.0.1_gtdev_amd64.deb \
   && dpkg -i libcapstone-dev_*_amd64.deb \
   && rm libcapstone-dev_*_amd64.deb
 
@@ -145,7 +145,7 @@ RUN apt-get -y update \
       python3 \
       wget
 
-RUN wget https://download.grammatech.com/gtirb/files/apt-repo/pool/unstable/libc/libcapstone-dev/libcapstone-dev_5.0.0-gtdev_amd64.deb \
+RUN wget https://download.grammatech.com/gtirb/files/apt-repo/pool/unstable/libc/libcapstone-dev/libcapstone-dev_5.0.1_gtdev_amd64.deb \
   && dpkg -i libcapstone-dev_*_amd64.deb \
   && rm libcapstone-dev_*_amd64.deb
 

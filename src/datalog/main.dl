@@ -689,12 +689,32 @@ halt(EA):-
     instruction_get_operation(EA,Operation).
 
 /**
+Auxiliary predicate that builds initial alignments from `alignment_required`:
+the max alignment is picked for an EA later.
+*/
+.decl alignment_candidate(EA:address,AlignInBits:unsigned)
+
+// Data in code needs to be aligned when referenced by instruction that
+// requires aligned memory: e.g., some SIMD instructions
+alignment_candidate(DataEA, AlignInBits):-
+    arch.alignment_required(EA,AlignInBits),
+    (
+        pc_relative_operand(EA,_,DataEA);
+        composite_data_access(_,EA,DataEA,AlignInBits)
+    ),
+    data_in_code(Begin,End),
+    DataEA >= Begin,
+    DataEA < End.
+
+/**
 Information about alignment in bits for a given address
 */
 .decl alignment(EA:address,AlignInBits:unsigned)
 .output alignment
 
-alignment(0,0):- false.
+alignment(DataEA, AlignInBits):-
+    alignment_candidate(DataEA, AlignInBits),
+    AlignInBits = max X: {alignment_candidate(DataEA, X)}.
 
 //////////////////////////////////////////////////////////////////////////////////
 // Operations to abstract features of instructions

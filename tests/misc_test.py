@@ -152,6 +152,15 @@ class OverlappingInstructionTests(unittest.TestCase):
                 self.subtest_lock_cmpxchg(example)
 
 
+def check_avx512f_support():
+    if platform.system() == "Linux":
+        output = subprocess.check_output(["lscpu"])
+        output = output.decode("utf-8")
+        if "avx512f" in output:
+            return True
+    return False
+
+
 class AuxDataTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
@@ -435,6 +444,66 @@ class AuxDataTests(unittest.TestCase):
             m = ir.modules[0]
 
             self.assertEqual(m.aux_data["elfSoname"].data, binary)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_aligned_data_in_code(self):
+        """
+        Test that alignment directives are correctly generated for
+        data_in_code referenced by instructions that require aligned memory.
+        """
+        binary = "ex"
+        with cd(ex_asm_dir / "ex_aligned_data_in_code"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            ir = disassemble(Path(binary)).ir()
+            m = ir.modules[0]
+
+            main_sym = next(m.symbols_named("main"))
+            main_block = main_sym.referent
+
+            alignments = m.aux_data["alignment"].data.items()
+            alignment_list = [
+                alignment
+                for block, alignment in alignments
+                if block.address > main_block.address
+            ]
+
+            # alignment=16: `data128.1`, `data128.2`
+            self.assertEqual(alignment_list.count(16), 2)
+            # alignment=32: `data256`
+            self.assertEqual(alignment_list.count(32), 1)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    @unittest.skipUnless(
+        check_avx512f_support(), "This test requires avx512f."
+    )
+    def test_aligned_data_in_code_avx512f(self):
+        """
+        Test that alignment directives are correctly generated for
+        data_in_code referenced by instructions that require 64-byte
+        alignment
+        """
+        binary = "ex"
+        with cd(ex_asm_dir / "ex_aligned_data_in_code_avx512f"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            ir = disassemble(Path(binary)).ir()
+            m = ir.modules[0]
+
+            main_sym = next(m.symbols_named("main"))
+            main_block = main_sym.referent
+
+            alignments = m.aux_data["alignment"].data.items()
+            alignment_list = [
+                alignment
+                for block, alignment in alignments
+                if block.address > main_block.address
+            ]
+
+            # alignment=64: `data512`
+            self.assertEqual(alignment_list.count(64), 1)
 
 
 class RawGtirbTests(unittest.TestCase):
@@ -924,6 +993,27 @@ class MalformedPEBinaries(unittest.TestCase):
             # LIEF does non-standard things with the IAT.
             # This makes reassembling into a working binary challenging
             # so we don't check that here.
+
+
+class ZeroEntryPointTests(unittest.TestCase):
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_zero_entry_point(self):
+        """
+        Test a shared library that has value 0 as its entry point.
+        We should not create an inferred symbol for `_start` for
+        entry-point 0 for shared libraries.
+        """
+
+        library = Path("ex.so")
+        with cd(ex_asm_dir / "ex_ifunc"):
+            self.assertTrue(compile("gcc", "g++", "-O0 --entry 0", []))
+            ir_library = disassemble(library).ir()
+            m = ir_library.modules[0]
+
+            # `_start` should not exist in the module.
+            self.assertEqual(len(list(m.symbols_named("_start"))), 0)
 
 
 if __name__ == "__main__":
