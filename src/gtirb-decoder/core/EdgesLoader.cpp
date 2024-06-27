@@ -118,7 +118,7 @@ void CfgLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program)
     {
         auto Source = boost::source(Edge, Cfg);
         auto Target = boost::target(Edge, Cfg);
-        if(const gtirb::CodeBlock* Src = dyn_cast<gtirb::CodeBlock>(Cfg[Source]))
+        if(const gtirb::CodeBlock* Src = gtirb::dyn_cast<gtirb::CodeBlock>(Cfg[Source]))
         {
             std::optional<gtirb::Addr> SrcAddr = Src->getAddress();
             assert(SrcAddr && "Found source block without address.");
@@ -126,14 +126,14 @@ void CfgLoader(const gtirb::Module& Module, souffle::SouffleProgram& Program)
             const gtirb::EdgeLabel& Label = Cfg[Edge];
             auto [Conditional, Indirect, Type] = edgeProperties(Label);
 
-            if(const gtirb::CodeBlock* Dest = dyn_cast<gtirb::CodeBlock>(Cfg[Target]))
+            if(const gtirb::CodeBlock* Dest = gtirb::dyn_cast<gtirb::CodeBlock>(Cfg[Target]))
             {
                 std::optional<gtirb::Addr> DestAddr = Dest->getAddress();
                 assert(DestAddr && "Found destination block without address.");
                 Edges.push_back({*SrcAddr, *DestAddr, Conditional, Indirect, Type});
             }
 
-            if(const gtirb::ProxyBlock* Dest = dyn_cast<gtirb::ProxyBlock>(Cfg[Target]))
+            if(const gtirb::ProxyBlock* Dest = gtirb::dyn_cast<gtirb::ProxyBlock>(Cfg[Target]))
             {
                 auto It = InvSymbolMap.find(Dest);
                 if(It != InvSymbolMap.end())
