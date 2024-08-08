@@ -98,7 +98,7 @@ There is a segment of data in a code section that spans from 'Begin' to 'End'.
 .decl data_in_code(Begin:address,End:address)
 
 /**
-A block candidate can be a "code" or "data" block candidate.
+A block candidate can be a "code", "data", or "padding" block candidate.
 */
 .type block_type <: symbol
 /**
@@ -903,83 +903,103 @@ unresolved_block_overlap(Block1,Type1,Size1,Block2,Type2,Size2):-
 // For details of the algoritm's implementation, see:
 // https://www.cs.umd.edu/class/fall2017/cmsc451-0101/Lects/lect10-dp-intv-sched.pdf
 
+.type interval_type <: unsigned
+
+.decl type_ordering_map(Type:block_type,IntervalType:interval_type,AddrAdjust:address)
+
+// padding and code can be default or thumb
+type_ordering_map("padding",0,0).
+type_ordering_map("padding",1,1).
+type_ordering_map("code",2,0).
+type_ordering_map("code",3,1).
+type_ordering_map("data",4,0).
+
 /**
 Valid unresolved intervals
 */
-.decl unresolved_interval(Start:address,End:address)
+.decl unresolved_interval(Start:address,End:address,TypeOrd:interval_type,Weight:number)
 
-unresolved_interval(Start,End):-
+unresolved_interval(Start,End,IntervalType, Points):-
     unresolved_block(Block,Type,Size),
     block_total_points(Block,Type,Size,Points),
-    Points >= 0,
+    type_ordering_map(Type,IntervalType,AddrAdjust),
+    Start = Block - AddrAdjust,
     block_candidate_boundaries(Block,Type,Start,End),
     Size = End - Start.
+
 
 /**
 Sort intervals by end address
 */
-.decl unresolved_interval_order(ID:unsigned,Start:address,End:address)
+.decl next_type(Start:address,End:address,PrevType:interval_type,NextType:interval_type)
+.decl next_start(PrevStart:address,End:address,NextStart:address)
+.decl next_end(PrevEnd:address,NextEnd:address)
 
-unresolved_interval_order(ID,FirstStart,FirstEnd):-
+next_type(Start,End,PrevType,NextType):-
+    unresolved_interval(Start,End,PrevType,_),
+    NextType = min Type : {
+        unresolved_interval(Start,End,Type,_),
+        Type > PrevType
+    }.
+
+next_start(PrevStart,End,NextStart):-
+    unresolved_interval(PrevStart,End,_,_),
+    NextStart = min Start : {
+        unresolved_interval(Start,End,_,_),
+        Start > PrevStart
+    }.
+
+next_end(PrevEnd,NextEnd):-
+    unresolved_interval(_,PrevEnd,_,_),
+    NextEnd = min End : {
+        unresolved_interval(_,End,_,_),
+        End > PrevEnd
+    }.
+
+
+
+.decl unresolved_interval_order(ID:unsigned,Start:address,End:address,Type:interval_type,Weight:number)
+
+unresolved_interval_order(ID,FirstStart,FirstEnd,FirstType,Weight):-
     ID = 1,
     FirstEnd = min End : {
-        unresolved_interval(_,End)
+        unresolved_interval(_,End,_,_)
     },
     FirstStart = min Start : {
-        unresolved_interval(Start,FirstEnd)
-    }.
-
-unresolved_interval_order(LastID+1,NextStart,LastEnd):-
-    unresolved_interval_order(LastID,LastStart,LastEnd),
-    NextStart = min Start : {
-        unresolved_interval(Start,LastEnd),
-        Start > LastStart
-    }.
-
-unresolved_interval_order(LastID+1,NextStart,NextEnd):-
-    unresolved_interval_order(LastID,LastStart,LastEnd),
-    0 = count : {
-        unresolved_interval(Start,LastEnd),
-        Start > LastStart
+        unresolved_interval(Start,FirstEnd,_,_)
     },
-    NextEnd = min End : {
-        unresolved_interval(_,End),
-        End > LastEnd
+    FirstType = min Type : {
+        unresolved_interval(FirstStart,FirstEnd,Type,_)
     },
-    NextStart = min Start : {
-        unresolved_interval(Start,NextEnd)
-    }.
+    unresolved_interval(FirstStart,FirstEnd,FirstType,Weight).
 
-.decl block_type_priority(Type:block_type,Priority:unsigned)
+unresolved_interval_order(ID+1,Start,End,NextType,Weight):-
+    unresolved_interval_order(ID,Start,End,Type,_),
+    next_type(Start,End,Type,NextType),
+    unresolved_interval(Start,End,NextType,Weight).
 
-
-block_type_priority("data",2).
-block_type_priority("code",1).
-block_type_priority("padding",0).
-
-/**
-Select best block in an unresolved interval and calculate weight
-*/
-.decl unresolved_interval_best_block(ID:unsigned,Block:address,Type:block_type,Size:unsigned,Weight:unsigned)
-
-unresolved_interval_best_block(ID,SelectedBlock,SelectedType,Size,Weight):-
-    unresolved_interval_order(ID,Start,End),
-    Size = End - Start,
-    MaxPoints = max Points : {
-        block_candidate_boundaries(Block,Type,Start,End),
-        block_total_points(Block,Type,Size,Points),
-        // Don't select intervals with negative score.
-        Points >= 0
+unresolved_interval_order(ID+1,NextStart,End,FirstType,Weight):-
+    unresolved_interval_order(ID,Start,End,PrevType,_),
+    !next_type(Start,End,PrevType,_),
+    next_start(Start,End,NextStart),
+    FirstType = min Type : {
+        unresolved_interval(NextStart,End,Type,_)
     },
-    MaxPriority = max Priority : {
-        block_candidate_boundaries(Block,Type,Start,End),
-        block_total_points(Block,Type,Size,MaxPoints),
-        block_type_priority(Type,Priority)
+    unresolved_interval(NextStart,End,FirstType,Weight).
+
+unresolved_interval_order(ID+1,FirstStart,NextEnd,FirstType,Weight):-
+    unresolved_interval_order(ID,PrevStart,End,PrevType,_),
+    !next_type(PrevStart,End,PrevType,_),
+    !next_start(PrevStart,End,_),
+    next_end(End,NextEnd),
+    FirstStart = min Start : {
+        unresolved_interval(Start,NextEnd,_,_)
     },
-    block_type_priority(SelectedType,MaxPriority),
-    block_total_points(SelectedBlock,SelectedType,Size,MaxPoints),
-    block_candidate_boundaries(SelectedBlock,SelectedType,Start,End),
-    Weight = as(MaxPoints, unsigned).
+    FirstType = min Type : {
+        unresolved_interval(FirstStart,NextEnd,Type,_)
+    },
+    unresolved_interval(FirstStart,NextEnd,FirstType,Weight).
+
 
 /**
 Weighted interval schedule: `Count` of intervals that end prior to the start of
@@ -990,13 +1010,13 @@ Only calculated for intervals that have prior intervals.
 .decl wis_has_prior(I:unsigned,Count:unsigned)
 
 wis_has_prior(I,Prior):-
-    unresolved_interval_order(Prior,_,PriorEnd),
+    unresolved_interval_order(Prior,_,PriorEnd,_,_),
     // check the we have the last interval ending at PriorEnd
-    unresolved_interval_order(Prior+1,_,NextEnd),
+    unresolved_interval_order(Prior+1,_,NextEnd,_,_),
     NextEnd > PriorEnd,
     // find intervals that start after PriorEnd but before NextEnd.
     // for those intervals `Prior` is the prior.
-    unresolved_interval_order(I,Start,_),
+    unresolved_interval_order(I,Start,_,_,_),
     NextEnd > Start, Start >= PriorEnd.
 
 /**
@@ -1006,7 +1026,7 @@ intervals (i.e., with `Count` of 0).
 .decl wis_prior(I:unsigned,Count:unsigned)
 
 wis_prior(I,0):-
-    unresolved_interval_order(I,_,_),
+    unresolved_interval_order(I,_,_,_,_),
     !wis_has_prior(I,_).
 
 wis_prior(I,Prior):-
@@ -1015,7 +1035,7 @@ wis_prior(I,Prior):-
 /**
 If Val1 >= Val2, return Id1. Otherwise, return Id2.
 */
-.functor functor_choose_max(Val1:unsigned,Val2:unsigned,Id1:unsigned,Id2:unsigned):unsigned
+.functor functor_choose_max(Val1:number,Val2:number,Id1:unsigned,Id2:unsigned):unsigned
 
 /**
 Weighted interval schedule: memoized subproblems
@@ -1026,7 +1046,7 @@ Value is the optimized total weight for intervals [1:I].
 Predecessor) is the previous entry in `wis_memo`, later used to reconstruct
 the optimal solution.
 */
-.decl wis_memo(I:unsigned,Value:unsigned,Pred:unsigned)
+.decl wis_memo(I:unsigned,Value:number,Pred:unsigned)
 
 wis_memo(0,0,0).
 
@@ -1035,13 +1055,14 @@ wis_memo(I,Value,Pred):-
     // specifying this expression in both forms allows it to be indexed in both rule plans.
     I = IPrev + 1,
     IPrev = I - 1,
-    unresolved_interval_best_block(I,_,_,_,IWeight),
+    unresolved_interval_order(I,_,_,_,IWeight),
     wis_prior(I,P),
     wis_memo(P,TakeWeight0,_),
     TakeWeight = TakeWeight0 + IWeight,
     Value = max(LeaveWeight,TakeWeight),
     // functor_choose_max used for efficiency here instead of a disjunction
     // for performance.
+    // In case of equality, it default to including P.
     Pred = @functor_choose_max(LeaveWeight,TakeWeight,IPrev,P).
 
 // ensure @delta_wis_memo is evaluated first in both plans
@@ -1057,14 +1078,24 @@ selected.
 interval_schedule_tie(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB):-
     wis_memo(IPrev,LeaveWeight,_),
     I = IPrev + 1,
-    unresolved_interval_best_block(I,BlockA,TypeA,SizeA,IWeight),
+    unresolved_interval_order(I,StartA,EndA,IntervalTypeA,IWeight),
+
+    SizeA = as(EndA - StartA,unsigned),
+    type_ordering_map(TypeA,IntervalTypeA,AddrAdjustA),
+    BlockA = StartA + AddrAdjustA,
+
     // Don't warn if the selected block is later discarded.
     !discarded_block(BlockA,TypeA,SizeA,_,_),
     wis_prior(I,P),
     wis_memo(P,TakeWeight0,_),
     TakeWeight = TakeWeight0 + IWeight,
     LeaveWeight = TakeWeight,
-    unresolved_interval_best_block(IPrev,BlockB,TypeB,SizeB,_),
+    unresolved_interval_order(IPrev,StartB,EndB,IntervalTypeB,_),
+
+    SizeB = as(EndB - StartB,unsigned),
+    type_ordering_map(TypeB,IntervalTypeB,AddrAdjustB),
+    BlockB = StartB + AddrAdjustB,
+
     // We only care about ties if I is selected in the final schedule.
     // Otherwise, it had no impact on the output.
     // It's a non-issue if IPrev is selected. Because the wis_memo rule favors
@@ -1081,8 +1112,8 @@ Weighted interval schedule: reconstruct schedule of selected intervals
 
 // Start from the end, which holds the completed optimal solution.
 wis_schedule_iter(I):-
-    unresolved_interval_order(I,_,_),
-    !unresolved_interval_order(I+1,_,_).
+    unresolved_interval_order(I,_,_,_,_),
+    !unresolved_interval_order(I+1,_,_,_,_).
 
 // Add to schedule if interval I was taken.
 wis_schedule(I):-
@@ -1115,11 +1146,13 @@ BlockPropagated (for debugging purpose):
 .decl discarded_block(Block:address,Type:block_type,Size:unsigned,Reason:symbol,BlockPropagated:address)
 
 discarded_block(Block,Type,Size,"interval discarded",0):-
-    unresolved_block(Block,Type,Size),
-    block_candidate_boundaries(Block,Type,Start,End),
-    unresolved_interval_order(I,Start,End),
+    unresolved_interval_order(I,Start,End,IntervalType,_),
     Size = End - Start,
-    !wis_schedule(I).
+    !wis_schedule(I),
+    type_ordering_map(Type,IntervalType,AddrAdjust),
+    Block = Start + AddrAdjust,
+    unresolved_block(Block,Type,Size).
+
 
 // If both a code and data block are both known, and the data block is only
 // known by propagation, discard the data block.
@@ -1141,19 +1174,9 @@ discarded_block(Block2,Type2,Size2,"overlaps known code",Block1):-
     known_block(Block2,Type2,Size2,"propagated"),
     Type1 = "code", Type2 = "data".
 
-discarded_block(Block,Type,Size,"less points",0):-
-    wis_schedule(I),
-    unresolved_interval_order(I,Start,End),
-    Size = End - Start,
-    block_candidate_boundaries(Block,Type,Start,End),
-    !unresolved_interval_best_block(I,Block,Type,Size,_).
 
 discarded_block(Block,Type,Size,"impossible",0):-
     impossible_block(Block,Type,Size,_).
-
-discarded_block(Block,Type,Size,"negative points",0):-
-    block_total_points(Block,Type,Size,Points),
-    Points < 0.
 
 // propagate discarding blocks through direct jumps, calls, and must_fallthrough
 discarded_block(Block1,Type1,Size1,"propagated",Block2):-
@@ -1628,9 +1651,7 @@ block_still_overlap(Block1,Type1,Size1,Block2,Type2,Size2):-
         ;
         Block1 = Block2,
         Size1 = Size2,
-        block_type_priority(Type1,Priority1),
-        block_type_priority(Type2,Priority2),
-        Priority1 < Priority2
+        ord(Type1) < ord(Type2)
     ).
 
 /**

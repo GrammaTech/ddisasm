@@ -199,7 +199,7 @@ uint64_t functor_aligned(uint64_t EA, size_t Size)
     return EA + ((Size - (EA % Size)) % Size);
 }
 
-uint64_t functor_choose_max(uint64_t Val1, uint64_t Val2, uint64_t Id1, uint64_t Id2)
+uint64_t functor_choose_max(int64_t Val1, int64_t Val2, uint64_t Id1, uint64_t Id2)
 {
     if(Val1 <= Val2)
     {
