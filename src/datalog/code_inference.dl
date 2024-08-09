@@ -903,14 +903,30 @@ unresolved_block_overlap(Block1,Type1,Size1,Block2,Type2,Size2):-
 // For details of the algoritm's implementation, see:
 // https://www.cs.umd.edu/class/fall2017/cmsc451-0101/Lects/lect10-dp-intv-sched.pdf
 
+/**
+A numerical value that encodes the type of the interval for the WIS algorithm.
+*/
 .type interval_type <: unsigned
 
+/**
+This predicate allows us to translate back and forth from block types (padding, code, or data)
+into numerical interval types that are easily sorted. For padding and code blocks, we can
+have Default or Thumb blocks and we distinguish those with a different interval type.
+The field `AddrAdjust` allows us to adjust the addresses of Thumb blocks.
+
+This predicate also defines an implicit priority. If two blocks have the same weight
+and the same boundaries, the one with higher interval_type will be chosen.
+This derives from the way we deal with ties in the WIS algorithm. In case of a tie,
+the algorithm selects the block, which means that the last block in the ordering will
+be selected first.
+*/
 .decl type_ordering_map(Type:block_type,IntervalType:interval_type,AddrAdjust:address)
 
-// padding and code can be default or thumb
 type_ordering_map("padding",0,0).
+// padding thumb
 type_ordering_map("padding",1,1).
 type_ordering_map("code",2,0).
+// code thumb
 type_ordering_map("code",3,1).
 type_ordering_map("data",4,0).
 
@@ -928,11 +944,23 @@ unresolved_interval(Start,End,IntervalType, Points):-
     Size = End - Start.
 
 
+
 /**
-Sort intervals by end address
+Auxiliary predicate to help sorting the intervals.
+`next_type` captures the next type for a fixed start and end addresses.
 */
 .decl next_type(Start:address,End:address,PrevType:interval_type,NextType:interval_type)
+
+/**
+Auxiliary predicate to help sorting the intervals.
+`next_start` captures the next starting address for a fixed end address.
+*/
 .decl next_start(PrevStart:address,End:address,NextStart:address)
+
+/**
+Auxiliary predicate to help sorting the intervals.
+`next_end` captures the next end address overall.
+*/
 .decl next_end(PrevEnd:address,NextEnd:address)
 
 next_type(Start,End,PrevType,NextType):-
@@ -957,7 +985,9 @@ next_end(PrevEnd,NextEnd):-
     }.
 
 
-
+/**
+Sort intervals lexicographically by <end address, start address, interval_type>
+*/
 .decl unresolved_interval_order(ID:unsigned,Start:address,End:address,Type:interval_type,Weight:number)
 
 unresolved_interval_order(ID,FirstStart,FirstEnd,FirstType,Weight):-
@@ -1062,7 +1092,7 @@ wis_memo(I,Value,Pred):-
     Value = max(LeaveWeight,TakeWeight),
     // functor_choose_max used for efficiency here instead of a disjunction
     // for performance.
-    // In case of equality, it default to including P.
+    // In case of equality, it defaults to including P.
     Pred = @functor_choose_max(LeaveWeight,TakeWeight,IPrev,P).
 
 // ensure @delta_wis_memo is evaluated first in both plans
