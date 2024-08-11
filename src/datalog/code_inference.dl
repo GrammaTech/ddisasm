@@ -1681,7 +1681,7 @@ block_still_overlap(Block1,Type1,Size1,Block2,Type2,Size2):-
         ;
         Block1 = Block2,
         Size1 = Size2,
-        ord(Type1) < ord(Type2)
+        Type1 < Type2
     ).
 
 /**
