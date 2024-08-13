@@ -304,6 +304,7 @@ if(DDISASM_ARM_32)
   set(DATALOG_ARM32_SOURCES
       datalog/arch/arm32/arch_arm.dl
       datalog/arch/arm32/float_operations.dl
+      datalog/arch/arm32/interrupt_operations.dl
       datalog/arch/arm32/jump_operations.dl
       datalog/arch/arm32/registers.dl
       datalog/arch/arm32/memory_access.dl
