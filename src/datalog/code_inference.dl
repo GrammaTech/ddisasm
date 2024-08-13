@@ -359,12 +359,23 @@ block_limit(as(EA,address)):-
     (
         op_immediate(_,EA,_);
         pc_relative_operand(_,_,EA);
-        arch.pc_relative_addr(_,_,EA);
         basic_target(EA);
         instruction_has_loop_prefix(EA);
         fde_addresses(_,EA);
         lsda_callsite_addresses(_,EA, _)
     ).
+
+block_limit(Inst):-
+    (
+        arch.simple_data_load(_,EA,_);
+        arch.pc_relative_addr(_,_,EA)
+    ),
+    arch.instruction_at(EA,Inst).
+
+block_limit(Inst):-
+    arch.simple_data_load(_,EA,Size),
+    arch.instruction_at(EA+Size,Inst).
+
 
 // The targets are computed incrementally now as we traverse the code
 // likely_ea and possible_target_from are mutually recursive
