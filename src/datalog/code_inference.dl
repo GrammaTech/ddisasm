@@ -552,11 +552,11 @@ possible_target(EA):-
     ).
 
 // Maybe a solution for libunwind
-possible_target(CompTarget):-
-    binary_isa("ARM"),
-    after_end(EA,_),
-    !is_padding(EA),
-    CompTarget = EA bxor 1.
+// possible_target(CompTarget):-
+//     binary_isa("ARM"),
+//     after_end(EA,_),
+//     !is_padding(EA),
+//     CompTarget = EA bxor 1.
 
 ///////////////////////////////////////////////////////////////////////
 // We are done with the recursive exploration
