@@ -2,8 +2,12 @@
 .section .text
 # Unreferenced Thumb code at the start of the section
 .thumb
+    ldr r0, =ok_str
+    bl puts
+
     mov r0, #0
-    mov pc, lr
+    pop { pc }
+
 
 .align 2
 .arm
@@ -20,3 +24,7 @@ main:
     push { lr }
     mov r0, #0
     pop { pc }
+
+.section .rodata
+ok_str:
+    .ascii "OK\n\0"
