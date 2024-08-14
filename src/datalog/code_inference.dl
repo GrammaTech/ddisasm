@@ -368,12 +368,16 @@ block_limit(as(EA,address)):-
 block_limit(Inst):-
     (
         arch.simple_data_load(_,EA,_);
+        composite_data_access(_,_,EA,_);
         arch.pc_relative_addr(_,_,EA)
     ),
     arch.instruction_at(EA,Inst).
 
 block_limit(Inst):-
-    arch.simple_data_load(_,EA,Size),
+    (
+        arch.simple_data_load(_,EA,Size);
+        composite_data_access(_,_,EA,Size)
+    ),
     arch.instruction_at(EA+Size,Inst).
 
 
