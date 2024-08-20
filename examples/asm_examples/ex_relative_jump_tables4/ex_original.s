@@ -1,7 +1,18 @@
 // Similar to ex_relative_jump_tables except that this example uses
-// `cmov` in computing the value for the bound variable, and tests
-// if Ddisasm correctly finds `jump_table_max` for `jump_table_A`, and
-// in turn, correctly identifies jump-table entries for `jump_table_B`.
+// `cmov` in computing the value for the bound variable, and the `cmov`
+// is associated with ambiguous last defs (from the two incoming edges).
+//
+// To prevent potential overhead, Ddisasm uses a conservative way of
+// finding `jump_table_max` by not creating `value_reg_limit` when there
+// are multiple correlated reg relations.
+//
+// This example is to make sure that Ddisasm is not too aggressive in
+// finding `jump_table_max` by considering all the ambiguous last defs.
+//
+// Note that if Ddisasm is aggressive, it will find `jump_table_max`
+// for `jump_table_A`, and identify entries for `jump_table_B`
+// in this example.
+// However, we have observed a hang in spec2006/tonto, etc.
 
     .text
     .intel_syntax noprefix
