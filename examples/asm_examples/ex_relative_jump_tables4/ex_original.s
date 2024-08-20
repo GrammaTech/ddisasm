@@ -1,6 +1,7 @@
-// Same to ex_relative_jump_tables except that in this example,
-// the `cmov` instruction prevents `jump_table_max` from being created for
-// `jump_table_B`, which results in no jump-table entries found for the table.
+// Similar to ex_relative_jump_tables except that this example uses
+// `cmov` in computing the value for the bound variable, and tests
+// if Ddisasm correctly finds `jump_table_max` for `jump_table_A`, and
+// in turn, correctly identifies jump-table entries for `jump_table_B`.
 
     .text
     .intel_syntax noprefix
