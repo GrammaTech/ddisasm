@@ -266,10 +266,13 @@ correlated_live_reg(Block,DstReg,SrcReg,Offset):-
     // simple arithmetic operation derives DstReg from SrcReg at OpEA
     limit_reg_op(OpEA,DstReg,SrcReg,Offset),
     reg_def_use.last_def_in_block(Block,OpEA,DstReg),
+    !reg_def_use.ambiguous_last_def_in_block(Block,DstReg),
     (
         // SrcReg defined in block, same def live at end of block and OpEA
         reg_def_use.block_last_def(OpEA,SrcFrom,SrcReg),
-        reg_def_use.last_def_in_block(Block,SrcFrom,SrcReg)
+        !reg_def_use.ambiguous_block_last_def(OpEA,SrcReg),
+        reg_def_use.last_def_in_block(Block,SrcFrom,SrcReg),
+        !reg_def_use.ambiguous_last_def_in_block(Block,SrcReg)
         ;
         // SrcReg not defined in block
         !reg_def_use.last_def_in_block(Block,_,SrcReg)

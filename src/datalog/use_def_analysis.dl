@@ -155,6 +155,8 @@ analysis for both registers and stack variables.
 
     /**
     The last address prior to EA where Var was defined within the block
+
+    Multiple are possible in conditional cases.
     */
     .decl block_last_def(EA:address,EA_def:address,Var:T)
 
@@ -167,6 +169,17 @@ analysis for both registers and stack variables.
         !must_def(EA,Var),
         ea_propagates_def(EA,Var),
         local_next(EA,EA_next).
+
+    /**
+    Indicates at EA, Var has multiple possible last definitions in the block
+    due to conditional def(s).
+    */
+    .decl ambiguous_block_last_def(EA:address,Var:T)
+
+    ambiguous_block_last_def(EA,Var):-
+        block_last_def(EA,EA_def,Var),
+        block_last_def(EA,EA_other,Var),
+        EA_def != EA_other.
 
     /**
     The last definition(s) of <T> in a given block.
@@ -185,6 +198,17 @@ analysis for both registers and stack variables.
             ea_propagates_def(BlockEnd,Var),
             block_last_def(BlockEnd,EA_def,Var)
         ).
+
+    /**
+    Indicates at the end of Block, Var has multiple possible last definitions
+    in the block due to conditional def(s).
+    */
+    .decl ambiguous_last_def_in_block(Block:address,Var:T)
+
+    ambiguous_last_def_in_block(EA,Var):-
+        last_def_in_block(EA,EA_def,Var),
+        last_def_in_block(EA,EA_other,Var),
+        EA_def != EA_other.
 
     /**
     A <T> is referenced in a block
