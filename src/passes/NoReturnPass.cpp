@@ -46,7 +46,7 @@ void NoReturnPass::transformImpl(AnalysisPassResult& Result, gtirb::Context& Con
     boost::remove_edge_if(
         [&](auto Edge) {
             gtirb::EdgeLabel Label = *static_cast<const gtirb::EdgeLabel*>(Edge.get_property());
-            if(auto* Block = dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_source]))
+            if(auto* Block = gtirb::dyn_cast<gtirb::CodeBlock>(Cfg[Edge.m_source]))
                 return NoReturn.count(Block) && Label
                        && std::get<gtirb::EdgeType>(*Label) == gtirb::EdgeType::Fallthrough;
             return false;
