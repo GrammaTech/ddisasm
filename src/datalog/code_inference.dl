@@ -365,6 +365,7 @@ block_limit(as(EA,address)):-
         lsda_callsite_addresses(_,EA, _)
     ).
 
+// block limits before and after data accesses
 block_limit(Inst):-
     (
         arch.simple_data_load(_,EA,_);
@@ -465,7 +466,7 @@ padding_block_limit(Inst):-
 /**
 Build padding candidates from nop instructions
 
-This is analagous to code_in_block_candidate, but for blocks of type "padding".
+This is analogous to code_in_block_candidate, but for blocks of type "padding".
 */
 .decl nop_in_padding_candidate(EA:address,Start:address)
 
@@ -497,26 +498,55 @@ padding_block_candidate(Start,Next-Start):-
     next(EA,Next),
     !nop_in_padding_candidate(Next,Start).
 
-// in case we cannot fallthrough, we skip any nops that we might find
-// and generate a new possible_target once the nops finish
+
+/**
+Linear component of the forward traversal. after_end traverses
+the code lineraly skipping nops jump tables and literal pools
+and generating additional targets for candidate block generation.
+`End` represents where the traversal started and `EA` represents the current
+address.
+*/
 .decl after_end(EA:address,End:address)
 
+// Start propagating after no-fallthrough blocks
 after_end(Next,End):-
     code_in_block_candidate(End,_),
     next(End,Next),
     !may_fallthrough(End,Next).
 
+// If we have a may_fallthrough that goes to invalid or to
+// a data_block_candidate, we start an after_end propagation
+after_end(Next,End):-
+    code_in_block_candidate(End,_),
+    may_fallthrough(End,Next),
+    !must_fallthrough(End,Next),
+    (
+        EA = Next - (Next band 1),
+        data_block_candidate(EA,_)
+        ;
+        invalid(Next,_)
+    ).
+
+// Search after int3 instructions in PEs
+after_end(Next,End):-
+    binary_format("PE"),
+    instruction_get_operation(End,"INT3"),
+    next(End,Next),
+    !instruction_get_operation(Next,"INT3").
+
+// Propagation through nops
 after_end(Next,End):-
     after_end(EA,End),
     is_padding(EA),
     next(EA,Next).
 
+// Propagation through jump tables.
 after_end(Next,End):-
     relative_address(End,Size,_,_,_,_), Next=End+Size,
     !relative_address(Next,_,_,_,_,_),
     is_padding(Next).
 
-// This is used to find code after literal pools in ARM.
+// Propagation through literal pools in ARM.
 after_end(NextThumb,End),
 after_end(Next,End):-
     binary_isa("ARM"),
@@ -526,27 +556,6 @@ after_end(Next,End):-
     Next = EA + Size,
     NextThumb = Next + 1.
 
-// If we have a may_fallthrough that goes to invalid
-// but there is a code candidate, we start after end
-after_end(Next0,End):-
-    code_in_block_candidate(End,_),
-    may_fallthrough(End,Next0),
-    !must_fallthrough(End,Next0),
-    EA = Next0 - (Next0 band 1),
-    data_block_candidate(EA,_).
-
-// this is for libartd-compiler
-after_end(Next,End):-
-    code_in_block_candidate(End,_),
-    may_fallthrough(End,Next),
-    !must_fallthrough(End,Next),
-    invalid(Next,_).
-
-after_end(Next,End):-
-    binary_format("PE"),
-    instruction_get_operation(End,"INT3"),
-    next(End,Next),
-    !instruction_get_operation(Next,"INT3").
 
 possible_target(EA):-
     after_end(EA,_),
@@ -554,13 +563,6 @@ possible_target(EA):-
         !is_padding(EA);
         block_limit(EA)
     ).
-
-// Maybe a solution for libunwind
-// possible_target(CompTarget):-
-//     binary_isa("ARM"),
-//     after_end(EA,_),
-//     !is_padding(EA),
-//     CompTarget = EA bxor 1.
 
 ///////////////////////////////////////////////////////////////////////
 // We are done with the recursive exploration
