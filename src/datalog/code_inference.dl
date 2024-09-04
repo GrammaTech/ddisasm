@@ -514,18 +514,13 @@ after_end(Next,End):-
     next(End,Next),
     !may_fallthrough(End,Next).
 
-// If we have a may_fallthrough that goes to invalid or to
-// a data_block_candidate, we start an after_end propagation
+// If we have a may_fallthrough that goes to invalid, we start an after_end
+// propagation.
 after_end(Next,End):-
     code_in_block_candidate(End,_),
     may_fallthrough(End,Next),
     !must_fallthrough(End,Next),
-    (
-        EA = Next - (Next band 1),
-        data_block_candidate(EA,_)
-        ;
-        invalid(Next,_)
-    ).
+    invalid(Next,_).
 
 // Search after int3 instructions in PEs
 after_end(Next,End):-
@@ -534,27 +529,25 @@ after_end(Next,End):-
     next(End,Next),
     !instruction_get_operation(Next,"INT3").
 
-// Propagation through nops
-after_end(Next,End):-
-    after_end(EA,End),
-    is_padding(EA),
-    next(EA,Next).
-
-// Propagation through jump tables.
+// Search after jump tables
 after_end(Next,End):-
     relative_address(End,Size,_,_,_,_), Next=End+Size,
     !relative_address(Next,_,_,_,_,_),
     is_padding(Next).
 
-// Propagation through literal pools in ARM.
-after_end(NextThumb,End),
-after_end(Next,End):-
+// Search after literal pools
+after_end(NextThumb,NextThumb),
+after_end(Next,Next):-
     binary_isa("ARM"),
-    after_end(Next0,End),
-    EA = Next0 - (Next0 band 1),
     data_block_candidate(EA,Size),
     Next = EA + Size,
     NextThumb = Next + 1.
+
+// Propagation through nops
+after_end(Next,End):-
+    after_end(EA,End),
+    is_padding(EA),
+    next(EA,Next).
 
 
 possible_target(EA):-
