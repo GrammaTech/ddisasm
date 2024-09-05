@@ -501,8 +501,8 @@ padding_block_candidate(Start,Next-Start):-
 
 /**
 Linear component of the forward traversal. after_end traverses
-the code lineraly skipping nops jump tables and literal pools
-and generating additional targets for candidate block generation.
+the code lineraly skipping nops. Traversals starts at points
+where there is a no-fallthough, after jump tables and after literal pools.
 `End` represents where the traversal started and `EA` represents the current
 address.
 */
@@ -536,8 +536,8 @@ after_end(Next,End):-
     is_padding(Next).
 
 // Search after literal pools
-after_end(NextThumb,NextThumb),
-after_end(Next,Next):-
+after_end(NextThumb,EA),
+after_end(Next,EA):-
     binary_isa("ARM"),
     data_block_candidate(EA,Size),
     Next = EA + Size,
