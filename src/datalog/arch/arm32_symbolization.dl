@@ -195,7 +195,10 @@ symbolic_operand_candidate(EA,OpIndex,Dest,Type):-
     code(EA),
     arch.pc_relative_addr(EA,_,Dest0),
     (
-        code(Dest), Dest = Dest0, Type = "code"
+        // obtain decode mode from EA
+        Dest = Dest0 + (EA band 1),
+        code(Dest),
+        Type = "code"
         ;
         Dest = Dest0 - (Dest0 band 1),
         data_segment(Begin,End),
