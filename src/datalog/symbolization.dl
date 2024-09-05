@@ -470,7 +470,10 @@ string_candidate(EA,End,"ascii"):-
 
 string_candidate(EA,End,"ascii"):-
     string_candidate(_,EA,"ascii"),
-    ascii_string(EA,End).
+    ascii_string(EA,End),
+    data_segment(DataBeg,DataEnd),
+    EA >= DataBeg,
+    End <= DataEnd.
 
 /**
 String candidate refinement projects candidate string references onto a compound
