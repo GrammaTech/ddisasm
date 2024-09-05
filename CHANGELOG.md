@@ -2,6 +2,7 @@
 
 * Fix a hang due to incorrect jump-table boundaries inferred from irrelevant register correlations to the index register
 * Requires gtirb >=2.2.0
+* Improved code inference in ARM binaries. Do not miss code after literal pools.
 
 # 1.9.0
 
