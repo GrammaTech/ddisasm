@@ -992,6 +992,14 @@ negative_block_heuristic(Block,"code",Size,Inst,"arm: contains unplausible instr
     block_candidate_boundaries(Block,"code",Start,End),
     Size = End-Start.
 
+
+// bkpt is an unlikely instruction to be found in a binary
+negative_block_heuristic(Block,"code",Size,Inst,"arm: contains unplausible instr"):-
+    instruction(Inst,_,"BKPT",_,_,_,_,_,_,_),
+    code_in_block_candidate_refined(Inst,Block),
+    block_candidate_boundaries(Block,"code",Start,End),
+    Size = End-Start.
+
 // A code block that must fall through to a function start is highly likely false.
 negative_block_heuristic(Block,"code",Size,BlockSucc,"arm: must-fallthrough to function symbol"):-
     function_symbol(BlockSucc,_),
