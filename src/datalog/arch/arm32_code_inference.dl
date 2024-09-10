@@ -433,6 +433,7 @@ indefinite_litpool_ref(RefAddr,Size):-
     arch.pc_relative_addr(EA,_,RefAddr),
     code_in_block_candidate(EA,_),
     !composite_data_access(EA,_,_,_),
+    !ascii_string(RefAddr,_),
     NextLimit = min Limit : {
         data_block_limit(Limit),
         Limit > RefAddr
@@ -707,6 +708,20 @@ contains_plausible_instr_seq(Block,"multiple loads from stack"):-
     Count > 5.
 
 
+/**
+The following pattern at the beginning of a block:
+Block: push { ... }
+EA2:   sub sp, N
+*/
+contains_plausible_instr_seq(Block2,"push/adjust-sp"),
+contains_plausible_instr_seq(Block,"push/adjust-sp"):-
+    instruction_get_operation(Block,"PUSH"),
+    code_in_block_candidate_refined(Block,Block),
+    must_fallthrough(Block,EA2),
+    code_in_block_candidate_refined(EA2,Block2),
+    arch.stack_pointer(SP),
+    arch.reg_arithmetic_operation(EA2,SP,SP,_,N), N < 0.
+
 //////////////////////////////////////////////////////////////////////////
 // block points
 
@@ -893,6 +908,19 @@ data_block_candidate(Block,Size):-
         data_byte(End,0), data_byte(End+1,0), data_byte(End+2,0),
         End  = Block2 - 3
     ).
+
+/**
+EA:    adr r0, RefAddr
+...
+RefAddr: .string "..."
+*/
+block_heuristic(RefAddr,"data",Size,0,"possible string"),
+data_block_candidate(RefAddr,Size):-
+    arch.pc_relative_addr(EA,_,RefAddr),
+    code_in_block_candidate(EA,_),
+    !composite_data_access(EA,_,_,_),
+    ascii_string(RefAddr,End),
+    Size = End - RefAddr.
 
 /**
 EA:     ldr r0, LitPoolAddr
