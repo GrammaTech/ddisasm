@@ -168,6 +168,7 @@ invalid(EA,"arm: invalid pc"):-
         Operation = "LDRSBTHS";
         Operation = "LDRSHTHS";
         contains("LDRSB",Operation);
+        contains("LDRH",Operation);
         contains("LDRBVC",Operation);
         contains("LDRBLO",Operation)
     ),
@@ -189,7 +190,7 @@ invalid(EA,"arm: invalid arithmetic instruction with suffix s"):-
     arch.pc_reg(PC).
 
 invalid(EA, "arm: invalid stm/ldm"):-
-    instruction(EA,_,_,Operation,RegListOp,RegOp,0,_,_,_),
+    instruction(EA,Size,_,Operation,RegListOp,RegOp,0,_,_,_),
     BaseOperation = substr(Operation,0,3),
     (
          BaseOperation = "STM";
