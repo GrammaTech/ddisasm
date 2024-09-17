@@ -121,6 +121,9 @@ tests:
   - name: ex_zero_size_object_sym
     <<: *assembly
 
+  - name: ex_adr_to_code
+    <<: *assembly
+
   - name: ex1
     <<: *default
 
