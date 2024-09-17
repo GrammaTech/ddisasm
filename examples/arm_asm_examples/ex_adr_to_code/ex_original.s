@@ -26,20 +26,21 @@ _start:
 .arm_to_thumb:
     ldr r0, =ok2_str
     bl puts
-    adr r2, .ThumbToThumb
+    adr r2, .thumb_to_thumb
     # adr won't capture the bit in the pc to stay in thumb mode.
     add r2, r2, #1
     bx r2
 
-.ThumbToThumb:
+.thumb_to_thumb:
     ldr r0, =ok3_str
     bl puts
-    adr r2, .ThumbToArm
+    adr r2, .thumb_to_arm
     bx r2
 .arm
-.ThumbToArm:
+.thumb_to_arm:
     ldr r0, =ok4_str
     bl puts
+    mov r0, #0
     bl exit
 
 .global	main
