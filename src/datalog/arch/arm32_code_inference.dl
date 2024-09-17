@@ -155,21 +155,10 @@ invalid(EA,"arm: invalid pc"):-
     (
         Operation = "MLAHS";
         Operation = "MLASHS";
-        Operation = "LDRSHEQ";
-        Operation = "LDRSHTEQ";
-        Operation = "LDRSHTLO";
-        Operation = "LDRSHTVC";
-        Operation = "LDRBEQ";
-        Operation = "LDRSBEQ";
-        Operation = "LDRHHS";
-        Operation = "LDRHTHS";
-        Operation = "LDRSBHS";
-        Operation = "LDRSHHS";
-        Operation = "LDRSBTHS";
-        Operation = "LDRSHTHS";
+        contains("LDRB",Operation);
         contains("LDRSB",Operation);
-        contains("LDRBVC",Operation);
-        contains("LDRBLO",Operation)
+        contains("LDRH",Operation);
+        contains("LDRSH",Operation)
     ),
     instruction_get_dest_op(EA,_,Op),
     op_regdirect_contains_reg(Op,PC),
@@ -189,7 +178,7 @@ invalid(EA,"arm: invalid arithmetic instruction with suffix s"):-
     arch.pc_reg(PC).
 
 invalid(EA, "arm: invalid stm/ldm"):-
-    instruction(EA,_,_,Operation,RegListOp,RegOp,0,_,_,_),
+    instruction(EA,Size,_,Operation,RegListOp,RegOp,0,_,_,_),
     BaseOperation = substr(Operation,0,3),
     (
          BaseOperation = "STM";
@@ -433,6 +422,7 @@ indefinite_litpool_ref(RefAddr,Size):-
     arch.pc_relative_addr(EA,_,RefAddr),
     code_in_block_candidate(EA,_),
     !composite_data_access(EA,_,_,_),
+    !ascii_string(RefAddr,_),
     NextLimit = min Limit : {
         data_block_limit(Limit),
         Limit > RefAddr
@@ -707,6 +697,20 @@ contains_plausible_instr_seq(Block,"multiple loads from stack"):-
     Count > 5.
 
 
+/**
+The following pattern at the beginning of a block:
+Block: push { ... }
+EA2:   sub sp, N
+*/
+contains_plausible_instr_seq(Block2,"push/adjust-sp"),
+contains_plausible_instr_seq(Block,"push/adjust-sp"):-
+    instruction_get_operation(Block,"PUSH"),
+    code_in_block_candidate_refined(Block,Block),
+    must_fallthrough(Block,EA2),
+    code_in_block_candidate_refined(EA2,Block2),
+    arch.stack_pointer(SP),
+    arch.reg_arithmetic_operation(EA2,SP,SP,_,N), N < 0.
+
 //////////////////////////////////////////////////////////////////////////
 // block points
 
@@ -895,6 +899,19 @@ data_block_candidate(Block,Size):-
     ).
 
 /**
+EA:    adr r0, RefAddr
+...
+RefAddr: .string "..."
+*/
+block_heuristic(RefAddr,"data",Size,0,"possible string"),
+data_block_candidate(RefAddr,Size):-
+    arch.pc_relative_addr(EA,_,RefAddr),
+    code_in_block_candidate(EA,_),
+    !composite_data_access(EA,_,_,_),
+    ascii_string(RefAddr,End),
+    Size = End - RefAddr.
+
+/**
 EA:     ldr r0, LitPoolAddr
 ...
 CallEA: bl strcmp
@@ -989,6 +1006,14 @@ negative_block_heuristic(Block,"code",Size,Inst,"arm: contains unplausible instr
     arch.instruction_at(EA,Inst),
     instruction(Inst,InstSize,_,_,_,_,_,_,_,_),
     data_word(EA,InstSize,0),
+    block_candidate_boundaries(Block,"code",Start,End),
+    Size = End-Start.
+
+
+// bkpt is an unlikely instruction to be found in a binary
+negative_block_heuristic(Block,"code",Size,Inst,"arm: contains unplausible instr"):-
+    instruction(Inst,_,"BKPT",_,_,_,_,_,_,_),
+    code_in_block_candidate_refined(Inst,Block),
     block_candidate_boundaries(Block,"code",Start,End),
     Size = End-Start.
 

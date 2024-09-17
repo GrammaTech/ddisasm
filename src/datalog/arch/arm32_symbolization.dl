@@ -194,8 +194,18 @@ symbolic_operand_candidate(EA,OpIndex,RefAddr,"data"):-
 symbolic_operand_candidate(EA,OpIndex,Dest,Type):-
     code(EA),
     arch.pc_relative_addr(EA,_,Dest0),
+    // Dest0 is always even, we adjust it when pointing to thumb code
     (
-        code(Dest), Dest = Dest0, Type = "code"
+        // Dest is ARM code
+        Dest = Dest0,
+        code(Dest),
+        Type = "code"
+        ;
+        // Dest is Thumb code
+        Dest = Dest0 + 1,
+        code(Dest),
+        Type = "code"
+
         ;
         Dest = Dest0 - (Dest0 band 1),
         data_segment(Begin,End),

@@ -359,12 +359,28 @@ block_limit(as(EA,address)):-
     (
         op_immediate(_,EA,_);
         pc_relative_operand(_,_,EA);
-        arch.pc_relative_addr(_,_,EA);
         basic_target(EA);
         instruction_has_loop_prefix(EA);
         fde_addresses(_,EA);
         lsda_callsite_addresses(_,EA, _)
     ).
+
+// block limits before and after data accesses
+block_limit(Inst):-
+    (
+        arch.simple_data_load(_,EA,_);
+        composite_data_access(_,_,EA,_);
+        arch.pc_relative_addr(_,_,EA)
+    ),
+    arch.instruction_at(EA,Inst).
+
+block_limit(Inst):-
+    (
+        arch.simple_data_load(_,EA,Size);
+        composite_data_access(_,_,EA,Size)
+    ),
+    arch.instruction_at(EA+Size,Inst).
+
 
 // The targets are computed incrementally now as we traverse the code
 // likely_ea and possible_target_from are mutually recursive
@@ -450,18 +466,20 @@ padding_block_limit(Inst):-
 /**
 Build padding candidates from nop instructions
 
-This is analagous to code_in_block_candidate, but for blocks of type "padding".
+This is analogous to code_in_block_candidate, but for blocks of type "padding".
 */
 .decl nop_in_padding_candidate(EA:address,Start:address)
 
 nop_in_padding_candidate(EA,EA):-
     is_padding(EA),
+    !code_in_block_candidate_refined(EA,EA),
     next(Prev,EA),
     !is_padding(Prev).
 
 nop_in_padding_candidate(EA,EA):-
     padding_block_limit(EA),
-    is_padding(EA).
+    is_padding(EA),
+    !code_in_block_candidate_refined(EA,EA).
 
 nop_in_padding_candidate(Next,Start):-
     nop_in_padding_candidate(EA,Start),
@@ -480,38 +498,57 @@ padding_block_candidate(Start,Next-Start):-
     next(EA,Next),
     !nop_in_padding_candidate(Next,Start).
 
-// in case we cannot fallthrough, we skip any nops that we might find
-// and generate a new possible_target once the nops finish
+
+/**
+Linear component of the forward traversal. after_end traverses
+the code lineraly skipping nops. Traversals starts at points
+where there is a no-fallthough, after jump tables and after literal pools.
+`End` represents where the traversal started and `EA` represents the current
+address.
+*/
 .decl after_end(EA:address,End:address)
 
+// Start propagating after no-fallthrough blocks
 after_end(Next,End):-
     code_in_block_candidate(End,_),
     next(End,Next),
     !may_fallthrough(End,Next).
 
+// If we have a may_fallthrough that goes to invalid, we start an after_end
+// propagation.
 after_end(Next,End):-
-    after_end(EA,End),
-    is_padding(EA),
-    next(EA,Next).
+    code_in_block_candidate(End,_),
+    may_fallthrough(End,Next),
+    !must_fallthrough(End,Next),
+    invalid(Next,_).
 
-after_end(Next,End):-
-    relative_address(End,Size,_,_,_,_), Next=End+Size,
-    !relative_address(Next,_,_,_,_,_),
-    is_padding(Next).
-
-// This is used to find code after literal pools in ARM.
-after_end(Next,End):-
-    binary_isa("ARM"),
-    after_end(Next0,End),
-    EA = Next0 - (Next0 band 1),
-    data_block_candidate(EA,Size),
-    Next = Next0 + Size.
-
+// Search after int3 instructions in PEs
 after_end(Next,End):-
     binary_format("PE"),
     instruction_get_operation(End,"INT3"),
     next(End,Next),
     !instruction_get_operation(Next,"INT3").
+
+// Search after jump tables
+after_end(Next,End):-
+    relative_address(End,Size,_,_,_,_), Next=End+Size,
+    !relative_address(Next,_,_,_,_,_),
+    is_padding(Next).
+
+// Search after literal pools
+after_end(NextThumb,EA),
+after_end(Next,EA):-
+    binary_isa("ARM"),
+    data_block_candidate(EA,Size),
+    Next = EA + Size,
+    NextThumb = Next + 1.
+
+// Propagation through nops
+after_end(Next,End):-
+    after_end(EA,End),
+    is_padding(EA),
+    next(EA,Next).
+
 
 possible_target(EA):-
     after_end(EA,_),

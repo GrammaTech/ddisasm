@@ -91,8 +91,9 @@ point to an 'at-end' symbol.
 
 moved_data_label(EA,Size,Dest,NewDest):-
     symbolic_data(EA,Size,Dest),
-    address_in_data_refined_range.overlap(Dest,8,NewDest),
-    symbolic_data(NewDest,8,_).
+    arch.pointer_size(Pt_size),
+    address_in_data_refined_range.overlap(Dest,Pt_size,NewDest),
+    symbolic_data(NewDest,Pt_size,_).
 
 //if something points to the middle of a known symbol we express it as symbol+constant
 //as long as it is not code

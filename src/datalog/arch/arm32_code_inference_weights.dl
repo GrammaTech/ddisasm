@@ -28,6 +28,10 @@ default_heuristic_weight("arm: jump table: no start",PROPORTIONAL_WEIGHT,2).
 default_heuristic_weight("arm: jump table: no symbol",PROPORTIONAL_WEIGHT,15).
 default_heuristic_weight("arm: jump table",PROPORTIONAL_WEIGHT,5).
 
+default_heuristic_weight("possible string",PROPORTIONAL_WEIGHT,1).
+default_heuristic_weight("possible string: string param for string library",PROPORTIONAL_WEIGHT,1).
+default_heuristic_weight("possible string: string pred exists",PROPORTIONAL_WEIGHT,1).
+default_heuristic_weight("possible string: string succ exists",PROPORTIONAL_WEIGHT,1).
 
 // Simple weights
 default_heuristic_weight("arm: $d symbol",SIMPLE_WEIGHT,10).
@@ -79,8 +83,6 @@ default_heuristic_weight("plausible_block: mov-lr-pc/jump",SIMPLE_WEIGHT,7).
 default_heuristic_weight("plausible_block: movw/movt",SIMPLE_WEIGHT,6).
 default_heuristic_weight("plausible_block: multiple loads from stack",SIMPLE_WEIGHT,2).
 default_heuristic_weight("plausible_block: set-r0/return",SIMPLE_WEIGHT,1).
-default_heuristic_weight("possible string: string param for string library",SIMPLE_WEIGHT,4).
-default_heuristic_weight("possible string: string pred exists",SIMPLE_WEIGHT,5).
-default_heuristic_weight("possible string: string succ exists",SIMPLE_WEIGHT,5).
+default_heuristic_weight("plausible_block: push/adjust-sp",SIMPLE_WEIGHT,2).
 default_heuristic_weight("possible string: symbol is target",SIMPLE_WEIGHT,-5).
 default_heuristic_weight("possible string: symbol",SIMPLE_WEIGHT,8).
