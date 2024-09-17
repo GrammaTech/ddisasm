@@ -220,6 +220,51 @@ class ArmMiscTest(unittest.TestCase):
             self.assertIn("$a", reasons)
             self.assertIn("$t", reasons)
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_adr_symbolic_expr(self):
+        """
+        Test adr instructions generate the right symbolic expressions
+        """
+        binary = Path("ex")
+        with cd(ex_arm_asm_dir / "ex_adr_to_code"):
+            self.assertTrue(
+                compile(
+                    "arm-linux-gnueabihf-gcc",
+                    "arm-linux-gnueabihf-g++",
+                    "-O0",
+                    [],
+                    "qemu-arm -L /usr/arm-linux-gnueabihf",
+                )
+            )
+            ir_library = disassemble(
+                binary,
+                strip_exe="arm-linux-gnueabihf-strip",
+                strip=False,
+            ).ir()
+
+            m = ir_library.modules[0]
+            text_section = [s for s in m.sections if s.name == ".text"][0]
+            symexprs = [
+                s
+                for _, _, s in text_section.symbolic_expressions_at(
+                    range(
+                        text_section.address,
+                        text_section.address + text_section.size,
+                    )
+                )
+            ]
+            referred_symbol_names = set()
+            for symexpr in symexprs:
+                referred_symbol_names |= {
+                    symbol.name for symbol in symexpr.symbols
+                }
+            self.assertIn("arm_to_arm", referred_symbol_names)
+            self.assertIn("arm_to_thumb", referred_symbol_names)
+            self.assertIn("thumb_to_arm", referred_symbol_names)
+            self.assertIn("thumb_to_thumb", referred_symbol_names)
+
 
 if __name__ == "__main__":
     unittest.main()

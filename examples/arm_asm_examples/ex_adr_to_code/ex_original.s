@@ -9,35 +9,39 @@
 .arm
 .global _start
 _start:
-    adr r2, .arm_to_arm
+    adr r2, arm_to_arm
     mov pc, r2
     bl exit
 
-.arm_to_arm:
+.type	arm_to_arm, %function
+arm_to_arm:
     ldr r0, =ok1_str
     bl puts
-    adr r2, .arm_to_thumb
+    adr r2, arm_to_thumb
     # adr won't capture the bit in the label so we need to add 1 to change mode
     add r2, r2, #1
     bx r2
 
 
 .thumb
-.arm_to_thumb:
+.type	arm_to_thumb, %function
+arm_to_thumb:
     ldr r0, =ok2_str
     bl puts
-    adr r2, .thumb_to_thumb
+    adr r2, thumb_to_thumb
     # adr won't capture the bit in the pc to stay in thumb mode.
     add r2, r2, #1
     bx r2
 
-.thumb_to_thumb:
+.type	thumb_to_thumb, %function
+thumb_to_thumb:
     ldr r0, =ok3_str
     bl puts
-    adr r2, .thumb_to_arm
+    adr r2, thumb_to_arm
     bx r2
 .arm
-.thumb_to_arm:
+.type   thumb_to_arm, %function
+thumb_to_arm:
     ldr r0, =ok4_str
     bl puts
     mov r0, #0
