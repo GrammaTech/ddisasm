@@ -377,7 +377,8 @@ block_limit(Inst):-
 block_limit(Inst):-
     (
         arch.simple_data_load(_,EA,Size);
-        composite_data_access(_,_,EA,Size)
+        composite_data_access(_,_,EA,Size);
+        repeated_byte(EA,_,Size), Size > 8
     ),
     arch.instruction_at(EA+Size,Inst).
 
@@ -529,19 +530,17 @@ after_end(Next,End):-
     next(End,Next),
     !instruction_get_operation(Next,"INT3").
 
-// Search after jump tables
-after_end(Next,End):-
-    relative_address(End,Size,_,_,_,_), Next=End+Size,
-    !relative_address(Next,_,_,_,_,_),
-    is_padding(Next).
-
-// Search after literal pools
-after_end(NextThumb,EA),
+// Search after jump tables and literal pools
 after_end(Next,EA):-
-    binary_isa("ARM"),
     data_block_candidate(EA,Size),
     Next = EA + Size,
-    NextThumb = Next + 1.
+    !relative_address(Next,_,_,_,_,_).
+
+// Search thumb code after literal pools
+after_end(NextThumb,EA):-
+    binary_isa("ARM"),
+    data_block_candidate(EA,Size),
+    NextThumb = EA + Size + 1.
 
 // Propagation through nops
 after_end(Next,End):-
@@ -646,7 +645,7 @@ data_block_candidate(Addr,Pt_size):-
     BegSect <= Addr, Addr < EndSect,
     aligned_address_in_data(Addr,Dest),
     ascii_string(StrBeg,StrEnd),
-    StrBeg >= Dest, Dest < StrEnd,
+    StrBeg <= Dest, Dest < StrEnd,
     arch.pointer_size(Pt_size).
 /**
 The block candidate defined by address 'Block' extends from 'BegAddr' to 'EndAddr'.
