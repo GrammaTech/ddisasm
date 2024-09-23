@@ -702,11 +702,7 @@ alignment_candidate(DataEA, AlignInBits):-
         pc_relative_operand(EA,_,DataEA);
         composite_data_access(_,EA,DataEA,AlignInBits)
     ),
-    (
-        data_in_code(Begin,End)
-        ;
-        data_segment(Begin,End)
-    ),
+    data_segment(Begin,End),
     DataEA >= Begin,
     DataEA < End.
 
