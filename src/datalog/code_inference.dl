@@ -648,6 +648,7 @@ data_block_candidate(Addr,Pt_size):-
     BegSect <= Addr, Addr < EndSect,
     aligned_address_in_data(Addr,Dest),
     ascii_string(StrBeg,StrEnd),
+    StrEnd - StrBeg >= 4,
     StrBeg <= Dest, Dest < StrEnd,
     arch.pointer_size(Pt_size).
 /**
