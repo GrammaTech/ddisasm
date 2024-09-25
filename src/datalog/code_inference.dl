@@ -382,6 +382,18 @@ block_limit(Inst):-
     ),
     arch.instruction_at(EA+Size,Inst).
 
+/**
+We want to split blocks that go from non-padding to padding.
+However, this cannot be a regular block_limit because several
+instructions could fallthrough into another one.
+We need to consider the source address too.
+*/
+.decl transition_block_limit(EA:address,Next:address)
+
+transition_block_limit(EA,Next):-
+    is_padding(Next),
+    next(EA,Next),
+    !is_padding(EA).
 
 // The targets are computed incrementally now as we traverse the code
 // likely_ea and possible_target_from are mutually recursive
@@ -426,22 +438,25 @@ code_in_block_candidate(EA,EA):-
     possible_target(EA),
     possible_ea(EA).
 
-// extend the block as long as we are sure to fallthrough and we have not
+// Extend the block as long as we are sure to fallthrough and we have not
 // reached a block limit
 code_in_block_candidate(EA,Start):-
     code_in_block_candidate(EA2,Start),
     must_fallthrough(EA2,EA),
-    !block_limit(EA).
+    !block_limit(EA),
+    !transition_block_limit(EA2,EA).
 
 
-// if reached a block limit or an instruction that does not necessarily
+// If reached a block limit or an instruction that does not necessarily
 // fallthrough continue exploring but start a new block
+// Always start a new block if we switch to padding instructions.
 code_in_block_candidate(EA,EA):-
     code_in_block_candidate(EA2,_),
     may_fallthrough(EA2,EA),
     (
         !must_fallthrough(EA2,EA);
-        block_limit(EA)
+        block_limit(EA);
+        transition_block_limit(EA2,EA)
     ),
     possible_ea(EA).
 
@@ -559,6 +574,14 @@ possible_target(EA):-
         block_limit(EA)
     ).
 
+// In ARM, if we find invalid instructions, we try with the other decode mode.
+possible_target(SwitchDecodeModeEA):-
+    binary_isa("ARM"),
+    after_end(EA,_),
+    !is_padding(EA),
+    invalid(EA,_),
+    SwitchDecodeModeEA = EA bxor 1.
+
 ///////////////////////////////////////////////////////////////////////
 // We are done with the recursive exploration
 // Now we detect and resolve conflicts within the different blocks
@@ -642,13 +665,13 @@ known_block(Block,"data",4,"relocation"):-
     !instruction_has_relocation(_,Block),
     address_in_data(Block,_).
 
+// Pointer to a string
 data_block_candidate(Addr,Pt_size):-
     code_section(Name),
     loaded_section(BegSect,EndSect,Name),
     BegSect <= Addr, Addr < EndSect,
     aligned_address_in_data(Addr,Dest),
     ascii_string(StrBeg,StrEnd),
-    StrEnd - StrBeg >= 4,
     StrBeg <= Dest, Dest < StrEnd,
     arch.pointer_size(Pt_size).
 /**
