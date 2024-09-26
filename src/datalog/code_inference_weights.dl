@@ -57,6 +57,7 @@ default_heuristic_weight("size",PROPORTIONAL_WEIGHT,5).
 default_heuristic_weight("unresolved-may-fallthrough",PROPORTIONAL_WEIGHT,0).
 default_heuristic_weight("resolved-reaches strong",PROPORTIONAL_WEIGHT,2).
 default_heuristic_weight("resolved-reaches weak",PROPORTIONAL_WEIGHT,1).
+default_heuristic_weight("possible string",PROPORTIONAL_WEIGHT,1).
 
 // Simple weights
 default_heuristic_weight("address in data array",SIMPLE_WEIGHT,1).

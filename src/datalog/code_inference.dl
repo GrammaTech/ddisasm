@@ -643,6 +643,7 @@ data_block_candidate(Block,AccessSize):-
     code_in_block_candidate(EA,_),
     code_in_block_candidate(EA_load,_).
 
+// Repeated bytes in code section
 data_block_candidate(EA,Size):-
     repeated_byte(EA,_,Size), Size > 8,
     !is_padding(EA).
@@ -664,6 +665,29 @@ known_block(Block,"data",4,"relocation"):-
     relocation(Block,"HIGHLOW",_,_,_,_,_),
     !instruction_has_relocation(_,Block),
     address_in_data(Block,_).
+
+/**
+String in code section, either it is referenced
+or it is long enough (>8 bytes).
+
+EA:    adr r0, RefAddr
+...
+RefAddr: .string "..."
+*/
+block_heuristic(RefAddr,"data",Size,0,"possible string"),
+data_block_candidate(RefAddr,Size):-
+    code_section(Name),
+    loaded_section(BegSect,EndSect,Name),
+    BegSect <= RefAddr, RefAddr < EndSect,
+    ascii_string(RefAddr,End),
+    Size = End - RefAddr,
+    (
+        arch.pc_relative_addr(EA,_,RefAddr),
+        code_in_block_candidate(EA,_),
+        !composite_data_access(EA,_,_,_)
+        ;
+        Size > 8
+    ).
 
 // Pointer to a string
 data_block_candidate(Addr,Pt_size):-
