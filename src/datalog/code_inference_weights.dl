@@ -54,7 +54,10 @@ heuristic_weight(Name,Type,Weight):-
 
 // Proportional weights
 default_heuristic_weight("size",PROPORTIONAL_WEIGHT,5).
-
+default_heuristic_weight("unresolved-may-fallthrough",PROPORTIONAL_WEIGHT,0).
+default_heuristic_weight("resolved-reaches strong",PROPORTIONAL_WEIGHT,2).
+default_heuristic_weight("resolved-reaches weak",PROPORTIONAL_WEIGHT,1).
+default_heuristic_weight("possible string",PROPORTIONAL_WEIGHT,1).
 
 // Simple weights
 default_heuristic_weight("address in data array",SIMPLE_WEIGHT,1).
@@ -85,9 +88,7 @@ default_heuristic_weight("relative-jump-table-start",SIMPLE_WEIGHT,3).
 default_heuristic_weight("relative jump table target: absolute",SIMPLE_WEIGHT,1).
 default_heuristic_weight("relative jump table target",SIMPLE_WEIGHT,2).
 default_heuristic_weight("repeated byte",SIMPLE_WEIGHT,10).
-default_heuristic_weight("resolved-reaches strong",SIMPLE_WEIGHT,7).
-default_heuristic_weight("resolved-reaches weak",SIMPLE_WEIGHT,3).
+
 default_heuristic_weight("seh handler",SIMPLE_WEIGHT,5).
 default_heuristic_weight("unresolved-direct-call",SIMPLE_WEIGHT,2).
 default_heuristic_weight("unresolved-direct-jump",SIMPLE_WEIGHT,2).
-default_heuristic_weight("unresolved-may-fallthrough",SIMPLE_WEIGHT,2).

@@ -28,3 +28,6 @@ interrupt_operation("INT").
 interrupt_operation("INTO").
 interrupt_operation("INT1").
 interrupt_operation("INT3").
+
+// Breakpoint operation
+interrupt_operation("BRK").

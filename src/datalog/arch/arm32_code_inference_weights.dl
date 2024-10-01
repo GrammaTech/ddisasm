@@ -28,7 +28,6 @@ default_heuristic_weight("arm: jump table: no start",PROPORTIONAL_WEIGHT,2).
 default_heuristic_weight("arm: jump table: no symbol",PROPORTIONAL_WEIGHT,15).
 default_heuristic_weight("arm: jump table",PROPORTIONAL_WEIGHT,5).
 
-default_heuristic_weight("possible string",PROPORTIONAL_WEIGHT,1).
 default_heuristic_weight("possible string: string param for string library",PROPORTIONAL_WEIGHT,1).
 default_heuristic_weight("possible string: string pred exists",PROPORTIONAL_WEIGHT,1).
 default_heuristic_weight("possible string: string succ exists",PROPORTIONAL_WEIGHT,1).

@@ -188,6 +188,7 @@ padding(EA,Size):-
     //this condition guarantees that we take the last after_end of a sequence of nops
     !is_padding(NonNop),
     next(End,EA),
+    is_padding(EA),
     Size = NonNop-EA,
     Size > 0.
 
