@@ -9,6 +9,8 @@
 * Fix bug that led to string data blocks potentially overlapping code blocks.
 * Fix bug that resulted in integral symbols on ISAs other than x64 (ARM and x86).
 * Fix symbolization bug of ADR instructions in ARM32 that refer to code.
+* Add alignments to data blocks that require alignment even within data
+  sections
 
 # 1.9.0
 
