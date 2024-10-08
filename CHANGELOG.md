@@ -14,6 +14,8 @@
 * Fix bug that led to string data blocks potentially overlapping code blocks.
 * Fix bug that resulted in integral symbols on ISAs other than x64 (ARM and x86).
 * Fix symbolization bug of ADR instructions in ARM32 that refer to code.
+* Fix bug in PE code inference that could lead to the whole .text section being
+  declared invalid if a data directory was attached to the end of the section.
 
 # 1.9.0
 
