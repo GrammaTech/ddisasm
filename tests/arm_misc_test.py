@@ -51,22 +51,27 @@ class ArmMiscTest(unittest.TestCase):
             ).ir()
             m = ir_library.modules[0]
 
-            main_first_block = None
-            blocks_are_data = []
             for sym in m.symbols:
                 if sym.name == "main":
-                    main_first_block = sym.referent
+                    self.assertTrue(isinstance(sym.referent, gtirb.CodeBlock))
                     continue
                 if not sym.name.startswith(".INVALID"):
                     continue
 
-                blocks_are_data.append(
-                    isinstance(sym.referent, gtirb.DataBlock)
-                )
-
-            self.assertTrue(isinstance(main_first_block, gtirb.CodeBlock))
-            self.assertTrue(all(blocks_are_data))
-            self.assertEqual(len(blocks_are_data), len(invalid_syms))
+                if "THUMB" in sym.name:
+                    # The symbol should not point to a thumb code block
+                    self.assertFalse(
+                        isinstance(sym.referent, gtirb.CodeBlock)
+                        and sym.referent.decode_mode
+                        == gtirb.CodeBlock.DecodeMode.Thumb
+                    )
+                else:
+                    # The symbol should not point to an arm code block
+                    self.assertFalse(
+                        isinstance(sym.referent, gtirb.CodeBlock)
+                        and sym.referent.decode_mode
+                        == gtirb.CodeBlock.DecodeMode.Default
+                    )
 
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."

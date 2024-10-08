@@ -213,6 +213,7 @@ incremental_linking(First,Last):-
     !incremental_linking_candidate(First,Next),
     Count = count : { incremental_linking_candidate(First,_) }, Count > 5.
 
+
 /**
 Locate data directory and debug data merged with the text section. Note that
 this is used to splice merged .rdata and .text sections.
@@ -228,7 +229,8 @@ merged_data_region(DataStart,DataStart+DataSize):-
     ),
     loaded_section(SectionStart,SectionEnd,".text"),
     DataStart > SectionStart,
-    DataStart < SectionEnd.
+    // Do not consider data directories at the end of the code section.
+    DataStart + DataSize < SectionEnd.
 
 // Infer prepended .rdata boundaries.
 data_region(Start,Size):-

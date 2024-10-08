@@ -178,7 +178,7 @@ thumbfunc:
     cmp r0, #1
     bhi .BHI19
 
-.INVALID18:
+.INVALID18_THUMB:
     @invalid: ldrd r0, sp, [r1], #4
     .short 0xe8f1
     .short 0x0d01
@@ -187,7 +187,7 @@ thumbfunc:
     cmp r0, #1
     bhi .BHI20
 
-.INVALID19:
+.INVALID19_THUMB:
     @invalid: ldrd r0, pc, [r1], #4
     .short 0xe8f1
     .short 0x0f01
@@ -196,7 +196,7 @@ thumbfunc:
     cmp r0, #1
     bhi .BHI21
 
-.INVALID20:
+.INVALID20_THUMB:
     @invalid: ldrd sp, r0, [r1], #4
     .short 0xe8f1
     .short 0xd001
@@ -205,7 +205,7 @@ thumbfunc:
     cmp r0, #1
     bhi .exit_thumb
 
-.INVALID21:
+.INVALID21_THUMB:
     @invalid: ldrd pc, r0, [r1], #4
     .short 0xe8f1
     .short 0xf001

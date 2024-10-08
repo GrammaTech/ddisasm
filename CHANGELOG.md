@@ -2,13 +2,20 @@
 
 * Fix a hang due to incorrect jump-table boundaries inferred from irrelevant register correlations to the index register
 * Requires gtirb >=2.2.0
-* Improved code inference in ARM binaries:
+* Improved code inference:
     - Do not miss code after literal pools.
+    - Switch decode mode if invalid instruction found in ARM.
+    - Fixed bug in pointers to string data blocks.
+    - Restrict padding blocks so they do not share instructions with code blocks.
+    - Start a new block if we transition from padding to not padding
+    - Change the type of several heuristics from "simple" to "proportional"
     - Additional heuristic: Simple string literals in literal pools
     - Additional heuristic: Function beginning pattern with push/adjust-sp as plausible instruction sequence
 * Fix bug that led to string data blocks potentially overlapping code blocks.
 * Fix bug that resulted in integral symbols on ISAs other than x64 (ARM and x86).
 * Fix symbolization bug of ADR instructions in ARM32 that refer to code.
+* Fix bug in PE code inference that could lead to the whole .text section being
+  declared invalid if a data directory was attached to the end of the section.
 
 # 1.9.0
 
