@@ -16,6 +16,8 @@
 * Fix symbolization bug of ADR instructions in ARM32 that refer to code.
 * Fix bug in PE code inference that could lead to the whole .text section being
   declared invalid if a data directory was attached to the end of the section.
+* Add alignments to data blocks that require alignment even within data
+  sections
 
 # 1.9.0
 

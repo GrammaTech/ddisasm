@@ -698,11 +698,12 @@ the max alignment is picked for an EA later.
 // requires aligned memory: e.g., some SIMD instructions
 alignment_candidate(DataEA, AlignInBits):-
     arch.alignment_required(EA,AlignInBits),
+    code(EA),
     (
         pc_relative_operand(EA,_,DataEA);
         composite_data_access(_,EA,DataEA,AlignInBits)
     ),
-    data_in_code(Begin,End),
+    data_segment(Begin,End),
     DataEA >= Begin,
     DataEA < End.
 
