@@ -18,6 +18,7 @@
   declared invalid if a data directory was attached to the end of the section.
 * Add alignments to data blocks that require alignment even within data
   sections
+* Generate alignments for functions potentially called via indirect calls (x64)
 
 # 1.9.0
 

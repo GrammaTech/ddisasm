@@ -462,11 +462,17 @@ class AuxDataTests(unittest.TestCase):
             main_sym = next(m.symbols_named("main"))
             main_block = main_sym.referent
 
+            libc_csu_init_sym = next(m.symbols_named("__libc_csu_init"))
+            libc_csu_init_block = libc_csu_init_sym.referent
+
             alignments = m.aux_data["alignment"].data.items()
             alignment_list = [
                 alignment
                 for block, alignment in alignments
-                if block.address > main_block.address
+                if (
+                    block.address > main_block.address
+                    and block.address < libc_csu_init_block.address
+                )
             ]
 
             # alignment=16: `data128.1`, `data128.2`
@@ -504,6 +510,30 @@ class AuxDataTests(unittest.TestCase):
 
             # alignment=64: `data512`
             self.assertEqual(alignment_list.count(64), 1)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_aligned_call_targets(self):
+        """
+        Test that alignment directives are correctly generated for
+        local functions potentially called by indirect calls.
+        """
+        binary = "ex"
+        with cd(ex_asm_dir / "ex_call_target_alignment"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            ir = disassemble(Path(binary)).ir()
+            m = ir.modules[0]
+
+            local_func = ["one", "two", "three", "four"]
+
+            local_func_blocks = [
+                next(m.symbols_named(sym)).referent for sym in local_func
+            ]
+
+            alignments = m.aux_data["alignment"].data
+
+            self.assertTrue(all(b in alignments for b in local_func_blocks))
 
 
 class RawGtirbTests(unittest.TestCase):

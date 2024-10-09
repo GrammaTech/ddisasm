@@ -667,6 +667,17 @@ void buildCodeBlocks(gtirb::Context &Context, gtirb::Module &Module,
 {
     auto BlockInfo =
         convertSortedRelation<VectorByEA<BlockInformation>>("block_information", Program);
+    auto Alignments = convertSortedRelation<VectorByEA<Alignment>>("alignment", Program);
+
+    auto *Alignment = Module.getAuxData<gtirb::schema::Alignment>();
+    if(!Alignment)
+    {
+        // Create one if none exists.
+        std::map<gtirb::UUID, uint64_t> Tmp;
+        Module.addAuxData<gtirb::schema::Alignment>(std::move(Tmp));
+        Alignment = Module.getAuxData<gtirb::schema::Alignment>();
+    }
+
     for(auto &Tuple : *Program.getRelation("refined_block"))
     {
         gtirb::Addr BlockAddress;
@@ -687,8 +698,16 @@ void buildCodeBlocks(gtirb::Context &Context, gtirb::Module &Module,
                     {
                         DecodeMode = gtirb::DecodeMode::Thumb;
                     }
-                    ByteInterval.addBlock<gtirb::CodeBlock>(Context, BlockOffset, BlockSize,
-                                                            DecodeMode);
+                    const auto *CodeBlock = ByteInterval.addBlock<gtirb::CodeBlock>(
+                        Context, BlockOffset, BlockSize, DecodeMode);
+                    if(CodeBlock && Alignment)
+                    {
+                        const auto AlignInfo = Alignments.find(*CodeBlock->getAddress());
+                        if(AlignInfo != Alignments.end())
+                        {
+                            (*Alignment)[CodeBlock->getUUID()] = AlignInfo->Num;
+                        }
+                    }
                 }
             }
         }

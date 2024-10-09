@@ -460,7 +460,11 @@ instruction_get_dest_op(EA,Index,Op):-
 next(EA,EA+Size):-
     instruction(EA,Size,_,_,_,_,_,_,_,_).
 
-.decl pc_relative_operand(src:address,index:operand_index, dest:address)
+/**
+EA has a PC-relative operand at Index, which is computed and stored in Dest.
+NOTE: Currently, we define pc_relative_operand only for X64.
+*/
+.decl pc_relative_operand(EA:address,Index:operand_index,Dest:address)
 
 pc_relative_operand(EA,Index,Dest):-
     binary_isa("X64"),
@@ -689,6 +693,19 @@ halt(EA):-
     instruction_get_operation(EA,Operation).
 
 /**
+Find alignment depending on EA
+*/
+.decl alignment_from_address(EA:address,AlignInBits:unsigned) inline
+
+alignment_from_address(EA, AlignInBits):-
+    (
+        EA % 16 = 0, AlignInBits = 16;
+        EA % 16 != 0, EA % 8 = 0, AlignInBits = 8;
+        EA % 8 != 0, EA % 4 = 0, AlignInBits = 4;
+        EA % 4 != 0, EA % 2 = 0, AlignInBits = 2
+    ).
+
+/**
 Auxiliary predicate that builds initial alignments from `alignment_required`:
 the max alignment is picked for an EA later.
 */
@@ -706,6 +723,14 @@ alignment_candidate(DataEA, AlignInBits):-
     data_segment(Begin,End),
     DataEA >= Begin,
     DataEA < End.
+
+// Align potential indirect-call targets to avoid any alignment issues:
+// If the call target crosses a page boundary, it could result in a
+// segmentation fault if the next page isn't mapped or accessible.
+alignment_candidate(FuncEA,AlignInBits):-
+    pc_relative_operand(_,_,FuncEA),
+    function_inference.function_entry(FuncEA),
+    alignment_from_address(FuncEA,AlignInBits).
 
 /**
 Information about alignment in bits for a given address
