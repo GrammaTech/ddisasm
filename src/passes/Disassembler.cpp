@@ -667,16 +667,6 @@ void buildCodeBlocks(gtirb::Context &Context, gtirb::Module &Module,
 {
     auto BlockInfo =
         convertSortedRelation<VectorByEA<BlockInformation>>("block_information", Program);
-    auto Alignments = convertSortedRelation<VectorByEA<Alignment>>("alignment", Program);
-
-    auto *Alignment = Module.getAuxData<gtirb::schema::Alignment>();
-    if(!Alignment)
-    {
-        // Create one if none exists.
-        std::map<gtirb::UUID, uint64_t> Tmp;
-        Module.addAuxData<gtirb::schema::Alignment>(std::move(Tmp));
-        Alignment = Module.getAuxData<gtirb::schema::Alignment>();
-    }
 
     for(auto &Tuple : *Program.getRelation("refined_block"))
     {
@@ -700,14 +690,6 @@ void buildCodeBlocks(gtirb::Context &Context, gtirb::Module &Module,
                     }
                     const auto *CodeBlock = ByteInterval.addBlock<gtirb::CodeBlock>(
                         Context, BlockOffset, BlockSize, DecodeMode);
-                    if(CodeBlock && Alignment)
-                    {
-                        const auto AlignInfo = Alignments.find(*CodeBlock->getAddress());
-                        if(AlignInfo != Alignments.end())
-                        {
-                            (*Alignment)[CodeBlock->getUUID()] = AlignInfo->Num;
-                        }
-                    }
                 }
             }
         }
@@ -762,16 +744,6 @@ void buildDataBlocks(gtirb::Context &Context, gtirb::Module &Module,
         convertSortedRelation<std::set<gtirb::Addr>>("data_object_boundary", Program);
     auto SymbolicExprAttributes = convertSortedRelation<VectorByEA<SymbolicExprAttribute>>(
         "symbolic_expr_attribute", Program);
-    auto Alignments = convertSortedRelation<VectorByEA<Alignment>>("alignment", Program);
-
-    auto *Alignment = Module.getAuxData<gtirb::schema::Alignment>();
-    if(!Alignment)
-    {
-        // Create one if none exists.
-        std::map<gtirb::UUID, uint64_t> Tmp;
-        Module.addAuxData<gtirb::schema::Alignment>(std::move(Tmp));
-        Alignment = Module.getAuxData<gtirb::schema::Alignment>();
-    }
 
     std::map<gtirb::UUID, std::string> TypesTable;
 
@@ -850,20 +822,50 @@ void buildDataBlocks(gtirb::Context &Context, gtirb::Module &Module,
                 std::cerr << "ByteInterval at address " << CurrentAddr << " not found" << std::endl;
                 exit(1);
             }
-
-            if(DataBlock && Alignment)
-            {
-                const auto AlignInfo = Alignments.find(*DataBlock->getAddress());
-                if(AlignInfo != Alignments.end())
-                {
-                    (*Alignment)[DataBlock->getUUID()] = AlignInfo->Num;
-                }
-            }
         }
     }
     buildBSS(Context, Module, Program);
     Module.addAuxData<gtirb::schema::Encodings>(std::move(TypesTable));
     Module.addAuxData<gtirb::schema::SymbolicExpressionSizes>(std::move(SymbolicSizes));
+}
+
+void buildAlignments(gtirb::Module &Module, souffle::SouffleProgram &Program)
+{
+    auto Alignments = convertSortedRelation<VectorByEA<Alignment>>("alignment", Program);
+
+    auto *Alignment = Module.getAuxData<gtirb::schema::Alignment>();
+    if(!Alignment)
+    {
+        // Create one if none exists.
+        std::map<gtirb::UUID, uint64_t> Tmp;
+        Module.addAuxData<gtirb::schema::Alignment>(std::move(Tmp));
+        Alignment = Module.getAuxData<gtirb::schema::Alignment>();
+    }
+
+    for(auto &BI : Module.byte_intervals())
+    {
+        for(auto &Block : BI.blocks())
+        {
+            std::optional<gtirb::Addr> BlockAddr;
+            if(auto *CB = gtirb::dyn_cast<gtirb::CodeBlock>(&Block))
+            {
+                BlockAddr = CB->getAddress();
+            }
+            else if(auto *DB = gtirb::dyn_cast<gtirb::DataBlock>(&Block))
+            {
+                BlockAddr = DB->getAddress();
+            }
+
+            if(BlockAddr)
+            {
+                const auto AlignInfo = Alignments.find(*BlockAddr);
+                if(AlignInfo != Alignments.end())
+                {
+                    (*Alignment)[Block.getUUID()] = AlignInfo->Num;
+                }
+            }
+        }
+    }
 }
 
 void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
@@ -1646,6 +1648,7 @@ void disassembleModule(gtirb::Context &Context, gtirb::Module &Module,
     buildSymbolForwarding(Context, Module, Program);
     buildCodeBlocks(Context, Module, Program);
     buildDataBlocks(Context, Module, Program);
+    buildAlignments(Module, Program);
     buildCodeSymbolicInformation(Module, Program);
     buildCfiDirectives(Module, Program);
     buildSehTable(Module, Program);
