@@ -14,6 +14,7 @@ from disassemble_reassemble_check import (
 from pathlib import Path
 from typing import Optional, Tuple
 from gtirb.cfg import EdgeType
+from gtirb.symbolicexpression import SymbolicExpression
 import gtirb
 import lief
 
@@ -1014,6 +1015,58 @@ class ZeroEntryPointTests(unittest.TestCase):
 
             # `_start` should not exist in the module.
             self.assertEqual(len(list(m.symbols_named("_start"))), 0)
+
+
+class TLSLocalExecTests(unittest.TestCase):
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_tls_local_exec(self):
+        """
+        Test that TLS attributes are correctly generated.
+        """
+
+        binary = Path("ex")
+        with cd(ex_asm_dir / "ex_tls_local_exec"):
+            self.assertTrue(compile("gcc", "g++", "-Os", []))
+            ir_library = disassemble(binary).ir()
+            m = ir_library.modules[0]
+
+            set_tls_var = next(m.symbols_named("set_tls_var"))
+            self.assertIsInstance(set_tls_var.referent, gtirb.CodeBlock)
+
+            block1 = set_tls_var.referent
+            bi1 = block1.byte_interval
+            sexpr1 = set(
+                bi1.symbolic_expressions_at(
+                    range(block1.address, block1.address + block1.size)
+                )
+            )
+            self.assertEqual(len(sexpr1), 1)
+            se1 = next(iter(sexpr1))[2]
+            self.assertIsInstance(se1, gtirb.SymAddrConst)
+            self.assertEqual(se1.symbol.name, "var")
+            self.assertEqual(
+                se1.attributes, {SymbolicExpression.Attribute.TPOFF}
+            )
+
+            get_tls_var = next(m.symbols_named("get_tls_var"))
+            self.assertIsInstance(get_tls_var.referent, gtirb.CodeBlock)
+
+            block2 = get_tls_var.referent
+            bi2 = block2.byte_interval
+            sexpr2 = set(
+                bi2.symbolic_expressions_at(
+                    range(block2.address, block2.address + block2.size)
+                )
+            )
+            self.assertEqual(len(sexpr2), 1)
+            se2 = next(iter(sexpr2))[2]
+            self.assertIsInstance(se2, gtirb.SymAddrConst)
+            self.assertEqual(se2.symbol.name, "var")
+            self.assertEqual(
+                se2.attributes, {SymbolicExpression.Attribute.TPOFF}
+            )
 
 
 if __name__ == "__main__":

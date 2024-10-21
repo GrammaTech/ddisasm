@@ -520,7 +520,16 @@ tls_relative_operand(EA,Index,Dest,Type):-
         Type = "NTPOFF"
     ),
     instruction_get_op(EA,Index,Op),
-    op_indirect(Op,Reg,"NONE","NONE",_,Offset,_), Offset < 0,
+    (
+        op_indirect(Op,Reg,"NONE","NONE",_,Offset,_)
+        ;
+        // e.g., mov OffReg, X
+        //       mov REG, FS:X@TPOFF(OffReg)
+        op_indirect(Op,Reg,OffReg0,"NONE",_,0,_),
+        reg_map_nullable(OffReg0,OffReg),
+        const_value_reg_used(EA,_,_,OffReg,Offset)
+    ),
+    Offset < 0,
     tls_segment(_,TlsEnd,Align),
     Base = as(@functor_aligned(TlsEnd, max(Align,1)),number),
     Dest = as(Base+Offset,address).
