@@ -384,7 +384,9 @@ block_limit(Inst):-
     arch.instruction_at(EA+Size,Inst).
 
 /**
-We want to split blocks that go from non-padding to padding.
+We want to split blocks that go from non-padding to padding
+or from padding to non-padding.
+
 However, this cannot be a regular block_limit because several
 instructions could fallthrough into another one.
 We need to consider the source address too.
@@ -395,6 +397,11 @@ transition_block_limit(EA,Next):-
     is_padding(Next),
     next(EA,Next),
     !is_padding(EA).
+
+transition_block_limit(EA,Next):-
+    is_padding(EA),
+    next(EA,Next),
+    !is_padding(Next).
 
 // The targets are computed incrementally now as we traverse the code
 // likely_ea and possible_target_from are mutually recursive
