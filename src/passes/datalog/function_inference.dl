@@ -47,11 +47,11 @@ This is designed to be used with tbdisasm trace GTIRB inputs to funifer.
 .decl op_regdirect(code:operand_code,register_name:register)
 .input op_regdirect
 
-.decl op_immediate(code:operand_code,offset:number)
+.decl op_immediate(Code:operand_code,Immediate:number, SizeBytes:unsigned)
 .input op_immediate
 
-.decl op_indirect(code:operand_code,reg1:register, reg2:register, reg3:register,
-        multiplier:number, offset:number, size_value:unsigned)
+.decl op_indirect(Code:operand_code,Reg1:register, Reg2:register, Reg3:register,
+        Multiplier:number, Offset:number, SizeBytes:unsigned)
 .input op_indirect
 
 //////////////////////////////////////////////////////////////
@@ -175,7 +175,7 @@ candidate_block(Block):-
 typical_function_start(Block):-
     block(Block,_),
     instruction(Block,_,_,"SUB",Op1,Op2,_,_,_,_),
-    op_immediate(Op1,_),
+    op_immediate(Op1,_,_),
     op_regdirect(Op2,"RSP").
 
 typical_function_start(Block):-

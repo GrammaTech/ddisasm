@@ -42,7 +42,7 @@ RUN apt-get -y update && \
       git \
       python3
 
-RUN git clone -b 0.13.0 --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF && \
+RUN git clone -b 0.13.2 --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF && \
     cmake -DLIEF_PYTHON_API=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF /usr/local/src/LIEF -B/usr/local/src/LIEF/build && \
     cmake --build /usr/local/src/LIEF/build -j --target install
 
@@ -96,6 +96,7 @@ RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 # Install APT packages
 RUN apt-get -y update && \
     apt-get -y install \
+        aptitude \
         ccache \
         gcc-arm-linux-gnueabihf \
         g++-arm-linux-gnueabihf \
@@ -139,7 +140,7 @@ RUN python3 -m pip install --no-cache-dir --upgrade pip && \
     python3 -m pip install --no-cache-dir \
     pyyaml \
     psycopg2-binary \
-    lief==0.13.0
+    lief==0.13.2
 
 COPY --from=souffle /usr/local/bin/souffle* /usr/local/bin/
 COPY --from=souffle /usr/local/include/souffle/ /usr/include/souffle

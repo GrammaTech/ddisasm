@@ -479,7 +479,11 @@ std::optional<relations::Operand> Arm32Loader::build(const cs_insn& CsInsn, cons
         case ARM_OP_REG:
             return RegOp{registerName(CsOp.reg)};
         case ARM_OP_IMM:
-            return ImmOp{CsOp.imm};
+        {
+            // ARM immediate operands do not have a size.
+            relations::ImmOp I = {CsOp.imm, 4};
+            return I;
+        }
         case ARM_OP_MEM:
         {
             // We translate LSL shifts into a Mult in op_indirect.
@@ -496,7 +500,7 @@ std::optional<relations::Operand> Arm32Loader::build(const cs_insn& CsInsn, cons
 
             // Capstone does not provide a way of accessing the size of
             // the memory reference.
-            // Size should be 64 instead of 32 for double-word memory
+            // Size should be 8 instead of 4 for double-word memory
             // reference: e.g., VLDR D0, [...]
             // TODO: (1) We could request capstone to be fixed, or (2) make
             // this function take the previous operand if any to infer the
@@ -508,12 +512,15 @@ std::optional<relations::Operand> Arm32Loader::build(const cs_insn& CsInsn, cons
                             registerName(CsOp.mem.index),
                             CsOp.mem.scale * LShiftMult,
                             CsOp.mem.disp,
-                            32};
+                            4};
             return I;
         }
         case ARM_OP_CIMM: ///< C-Immediate (coprocessor registers)
         case ARM_OP_PIMM: ///< P-Immediate (coprocessor registers)
-            return ImmOp{CsOp.imm};
+        {
+            relations::ImmOp I = {CsOp.imm, 4};
+            return I;
+        }
         case ARM_OP_SYSREG: ///< MSR/MRS special register operand
             return RegOp{"MSR"};
         case ARM_OP_FP:

@@ -40,7 +40,7 @@ RUN apt-get -y update \
       git \
       python3
 
-RUN git clone -b 0.13.0 --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF
+RUN git clone -b 0.13.2 --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF
 RUN cmake -DLIEF_PYTHON_API=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF /usr/local/src/LIEF -B/usr/local/src/LIEF/build
 RUN cmake --build /usr/local/src/LIEF/build -j4 --target all install
 
@@ -104,7 +104,7 @@ RUN apt-get -y update \
       git \
       wget
 
-RUN wget https://download.grammatech.com/gtirb/files/apt-repo/pool/unstable/libc/libcapstone-dev/libcapstone-dev_5.0.0-gtdev_amd64.deb \
+RUN wget https://download.grammatech.com/gtirb/files/apt-repo/pool/unstable/libc/libcapstone-dev/libcapstone-dev_5.0.1_gtdev_amd64.deb \
   && dpkg -i libcapstone-dev_*_amd64.deb \
   && rm libcapstone-dev_*_amd64.deb
 
@@ -145,7 +145,7 @@ RUN apt-get -y update \
       python3 \
       wget
 
-RUN wget https://download.grammatech.com/gtirb/files/apt-repo/pool/unstable/libc/libcapstone-dev/libcapstone-dev_5.0.0-gtdev_amd64.deb \
+RUN wget https://download.grammatech.com/gtirb/files/apt-repo/pool/unstable/libc/libcapstone-dev/libcapstone-dev_5.0.1_gtdev_amd64.deb \
   && dpkg -i libcapstone-dev_*_amd64.deb \
   && rm libcapstone-dev_*_amd64.deb
 

@@ -161,9 +161,9 @@ main:
     .long 0xe1a200d1
 
 .call_thumb:
-/*
+
     blx thumbfunc
-*/
+
 
 .exit:
     ldr r0, =ok_str
@@ -172,23 +172,13 @@ main:
     mov r0, #0
     pop { pc }
 
-/*
-TODO: Re-enable these Thumb tests.
-
-Currently, ddisasm doesn't seem to handle this Arm/Thumb interwork well enough
-to test this. Uncommenting this function and the call to it results in main
-being identified as  invalid entirely (even if this func is just replaced with
-`bx lr`, so it's not because it contains invalid instructions.
-
-See #275
-
 .thumb
 thumbfunc:
 .BHI18:
     cmp r0, #1
     bhi .BHI19
 
-.INVALID18:
+.INVALID18_THUMB:
     @invalid: ldrd r0, sp, [r1], #4
     .short 0xe8f1
     .short 0x0d01
@@ -197,7 +187,7 @@ thumbfunc:
     cmp r0, #1
     bhi .BHI20
 
-.INVALID19:
+.INVALID19_THUMB:
     @invalid: ldrd r0, pc, [r1], #4
     .short 0xe8f1
     .short 0x0f01
@@ -206,7 +196,7 @@ thumbfunc:
     cmp r0, #1
     bhi .BHI21
 
-.INVALID20:
+.INVALID20_THUMB:
     @invalid: ldrd sp, r0, [r1], #4
     .short 0xe8f1
     .short 0xd001
@@ -215,14 +205,13 @@ thumbfunc:
     cmp r0, #1
     bhi .exit_thumb
 
-.INVALID21:
+.INVALID21_THUMB:
     @invalid: ldrd pc, r0, [r1], #4
     .short 0xe8f1
     .short 0xf001
 
 .exit_thumb:
     bx lr
-*/
 
 .section .rodata
 ok_str:

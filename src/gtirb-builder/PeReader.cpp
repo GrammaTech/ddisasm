@@ -164,7 +164,6 @@ void PeReader::addEntryBlock()
             Module->setEntryPoint(Block);
         }
     }
-    assert(Module->getEntryPoint() && "Failed to set module entry point.");
 }
 
 void PeReader::addAuxData()

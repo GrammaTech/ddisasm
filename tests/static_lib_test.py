@@ -1,15 +1,20 @@
 import enum
-import os
 import platform
 import unittest
 from pathlib import Path
 import subprocess
 from typing import List
 
-import gtirb
 import yaml
 
-from disassemble_reassemble_check import compile, disassemble, cd, test, link
+from disassemble_reassemble_check import (
+    binary_print,
+    compile,
+    disassemble,
+    cd,
+    test,
+    link,
+)
 
 ex_dir = Path("./examples/")
 
@@ -87,6 +92,7 @@ class TestStaticLib(unittest.TestCase):
                 with cd(test_dir), self.subTest(
                     platform=path.stem, flags=flags
                 ):
+                    print(f"# static_lib_test with {path.stem} {flags}")
                     self.assertTrue(
                         compile(
                             default.get("build").get("c")[0],
@@ -97,7 +103,7 @@ class TestStaticLib(unittest.TestCase):
                         )
                     )
 
-                    binary = "libmsg.a"
+                    binary = Path("libmsg.a")
                     modules = [
                         "msg_one",
                         "msg_two",
@@ -105,67 +111,45 @@ class TestStaticLib(unittest.TestCase):
                         "msg_four_with_a_long_name",
                     ]
 
-                    gtirb_file = "libmsg.gtirb"
-                    self.assertTrue(
-                        disassemble(binary, gtirb_file, format="--ir")[0]
-                    )
-                    self.assertEqual(
-                        len(modules),
-                        len(gtirb.IR.load_protobuf(gtirb_file).modules),
-                    )
+                    result = disassemble(binary)
+                    ir = result.ir()
+                    self.assertEqual(len(modules), len(ir.modules))
 
-                    asm_dir = Path("libmsg-tmp")
-                    self.assertTrue(
-                        disassemble(binary, str(asm_dir), format="--asm")[0]
-                    )
-
-                    self.assertTrue(asm_dir.exists())
-                    self.assertTrue(asm_dir.is_dir())
-
-                    self.assertEqual(
-                        {name + ".s" for name in modules},
-                        set(os.listdir(asm_dir)),
-                    )
+                    for mod in ir.modules:
+                        self.assertTrue(mod.name.endswith(".o"))
 
                     # reassemble object files
-                    print(
-                        "# Reassembling",
-                        ", ".join([obj + ".s" for obj in modules]),
-                        "into",
-                        binary,
+                    asm_dir = Path("libmsg-tmp")
+                    asm_dir.mkdir()
+
+                    re_compiler = default.get("reassemble", {}).get(
+                        "compiler", "gcc"
                     )
-                    re_compiler = default.get("reassemble").get("compiler")
 
-                    # Filter out -nostartfiles since we are building object
-                    # files. It isn't needed while linking, either, because we
-                    # use the original ex.o.
-                    re_flags = [
-                        f
-                        for f in default.get("reassemble").get("flags")
-                        if f != "-nostartfiles"
-                    ]
-
-                    for obj in modules:
-                        subprocess.run(
-                            [
-                                re_compiler,
-                                "-c",
-                                str(asm_dir / (obj + ".s")),
-                                "-o",
-                                obj + ".o",
-                            ]
-                            + re_flags,
-                            check=True,
-                        )
+                    binary_print(
+                        result.ir_path,
+                        f"*.o={asm_dir}/{{name}}",
+                        build_object=True,
+                        compiler=re_compiler,
+                    )
+                    self.assertEqual(
+                        {module.name for module in ir.modules},
+                        {file.name for file in asm_dir.iterdir()},
+                    )
 
                     # re-build static archive
-                    objects = [obj + ".o" for obj in modules]
                     subprocess.run(
-                        ["ar", "-rcs", binary] + objects, check=True
+                        ["ar", "-rcs", binary] + list(asm_dir.iterdir()),
+                        check=True,
                     )
 
                     # re-link
                     self.assertTrue(
-                        link(re_compiler, "ex", ["ex.o", binary], re_flags)
+                        link(
+                            re_compiler,
+                            Path("ex"),
+                            [Path("ex.o"), binary],
+                            flags,
+                        )
                     )
-                    self.assertTrue(test(wrapper))
+                    self.assertTrue(test(exec_wrapper=wrapper))

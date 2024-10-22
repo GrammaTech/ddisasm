@@ -155,6 +155,8 @@ analysis for both registers and stack variables.
 
     /**
     The last address prior to EA where Var was defined within the block
+
+    Multiple are possible in conditional cases.
     */
     .decl block_last_def(EA:address,EA_def:address,Var:T)
 
@@ -167,6 +169,17 @@ analysis for both registers and stack variables.
         !must_def(EA,Var),
         ea_propagates_def(EA,Var),
         local_next(EA,EA_next).
+
+    /**
+    Indicates at EA, Var has multiple possible last definitions in the block
+    due to conditional def(s).
+    */
+    .decl ambiguous_block_last_def(EA:address,Var:T)
+
+    ambiguous_block_last_def(EA,Var):-
+        block_last_def(EA,EA_def,Var),
+        block_last_def(EA,EA_other,Var),
+        EA_def != EA_other.
 
     /**
     The last definition(s) of <T> in a given block.
@@ -185,6 +198,17 @@ analysis for both registers and stack variables.
             ea_propagates_def(BlockEnd,Var),
             block_last_def(BlockEnd,EA_def,Var)
         ).
+
+    /**
+    Indicates at the end of Block, Var has multiple possible last definitions
+    in the block due to conditional def(s).
+    */
+    .decl ambiguous_last_def_in_block(Block:address,Var:T)
+
+    ambiguous_last_def_in_block(EA,Var):-
+        last_def_in_block(EA,EA_def,Var),
+        last_def_in_block(EA,EA_other,Var),
+        EA_def != EA_other.
 
     /**
     A <T> is referenced in a block
@@ -282,6 +306,11 @@ analysis for both registers and stack variables.
     live_var_at_prior_used(EA_used,BlockUsed,Var):-
         live_var_at_block_end(Block,BlockUsed,Var),
         used_in_block(Block,EA_used,Var,_),
+        // The definition must be propagated for us to connect the two uses
+        // with live_var_at_prior_used. If the definition is not propagated,
+        // e.g. because there is a stack adjustment, the two uses might refer
+        // to different variables and should not be connected.
+        block_propagates_def(Block,Var),
         // Although this does not generate a live_var_at_prior used for a used
         // where the def was in the same block, it shouldn't be necessary since
         // the def will generate a live_var_def, which will connect directly to
@@ -429,7 +458,21 @@ stack_base_reg_move(Block,EA,Src,Dst):-
             arch.frame_pointer(BaseReg);
             arch.stack_pointer(BaseReg)
         ),
-        arch.store(EA,_,_,_,BaseReg,"NONE",_,StackPos).
+        (
+            arch.store(EA,_,_,_,BaseReg,"NONE",_,StackPos);
+            arch.store_immediate(EA,_,_,_,BaseReg,"NONE",_,StackPos)
+        ).
+
+    // A push with an indirect operand, e.g. push [addr]
+    // defines a stack value (only possible in x86)
+    def(EA,[StackReg,0]):-
+        (
+            binary_isa("X64");
+            binary_isa("X86")
+        ),
+        arch.stack_pointer(StackReg),
+        instruction(EA,_,_,"PUSH",SrcOp,0,0,0,_,_),
+        op_indirect(SrcOp,_,_,_,_,_,_).
 
     // TODO: flow_def (x86 can have these!)
     flow_def(0,nil,0,0):-
@@ -497,6 +540,15 @@ stack_base_reg_move(Block,EA,Src,Dst):-
     */
     .decl live_var_used_in_block(Block:address,EA:address,LiveVar:stack_var,UsedVar:stack_var,EA_used:address,Index:operand_index,Moves:unsigned)
 
+    /**
+    Specify the number of moves of the stack register (the stack pointer or the frame pointer)
+    that are tracked in the def-use stack analysis. This parameters is used to ensure rapid
+    convergence
+    */
+    .decl moves_limit(Moves:unsigned)
+
+    moves_limit(2).
+
     // Used in this block
     live_var_used_in_block(Block,EA_used,[BaseReg,StackPos],[BaseReg,StackPos],EA_used,Index,0):-
         used_in_block(Block,EA_used,[BaseReg,StackPos],Index).
@@ -510,22 +562,31 @@ stack_base_reg_move(Block,EA,Src,Dst):-
         ),
         live_var_at_block_end(Block,BlockUsed,[BaseReg,StackPos]),
         live_var_used(BlockUsed,[BaseReg,StackPos],VarUsed,EA_used,Index,Moves),
-        Moves <= 1,
+        moves_limit(MovesLimit),
+        Moves <= MovesLimit,
         block_last_instruction(Block,LastEA),
         next(LastEA,NextEA).
 
     // Propagate
-    live_var_used_in_block(Block,EA,[BaseReg,StackPos],[BaseReg,StackPos],EA_used,Index,Moves):-
-        live_var_used_in_block(Block,Next,[BaseReg,StackPos],[BaseReg,StackPos],EA_used,Index,Moves),
+    live_var_used_in_block(Block,EA,[BaseReg,StackPos],[FinalBaseReg,FinalStackPos],EA_used,Index,Moves):-
+        live_var_used_in_block(Block,Next,[BaseReg,StackPos],[FinalBaseReg,FinalStackPos],EA_used,Index,Moves),
         block_instruction_next(Block,EA,Next),
         !reg_def_use.def(EA,BaseReg),
         !def(EA,[BaseReg,StackPos]).
 
-    // Instruction adjusts the stack pointer.
+    // Instruction adjusts the stack pointer
     live_var_used_in_block(Block,EA,[BaseReg,StackPos+Offset],UsedVar,EA_used,Index,Moves):-
         live_var_used_in_block(Block,Next,[BaseReg,StackPos],UsedVar,EA_used,Index,Moves),
         block_instruction_next(Block,EA,Next),
-        adjusts_stack_in_block(_,EA,BaseReg,Offset).
+        adjusts_stack_in_block(_,EA,BaseReg,Offset),
+        !def(EA,[BaseReg,StackPos]),
+        // We assume that negative offsets from the stack pointer are not live.
+        (
+            arch.stack_pointer(BaseReg),
+            StackPos+Offset >= 0
+        ;
+            !arch.stack_pointer(BaseReg)
+        ).
 
     // Instruction copies the stack pointer.
     // Note: since this *copies* it, there may now be two valid
@@ -540,6 +601,7 @@ stack_base_reg_move(Block,EA,Src,Dst):-
     // If the live var propagates to the beginning of the block, add it to the inter-block relation.
     live_var_used(Block,LiveVar,UsedVar,EA_used,Index,Moves):-
         live_var_used_in_block(Block,Block,LiveVar,UsedVar,EA_used,Index,Moves).
+
 }
 
 .init stack_def_use = StackVarDefUse
@@ -578,3 +640,22 @@ def_used_for_address(EA_def,Reg,Type):-
 
 def_used_for_address(EA,Reg,"PCRelative"):-
     arch.pc_relative_addr(EA,Reg,_).
+
+/*
+This rule propagates `def_used_for_address` through the stack:
+```
+mov $addr, %rax
+mov %rax, 10(%rsp) // store
+...
+mov 10(%rsp), %rbx // load
+call (%rbx)
+```
+If %rbx is used for an address and it was loaded from the stack, which in turn
+was defined from another register %rax, then %rax was also used as an address.
+*/
+def_used_for_address(EA_def,Reg1,Type):-
+    def_used_for_address(EALoad,Reg2,Type),
+    arch.load(EALoad,_,_,Reg2,RegBaseLoad,"NONE",_,StackPosLoad),
+    stack_def_use.def_used(EAStore,[RegBaseStore,StackPosStore],EALoad,[RegBaseLoad,StackPosLoad],_),
+    arch.store(EAStore,_,_,Reg1,RegBaseStore,"NONE",_,StackPosStore),
+    reg_def_use.def_used(EA_def,Reg1,EAStore,_).

@@ -17,7 +17,7 @@ class ArmMiscTest(unittest.TestCase):
         """
         Test ARM32 invalid load instructions are not disassembled as code.
         """
-        binary = "ex"
+        binary = Path("ex")
         adder_dir = ex_arm_asm_dir / "ex_ldr"
         with cd(adder_dir):
             self.assertTrue(
@@ -31,8 +31,7 @@ class ArmMiscTest(unittest.TestCase):
             )
 
             # collect the invalid symbols
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
             invalid_syms = [
                 sym.name
@@ -43,35 +42,36 @@ class ArmMiscTest(unittest.TestCase):
             for sym in invalid_syms:
                 extra_strip_flags.append("--keep-symbol={}".format(sym))
 
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    strip_exe="arm-linux-gnueabihf-strip",
-                    strip=True,
-                    format="--ir",
-                    extra_strip_flags=extra_strip_flags,
-                )[0]
-            )
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(
+                binary,
+                Path("ex_stripped.gtirb"),
+                strip_exe="arm-linux-gnueabihf-strip",
+                strip=True,
+                extra_strip_flags=extra_strip_flags,
+            ).ir()
             m = ir_library.modules[0]
 
-            main_first_block = None
-            blocks_are_data = []
             for sym in m.symbols:
                 if sym.name == "main":
-                    main_first_block = sym.referent
+                    self.assertTrue(isinstance(sym.referent, gtirb.CodeBlock))
                     continue
                 if not sym.name.startswith(".INVALID"):
                     continue
 
-                blocks_are_data.append(
-                    isinstance(sym.referent, gtirb.DataBlock)
-                )
-
-            self.assertTrue(isinstance(main_first_block, gtirb.CodeBlock))
-            self.assertTrue(all(blocks_are_data))
-            self.assertEqual(len(blocks_are_data), len(invalid_syms))
+                if "THUMB" in sym.name:
+                    # The symbol should not point to a thumb code block
+                    self.assertFalse(
+                        isinstance(sym.referent, gtirb.CodeBlock)
+                        and sym.referent.decode_mode
+                        == gtirb.CodeBlock.DecodeMode.Thumb
+                    )
+                else:
+                    # The symbol should not point to an arm code block
+                    self.assertFalse(
+                        isinstance(sym.referent, gtirb.CodeBlock)
+                        and sym.referent.decode_mode
+                        == gtirb.CodeBlock.DecodeMode.Default
+                    )
 
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
@@ -80,7 +80,7 @@ class ArmMiscTest(unittest.TestCase):
         """
         Test that Thumb code is discovered at the start of a section
         """
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_arm_asm_dir / "ex_thumb_at_section_start"):
             self.assertTrue(
                 compile(
@@ -92,15 +92,11 @@ class ArmMiscTest(unittest.TestCase):
                 )
             )
 
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    format="--ir",
-                    strip_exe="arm-linux-gnueabihf-strip",
-                    strip=True,
-                )[0]
-            )
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(
+                binary,
+                strip_exe="arm-linux-gnueabihf-strip",
+                strip=True,
+            ).ir()
 
             m = ir_library.modules[0]
 
@@ -115,7 +111,7 @@ class ArmMiscTest(unittest.TestCase):
         Test that ldcl instructions, valid only on ARMv7 and earlier, decode
         correctly.
         """
-        binary = "ex"
+        binary = Path("ex")
         adder_dir = ex_arm_asm_dir / "ex_ldcl"
         with cd(adder_dir):
             self.assertTrue(
@@ -128,8 +124,7 @@ class ArmMiscTest(unittest.TestCase):
                 )
             )
 
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
 
             for sym in m.symbols:
@@ -161,7 +156,7 @@ class ArmMiscTest(unittest.TestCase):
         code that we did not detect.
         """
 
-        binary = "ex"
+        binary = Path("ex")
         dir = ex_arm_asm_dir / "ex_code_after_literal_pool"
         with cd(dir):
             self.assertTrue(
@@ -174,16 +169,12 @@ class ArmMiscTest(unittest.TestCase):
                 )
             )
 
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    format="--ir",
-                    strip_exe="arm-linux-gnueabihf-strip",
-                    strip=True,
-                )[0]
-            )
+            ir_library = disassemble(
+                binary,
+                strip_exe="arm-linux-gnueabihf-strip",
+                strip=True,
+            ).ir()
 
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             module = ir_library.modules[0]
 
             # ensure we have a block with the dead code:
@@ -209,7 +200,7 @@ class ArmMiscTest(unittest.TestCase):
         """
         Ensure $a and $t symbols create known_block on ARM.
         """
-        binary = "ex"
+        binary = Path("ex")
         dir = ex_arm_asm_dir / "ex_bx_pc"
         with cd(dir):
             self.assertTrue(
@@ -222,15 +213,10 @@ class ArmMiscTest(unittest.TestCase):
                 )
             )
 
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    format="--ir",
-                    extra_args=["--with-souffle-relations"],
-                )[0]
-            )
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(
+                binary,
+                extra_args=["--with-souffle-relations"],
+            ).ir()
             module = ir_library.modules[0]
 
             known_blocks = parse_souffle_output(module, "known_block")
@@ -238,6 +224,51 @@ class ArmMiscTest(unittest.TestCase):
             reasons = set(kb[3] for kb in known_blocks)
             self.assertIn("$a", reasons)
             self.assertIn("$t", reasons)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_adr_symbolic_expr(self):
+        """
+        Test adr instructions generate the right symbolic expressions
+        """
+        binary = Path("ex")
+        with cd(ex_arm_asm_dir / "ex_adr_to_code"):
+            self.assertTrue(
+                compile(
+                    "arm-linux-gnueabihf-gcc",
+                    "arm-linux-gnueabihf-g++",
+                    "-O0",
+                    [],
+                    "qemu-arm -L /usr/arm-linux-gnueabihf",
+                )
+            )
+            ir_library = disassemble(
+                binary,
+                strip_exe="arm-linux-gnueabihf-strip",
+                strip=False,
+            ).ir()
+
+            m = ir_library.modules[0]
+            text_section = [s for s in m.sections if s.name == ".text"][0]
+            symexprs = [
+                s
+                for _, _, s in text_section.symbolic_expressions_at(
+                    range(
+                        text_section.address,
+                        text_section.address + text_section.size,
+                    )
+                )
+            ]
+            referred_symbol_names = set()
+            for symexpr in symexprs:
+                referred_symbol_names |= {
+                    symbol.name for symbol in symexpr.symbols
+                }
+            self.assertIn("arm_to_arm", referred_symbol_names)
+            self.assertIn("arm_to_thumb", referred_symbol_names)
+            self.assertIn("thumb_to_arm", referred_symbol_names)
+            self.assertIn("thumb_to_thumb", referred_symbol_names)
 
 
 if __name__ == "__main__":

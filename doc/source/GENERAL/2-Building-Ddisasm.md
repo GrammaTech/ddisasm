@@ -10,7 +10,7 @@ To build Ddisasm from source, the following requirements should be installed:
 
 - [gtirb](https://github.com/grammatech/gtirb) version 1.12.1 or later
 - [gtirb-pprinter](https://github.com/grammatech/gtirb-pprinter), version 2.0.0 or later
-- [Capstone](http://www.capstone-engine.org/), version 5.0.0 or later
+- [Capstone](http://www.capstone-engine.org/), version 5.0.1 or later
   - GrammaTech builds and tests using the [GrammaTech/capstone](https://github.com/GrammaTech/capstone) fork.
 - [Souffle](https://souffle-lang.github.io), version 2.4  with support for 64 bit numbers (via `-DSOUFFLE_DOMAIN_64BIT=1` during configuration)
 
@@ -24,7 +24,7 @@ make install -j4
 ```
 
 - [libehp](https://git.zephyr-software.com/opensrc/libehp) or GrammaTech's [mirror](https://github.com/GrammaTech/libehp), version 1.0.0 or higher
-- [LIEF](https://lief.quarkslab.com/), version 0.13.0 or higher
+- [LIEF](https://lief.quarkslab.com/), version 0.13.2 or higher
 
 Our [Dockerfile](https://github.com/GrammaTech/ddisasm/blob/main/Dockerfile)
 is a good reference of how all the dependencies can be installed.

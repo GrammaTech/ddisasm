@@ -194,8 +194,18 @@ symbolic_operand_candidate(EA,OpIndex,RefAddr,"data"):-
 symbolic_operand_candidate(EA,OpIndex,Dest,Type):-
     code(EA),
     arch.pc_relative_addr(EA,_,Dest0),
+    // Dest0 is always even, we adjust it when pointing to thumb code
     (
-        code(Dest), Dest = Dest0, Type = "code"
+        // Dest is ARM code
+        Dest = Dest0,
+        code(Dest),
+        Type = "code"
+        ;
+        // Dest is Thumb code
+        Dest = Dest0 + 1,
+        code(Dest),
+        Type = "code"
+
         ;
         Dest = Dest0 - (Dest0 band 1),
         data_segment(Begin,End),
@@ -297,9 +307,8 @@ litpool_symbolic_operand(LitPoolAddr2,DataAccessSize,Symbol1,Symbol2,EA_D,Reg3,S
     arch.load_operation(Operation),
     instruction_get_src_op(EA_D,_,IndOp),
     instruction_get_dest_op(EA_D,_,RegOp),
-    op_indirect_mapped(IndOp,"NONE",Reg1,Reg2,_,0,Bits),
+    op_indirect_mapped(IndOp,"NONE",Reg1,Reg2,_,0,SymSize),
     op_regdirect_contains_reg(RegOp,Reg3),
-    SymSize = Bits / 8,
 
     reg_def_use.def_used(EA_B,Reg2,EA_D,_),
 
@@ -413,7 +422,7 @@ inferred_arch_info("Profile","System"):-
     substr(Operation,0,3) = "BLX",
     arch.jump_operation_op_index(Operation,OpIndex),
     instruction_get_op(EA,OpIndex,Op),
-    op_immediate(Op,_).
+    op_immediate(Op,_,_).
 
 // ARM code is not possible on the "Microcontroller" profile.
 inferred_arch_info("Profile","System"):-

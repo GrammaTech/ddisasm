@@ -119,7 +119,8 @@ symbol(EA,0,"NOTYPE","GLOBAL","DEFAULT",0,"export",as(Ordinal,unsigned),Function
 is_padding(EA+1):-
     binary_format("PE"),
     instruction_get_operation(EA,"INT3"),
-    instruction_get_operation(EA+1,"INT3").
+    instruction_get_operation(EA+1,"INT3"),
+    instruction_get_operation(EA+2,"INT3").
 
 /**
 Non-destructive multi-byte NOPs used by the MSVC compiler. (See `listing.inc'.)
@@ -213,6 +214,7 @@ incremental_linking(First,Last):-
     !incremental_linking_candidate(First,Next),
     Count = count : { incremental_linking_candidate(First,_) }, Count > 5.
 
+
 /**
 Locate data directory and debug data merged with the text section. Note that
 this is used to splice merged .rdata and .text sections.
@@ -228,7 +230,8 @@ merged_data_region(DataStart,DataStart+DataSize):-
     ),
     loaded_section(SectionStart,SectionEnd,".text"),
     DataStart > SectionStart,
-    DataStart < SectionEnd.
+    // Do not consider data directories at the end of the code section.
+    DataStart + DataSize < SectionEnd.
 
 // Infer prepended .rdata boundaries.
 data_region(Start,Size):-

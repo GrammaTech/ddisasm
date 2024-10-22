@@ -192,8 +192,8 @@ jump_table_signed(TableStart,Signed):-
     instruction_get_src_op(EA_used,_,Op),
     op_regdirect(Op,UsedReg),
     reg_map(UsedReg,DefRegMapped),
-    arch.register_size_bits(DefReg,DefSize),
-    arch.register_size_bits(UsedReg,UsedSize),
+    arch.register_size_bytes(DefReg,DefSize),
+    arch.register_size_bytes(UsedReg,UsedSize),
     UsedSize > DefSize,
     // Using the larger register is an implicit zero-extension.
     Signed = 0.

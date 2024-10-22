@@ -91,8 +91,9 @@ point to an 'at-end' symbol.
 
 moved_data_label(EA,Size,Dest,NewDest):-
     symbolic_data(EA,Size,Dest),
-    address_in_data_refined_range.overlap(Dest,8,NewDest),
-    symbolic_data(NewDest,8,_).
+    arch.pointer_size(Pt_size),
+    address_in_data_refined_range.overlap(Dest,Pt_size,NewDest),
+    symbolic_data(NewDest,Pt_size,_).
 
 //if something points to the middle of a known symbol we express it as symbol+constant
 //as long as it is not code
@@ -184,8 +185,12 @@ loop:
 .decl addr_outside_section_used_for_memory_access(EA:address,Reg:register,Addr:address,AddrAccessed:address)
 
 addr_outside_section_used_for_memory_access(EA_from,Reg,Addr,AddrAccessed):-
-    data_access(EA_access,Op_index,_,_,_,_,_,_),
     data_access_pattern_candidate(AddrAccessed,_,Mult,EA_access),
+    regular_data_section(Name),
+    loaded_section(Beg,End,Name),
+    Beg <= AddrAccessed, AddrAccessed < End,
+
+    data_access(EA_access,Op_index,_,_,_,_,_,_),
     value_reg_at_operand(EA_access,Op_index,Reg,EA_from,_,_,Type),
     Type != "incomplete",
     // check the initial addr considered
@@ -193,9 +198,6 @@ addr_outside_section_used_for_memory_access(EA_from,Reg,Addr,AddrAccessed):-
     AddrSigned >= 0,
     Addr = as(AddrSigned,address),
 
-    regular_data_section(Name),
-    loaded_section(Beg,End,Name),
-    Beg <= AddrAccessed, AddrAccessed < End,
     MultAbs = as(max(Mult,-Mult),unsigned),
     // Only consider if the Addr does not fall in the original section
     // but it is 1 or less multipliers away

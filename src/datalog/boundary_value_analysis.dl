@@ -111,7 +111,7 @@ compare_and_jump_indirect(EA_cmp,EA_jmp,CC,IndirectOp,Immediate):-
     instruction_get_op(EA_cmp,_,IndirectOp),
     op_indirect(IndirectOp,_,_,_,_,_,_),
     instruction_get_op(EA_cmp,_,ImmOp),
-    op_immediate(ImmOp,Immediate).
+    op_immediate(ImmOp,Immediate,_).
 
 /**
 Either "MIN" or "MAX"
@@ -181,14 +181,63 @@ value_reg_limit(EA_jmp,EA_fallthrough,Reg,FallthroughValue,FallthroughLT):-
     BranchValue = Immediate + BranchOffset,
     FallthroughValue = Immediate + FallthroughOffset.
 
+/**
+Detect where indirect operand used in a comparison is unmodified afterward.
+*/
+.decl compare_and_jump_indirect_op_valid(EA_cmp:address,EA_jmp:address,EA:address,IndirectOp:operand_code,Steps:number)
+
+compare_and_jump_indirect_op_valid(EA_cmp,EA_jmp,EA_cmp,IndirectOp,0):-
+    compare_and_jump_indirect(EA_cmp,EA_jmp,_,IndirectOp,_).
+
+compare_and_jump_indirect_op_valid(EA_cmp,EA_jmp,EA,IndirectOp,Steps+1):-
+    // Propagate forward (hopefully) towards the jump.
+    // We don't support compare/jump pairs that require following complex CFG
+    // edges.
+    EA <= EA_jmp,
+    compare_and_jump_indirect_op_valid(EA_cmp,EA_jmp,Prev,IndirectOp,Steps),
+    Steps < 3,
+    may_fallthrough(Prev,EA),
+    code(EA),
+    (
+        // No store
+        !arch.memory_access("STORE",EA,_,_,_,_,_,_,_),
+        !arch.store_immediate(EA,_,_,_,_,_,_,_),
+        !arch.memory_access_aggregated("STORE",EA,_,_,_,_,_)
+        ;
+        // If there are memory-writes between cmp and jmp,
+        // they must be syntactically different from IndirectOp.
+        // NOTE: This is based on the assumption that as long as the memory
+        // operands are syntactically different, they do not alias.
+        // However, this is a possibly wrong assumption.
+        (
+            arch.memory_access("STORE",EA,_,_,_,_,_,_,_);
+            arch.store_immediate(EA,_,_,_,_,_,_,_);
+            arch.memory_access_aggregated("STORE",EA,_,_,_,_,_)
+        ),
+        instruction_get_op(EA,_,IndirectOp2),
+        IndirectOp2 != IndirectOp
+    ),
+    // The registers used in the indirect operand aren't modified, either.
+    op_indirect_mapped(IndirectOp,"NONE",RegBase_nn,RegIndex_nn,_,_,_),
+    reg_nonnull(RegBase_nn,RegBase),
+    !reg_def_use.def(EA,RegBase),
+    (
+        RegIndex_nn = "NONE"
+        ;
+        reg_nonnull(RegIndex_nn,RegIndex),
+        !reg_def_use.def(EA,RegIndex)
+    ).
+
 // Ad-hoc rule for basic indirect comparison cases where the value is moved to
 // a register right after the jump (either at the branch target or the
 // fallthrough).
 value_reg_limit(EA_target,EA_limited,Reg,Value,LimitType):-
     compare_and_jump_indirect(EA_cmp,EA_jmp,CC,IndirectOp,Immediate),
     limit_type_map(CC,BranchLT,FallthroughLT,BranchOffset,FallthroughOffset),
-    // Enforce next to ensure the memory isn't modified between comparison and jump.
-    next(EA_cmp,EA_jmp),
+    // Validate that the memory isn't modified between the comparison and jump.
+    // Difficult to do generally, but we can cover some common cases with
+    // compare_and_jump_indirect_op_valid.
+    compare_and_jump_indirect_op_valid(EA_cmp,EA_jmp,EA_jmp,IndirectOp,_),
     (
         direct_jump(EA_jmp,EA_target),
         LimitType = BranchLT,
@@ -201,10 +250,45 @@ value_reg_limit(EA_target,EA_limited,Reg,Value,LimitType):-
         UNUSED(BranchLT), UNUSED(BranchOffset)
     ),
     // The value is loaded from this IndirectOp into a register immediately after the jump.
+    code(EA_target),
     arch.load(EA_target,_,_,Reg,_,_,_,_),
     track_register(Reg),
     instruction_get_op(EA_target,_,IndirectOp),
-    local_next(EA_target,EA_limited).
+    may_fallthrough(EA_target,EA_limited),
+    code(EA_limited).
+
+/**
+Two live registers are a constant offset from each other at the end of a block.
+*/
+.decl correlated_live_reg(Block:address,Reg1:register,Reg2:register,Offset:number)
+
+correlated_live_reg(Block,DstReg,SrcReg,Offset):-
+    // simple arithmetic operation derives DstReg from SrcReg at OpEA
+    limit_reg_op(OpEA,DstReg,SrcReg,Offset),
+    reg_def_use.last_def_in_block(Block,OpEA,DstReg),
+    !reg_def_use.ambiguous_last_def_in_block(Block,DstReg),
+    (
+        // SrcReg defined in block, same def live at end of block and OpEA
+        reg_def_use.block_last_def(OpEA,SrcFrom,SrcReg),
+        !reg_def_use.ambiguous_block_last_def(OpEA,SrcReg),
+        reg_def_use.last_def_in_block(Block,SrcFrom,SrcReg),
+        !reg_def_use.ambiguous_last_def_in_block(Block,SrcReg)
+        ;
+        // SrcReg not defined in block
+        !reg_def_use.last_def_in_block(Block,_,SrcReg)
+    ).
+
+// If a comparison defines a limit for a register, and that register is known
+// to be derived from a different live register, we can define a limit for that
+// register as well. For example:
+//      lea EAX, DWORD PTR [R12-32]
+//      cmp AL, 90
+//      jbe .L_...
+// A limit for R12 can be derived the limit on RAX.
+value_reg_limit(EA_jmp,EA_limited,SrcReg,Value-Offset,LimitType):-
+    value_reg_limit(EA_jmp,EA_limited,DstReg,Value,LimitType),
+    block_last_instruction(Block,EA_jmp),
+    correlated_live_reg(Block,DstReg,SrcReg,Offset).
 
 /**
 A register is compared as NE or EQ and used for a conditional jump.
@@ -320,8 +404,8 @@ Move or arithmetic operation on a limited register
 limit_reg_op(EA,DstReg,SrcReg,0):-
     arch.move_reg_reg(EA,DstReg,SrcReg).
 
-limit_reg_op(EA,Reg,Reg,Offset):-
-    arch.reg_arithmetic_operation(EA,Reg,Reg,1,Offset).
+limit_reg_op(EA,DstReg,SrcReg,Offset):-
+    arch.reg_arithmetic_operation(EA,DstReg,SrcReg,1,Offset).
 
 // Propagate through:
 // * move to a different register

@@ -31,6 +31,7 @@ void registerTestAuxDataTypes()
     gtirb::AuxDataContainer::registerAuxDataType<DdisasmVersion>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfStackSize>();
     gtirb::AuxDataContainer::registerAuxDataType<ElfStackExec>();
+    gtirb::AuxDataContainer::registerAuxDataType<ElfSoname>();
 }
 
 int main(int argc, char** argv)

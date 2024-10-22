@@ -37,19 +37,14 @@ class DefUsedTests(unittest.TestCase):
         Test that def_used detects values defined in a function and used after
         return.
         """
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_asm_dir / "ex_return_use_def"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    format="--ir",
-                    strip=False,
-                    extra_args=["--with-souffle-relations"],
-                )[0]
-            )
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(
+                binary,
+                strip=False,
+                extra_args=["--with-souffle-relations"],
+            ).ir()
             m = ir_library.modules[0]
 
             # Confirm a def_used exists where it is defined in the `get_ptr`

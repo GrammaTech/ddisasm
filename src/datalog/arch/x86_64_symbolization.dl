@@ -56,7 +56,7 @@ symbolic_operand_candidate(EA,Index,Dest,Type):-
     code(EA),
     instruction_get_operation(EA, "XBEGIN"),
     instruction_get_op(EA, Index, ImmOp),
-    op_immediate(ImmOp, Imm),
+    op_immediate(ImmOp, Imm,_),
     Dest = as(Imm,address),
     code(Dest),
     Type="code".

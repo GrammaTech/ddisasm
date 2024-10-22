@@ -33,10 +33,9 @@ class ExtraArgsTest(unittest.TestCase):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
 
             # disassemble
-            self.assertTrue(disassemble("ex", format="--ir")[0])
+            ir = disassemble(Path("ex")).ir()
 
             # load the gtirb
-            ir = gtirb.IR.load_protobuf("ex.gtirb")
             m = ir.modules[0]
 
             main_sym = next(sym for sym in m.symbols if sym.name == "main")
@@ -70,21 +69,17 @@ class ExtraArgsTest(unittest.TestCase):
                         file=hints_file,
                         flush=True,
                     )
-                    self.assertTrue(
-                        disassemble(
-                            "ex",
-                            format="--ir",
-                            extra_args=[
-                                "--debug-dir",
-                                debug_dir,
-                                "--hints",
-                                hints_file.name,
-                            ],
-                        )[0]
-                    )
+                    ir = disassemble(
+                        Path("ex"),
+                        extra_args=[
+                            "--debug-dir",
+                            debug_dir,
+                            "--hints",
+                            hints_file.name,
+                        ],
+                    ).ir()
 
                 # load the new gtirb
-                ir = gtirb.IR.load_protobuf("ex.gtirb")
                 m = ir.modules[0]
 
                 main_sym = next(sym for sym in m.symbols if sym.name == "main")
@@ -103,6 +98,35 @@ class ExtraArgsTest(unittest.TestCase):
                 # the incorrect hints are not included
                 self.assertNotIn("bad-hint", invalid_text)
                 self.assertNotIn("0x100000", invalid_text)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_negative_weight_hint(self):
+        """Test that providing a negative weight to a positive hint causes a
+        warning to be printed.
+        """
+        with cd(ex_dir / "ex1"):
+            # build
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            with tempfile.NamedTemporaryFile(mode="w") as hints_file:
+                # Add a negative weight to a positive hint
+                print(
+                    "disassembly.user_heuristic_weight"
+                    "\tlanding-pad\tsimple\t-1",
+                    file=hints_file,
+                    flush=True,
+                )
+                result = subprocess.run(
+                    ["ddisasm", "ex", "--hints", hints_file.name],
+                    capture_output=True,
+                    text=True,
+                )
+
+                self.assertIn(
+                    "landing-pad was assigned a negative weight -1",
+                    result.stderr,
+                )
 
     @unittest.skipUnless(
         os.path.exists("./build/lib/libfunctors.so")
@@ -129,7 +153,6 @@ class ExtraArgsTest(unittest.TestCase):
                     optimizations=["-O0"],
                     extra_compile_flags=["-pie"],
                     extra_ddisasm_flags=ddisasm_opts,
-                    extra_reassemble_flags=["-nostartfiles", "-pie"],
                     upload=False,
                 )
             )
@@ -149,12 +172,9 @@ class ExtraArgsTest(unittest.TestCase):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
 
             # disassemble
-            self.assertTrue(
-                disassemble(
-                    "ex",
-                    format="--ir",
-                    extra_args=["--profile", profile_dir_path],
-                )[0]
+            disassemble(
+                Path("ex"),
+                extra_args=["--profile", profile_dir_path],
             )
 
             profiles = [

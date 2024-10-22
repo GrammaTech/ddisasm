@@ -25,12 +25,10 @@ class CfgTests(unittest.TestCase):
         Test edges for relative jump tables are added.
         """
 
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_asm_dir / "ex_relative_switch"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
 
             # check that the jumping_block has edges
@@ -50,11 +48,39 @@ class CfgTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
+    def test_relative_jump_table_with_cmov(self):
+        """
+        Make sure that the jump-table is not resolved when jump-table
+        bounary cannot be conservatively found due to multiple correlations
+        between the index register and the correlated register.
+        """
+
+        binary = Path("ex")
+        with cd(ex_asm_dir / "ex_relative_jump_tables4"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            ir_library = disassemble(binary).ir()
+            m = ir_library.modules[0]
+
+            # check that the jump_table entry targets do not have
+            # any incoming edge.
+            jt_target5_sym = next(m.symbols_named(".jump_table_target5"))
+            assert isinstance(jt_target5_sym.referent, gtirb.CodeBlock)
+            jt_target5_block = jt_target5_sym.referent
+            self.assertEqual(len(list(jt_target5_block.incoming_edges)), 0)
+
+            jt_target6_sym = next(m.symbols_named(".jump_table_target6"))
+            assert isinstance(jt_target6_sym.referent, gtirb.CodeBlock)
+            jt_target6_block = jt_target6_sym.referent
+            self.assertEqual(len(list(jt_target6_block.incoming_edges)), 0)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_switch_limited_by_cmp(self):
         """
         Ensure jump table propagation is limited by comparsions.
         """
-        binary = "ex"
+        binary = Path("ex")
         examples = [
             "ex_switch_limited_by_cmp",
             "ex_switch_limited_by_indirect_cmp",
@@ -65,9 +91,7 @@ class CfgTests(unittest.TestCase):
             with self.subTest(example=example):
                 with cd(ex_asm_dir / example):
                     self.assertTrue(compile("gcc", "g++", "-O0", []))
-                    self.assertTrue(disassemble(binary, format="--ir")[0])
-
-                    ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+                    ir_library = disassemble(binary).ir()
                     m = ir_library.modules[0]
 
                 # check that the .jump has edges to only the four jump table
@@ -85,16 +109,14 @@ class CfgTests(unittest.TestCase):
         Ensure jump table propagation is limited by comparsions of the index
         register.
         """
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_arm64_asm_dir / "ex_switch_limited_by_cmp"):
             self.assertTrue(
                 compile(
                     "aarch64-linux-gnu-gcc", "aarch64-linux-gnu-g++", "-O0", []
                 )
             )
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
 
         # check that the .jump has edges to only the four jump table entries
@@ -109,12 +131,10 @@ class CfgTests(unittest.TestCase):
         Test that nop_block is correctly recognized, and no fallthrough edge
         to main is created.
         """
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_mips_asm_dir / "ex_nop_block"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
 
             main_sym = next(m.symbols_named("main"))
@@ -134,12 +154,10 @@ class CfgTests(unittest.TestCase):
         Test that with two overlapping jumptables, a conherent jump table is
         generated.
         """
-        binary = "ex"
+        binary = Path("ex")
         with cd(ex_asm_dir / "ex_switch_overlap"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
 
         rodata = next(s for s in m.sections if s.name == ".jumptable")
@@ -167,7 +185,7 @@ class CfgTests(unittest.TestCase):
         Test MIPS CFG
         """
 
-        binary = "ex"
+        binary = Path("ex")
         adder_dir = ex_dir / "ex_adder"
         with cd(adder_dir):
             self.assertTrue(
@@ -179,9 +197,7 @@ class CfgTests(unittest.TestCase):
                     "qemu-mips -L /usr/mips-linux-gnu",
                 )
             )
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
 
             # check that the 'add' block has two incoming edges and
@@ -214,7 +230,7 @@ class CfgTests(unittest.TestCase):
         Test ARM32 CFG
         """
 
-        binary = "ex"
+        binary = Path("ex")
         adder_dir = ex_arm_asm_dir / "ex1_no_pie"
         with cd(adder_dir):
             self.assertTrue(
@@ -226,9 +242,7 @@ class CfgTests(unittest.TestCase):
                     "qemu-arm -L /usr/arm-linux-gnueabihf",
                 )
             )
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
 
             sym = next(m.symbols_named("main"))
@@ -242,7 +256,7 @@ class CfgTests(unittest.TestCase):
         """
         Test ARM32 CFG
         """
-        binary = "ex"
+        binary = Path("ex")
         adder_dir = ex_arm_asm_dir / "ex_bx_pc"
         with cd(adder_dir):
             self.assertTrue(
@@ -254,9 +268,7 @@ class CfgTests(unittest.TestCase):
                     "qemu-arm -L /usr/arm-linux-gnueabihf",
                 )
             )
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
 
             sym = next(m.symbols_named("main"))
@@ -274,7 +286,7 @@ class CfgTests(unittest.TestCase):
         """
         Test ARM32 CFG
         """
-        binary = "ex"
+        binary = Path("ex")
         adder_dir = ex_arm_asm_dir / "ex_cfg"
         with cd(adder_dir):
             self.assertTrue(
@@ -286,9 +298,7 @@ class CfgTests(unittest.TestCase):
                     "qemu-arm -L /usr/arm-linux-gnueabihf",
                 )
             )
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
 
             main = next(m.symbols_named("main"))
@@ -344,7 +354,7 @@ class CfgTests(unittest.TestCase):
         """
         Test ARM32 CFG from TBB/TBH jumptables
         """
-        binary = "ex"
+        binary = Path("ex")
         examples = (
             ("ex_tbb", b"\xdf\xe8\x00\xf0", 1),
             ("ex_tbh", b"\xdf\xe8\x10\xf0", 2),
@@ -364,17 +374,12 @@ class CfgTests(unittest.TestCase):
                         )
                     )
 
-                    self.assertTrue(
-                        disassemble(
-                            binary,
-                            format="--ir",
-                            strip_exe="arm-linux-gnueabihf-strip",
-                            strip=True,
-                            extra_strip_flags=["--keep-symbol=table"],
-                        )[0]
-                    )
-
-                    ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+                    ir_library = disassemble(
+                        binary,
+                        strip_exe="arm-linux-gnueabihf-strip",
+                        strip=True,
+                        extra_strip_flags=["--keep-symbol=table"],
+                    ).ir()
                     m = ir_library.modules[0]
 
                     # Locate the tbb instruction
@@ -428,7 +433,7 @@ class CfgTests(unittest.TestCase):
         """
         Test ARM32 CFG for TBB with a zero first entry
         """
-        binary = "ex"
+        binary = Path("ex")
 
         with cd(ex_arm_asm_dir / "ex_tbb_zero"):
             self.assertTrue(
@@ -441,17 +446,13 @@ class CfgTests(unittest.TestCase):
                 )
             )
 
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    format="--ir",
-                    strip_exe="arm-linux-gnueabihf-strip",
-                    strip=True,
-                    extra_strip_flags=["--keep-symbol=table"],
-                )[0]
-            )
+            ir_library = disassemble(
+                binary,
+                strip_exe="arm-linux-gnueabihf-strip",
+                strip=True,
+                extra_strip_flags=["--keep-symbol=table"],
+            ).ir()
 
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
 
             # Locate the tbb instruction
@@ -502,7 +503,7 @@ class CfgTests(unittest.TestCase):
         """
         Test ARM jumptable with ldr, add, bkpt
         """
-        binary = "ex"
+        binary = Path("ex")
 
         with cd(ex_arm_asm_dir / "ex_relative_jump_table3"):
             self.assertTrue(
@@ -514,16 +515,11 @@ class CfgTests(unittest.TestCase):
                     "qemu-arm -L /usr/arm-linux-gnueabihf",
                 )
             )
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    format="--ir",
-                    strip_exe="arm-linux-gnueabihf-strip",
-                    strip=True,
-                )[0]
-            )
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(
+                binary,
+                strip_exe="arm-linux-gnueabihf-strip",
+                strip=True,
+            ).ir()
             m = ir_library.modules[0]
 
             main = next(m.symbols_named("main"))
@@ -543,12 +539,10 @@ class CfgTests(unittest.TestCase):
         """
         Test X86_64 object file relocation edges.
         """
-        binary = "ex.o"
+        binary = Path("ex.o")
         with cd(ex_dir / "ex1"):
             self.assertTrue(compile("gcc", "g++", "-O0", ["--save-temps"]))
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
 
             call = b"\xe8\x00\x00\x00\x00"
@@ -564,7 +558,7 @@ class CfgTests(unittest.TestCase):
         """
         Test ARM32 CFG on a ldrls pc, [pc, r0, LSL2]-style jumptable.
         """
-        binary = "ex"
+        binary = Path("ex")
         adder_dir = ex_arm_asm_dir / "ex_jumptable"
         with cd(adder_dir):
             self.assertTrue(
@@ -576,19 +570,15 @@ class CfgTests(unittest.TestCase):
                     "qemu-arm -L /usr/arm-linux-gnueabihf",
                 )
             )
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    strip_exe="arm-linux-gnueabihf-strip",
-                    strip=True,
-                    format="--ir",
-                )[0]
-            )
+            ir_library = disassemble(
+                binary,
+                strip_exe="arm-linux-gnueabihf-strip",
+                strip=True,
+            ).ir()
 
             # ldrls pc, [pc, r0, LSL2]
             insn = b"\x00\xf1\x9f\x97"
 
-            ir_library = gtirb.IR.load_protobuf(binary + ".gtirb")
             m = ir_library.modules[0]
 
             jumping_block = None
@@ -644,6 +634,46 @@ class CfgTests(unittest.TestCase):
                 f"unexpected edges from {src}",
             )
 
+    def check_plt_edges(
+        self,
+        module: gtirb.Module,
+        plt_calls: List[Tuple[str, EdgeLabel, EdgeLabel, str]],
+    ) -> None:
+        """
+        Check that each call represented in `plt_calls` has the right
+        sequences of edges that lead to the expected target.
+
+        Each element in `plt_call` is a tuple with a starting
+        symbol, two edge labels, and a target symbol.
+        """
+        for src, edge_label1, edge_label2, tgt in plt_calls:
+            src_block = next(module.symbols_named(src)).referent
+            edges = [
+                edge
+                for edge in src_block.outgoing_edges
+                if edge.label == edge_label1
+            ]
+            self.assertEqual(
+                len(edges),
+                1,
+                f"Expected one edge with label {edge_label1} from {src}",
+            )
+            plt_block = edges[0].target
+            self.assertEqual(plt_block.section.name, ".plt")
+            edges_plt = [
+                edge
+                for edge in plt_block.outgoing_edges
+                if edge.label == edge_label2
+            ]
+            self.assertEqual(
+                len(edges_plt),
+                1,
+                f"Expected one edge with label {edge_label2} "
+                f"from block at {plt_block.address:0x} called from {src}",
+            )
+            tgt_block = edges_plt[0].target
+            self.assertIn(tgt, [s.name for s in tgt_block.references])
+
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
@@ -651,7 +681,7 @@ class CfgTests(unittest.TestCase):
         """
         Test different kinds of jumps and calls.
         """
-        binary = "ex"
+        binary = Path("ex")
         ex_cfg_dir = ex_asm_dir / "ex_cfg"
         with cd(ex_cfg_dir):
             self.assertTrue(
@@ -662,8 +692,7 @@ class CfgTests(unittest.TestCase):
                     [],
                 )
             )
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-            ir = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir = disassemble(binary).ir()
             m = ir.modules[0]
 
             # Check outgoing edges for each block.
@@ -712,6 +741,13 @@ class CfgTests(unittest.TestCase):
                     ),
                 ],
                 "call_local_reg_offset_pc": [
+                    ("fun", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_local_reg_load",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_local_reg_load": [
                     ("fun", EdgeLabel(EdgeType.Call, False, False)),
                     (
                         "je_local_direct",
@@ -758,52 +794,27 @@ class CfgTests(unittest.TestCase):
             # For PLT calls, check that we can traverse a list of edges
             # (passing through the PLT block) and end up in the right block
             # (with the right symbol)
-            plt_calls = {
-                "call_ext_reg": (
+            plt_calls = [
+                (
+                    "call_ext_reg",
                     EdgeLabel(EdgeType.Call, False, False),
                     EdgeLabel(EdgeType.Branch, False, False),
                     "puts",
                 ),
-                "call_ext_indirect": (
+                (
+                    "call_ext_indirect",
                     EdgeLabel(EdgeType.Call, False, False),
                     EdgeLabel(EdgeType.Branch, False, False),
                     "puts",
                 ),
-                "call_ext_plt": (
+                (
+                    "call_ext_plt",
                     EdgeLabel(EdgeType.Call, False, True),
                     EdgeLabel(EdgeType.Branch, False, False),
                     "puts",
                 ),
-            }
-
-            for src, path in plt_calls.items():
-                edge_label1, edge_label2, tgt = path
-                src_block = next(m.symbols_named(src)).referent
-                edges = [
-                    edge
-                    for edge in src_block.outgoing_edges
-                    if edge.label == edge_label1
-                ]
-                self.assertEqual(
-                    len(edges),
-                    1,
-                    f"Expected one edge with label {edge_label1} from {src}",
-                )
-                plt_block = edges[0].target
-                self.assertEqual(plt_block.section.name, ".plt")
-                edges_plt = [
-                    edge
-                    for edge in plt_block.outgoing_edges
-                    if edge.label == edge_label2
-                ]
-                self.assertEqual(
-                    len(edges_plt),
-                    1,
-                    f"Expected one edge with label {edge_label2} "
-                    f"from block at {plt_block.address:0x} called from {src}",
-                )
-                tgt_block = edges_plt[0].target
-                self.assertIn(tgt, [s.name for s in tgt_block.references])
+            ]
+            self.check_plt_edges(m, plt_calls)
 
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
@@ -812,7 +823,7 @@ class CfgTests(unittest.TestCase):
         """
         Test different kinds of jumps and calls in an object file.
         """
-        binary = "ex_original.o"
+        binary = Path("ex_original.o")
         ex_cfg_dir = ex_asm_dir / "ex_cfg"
         with cd(ex_cfg_dir):
             self.assertTrue(
@@ -823,8 +834,7 @@ class CfgTests(unittest.TestCase):
                     extra_flags=["--save-temps"],
                 )
             )
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-            ir = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir = disassemble(binary).ir()
             m = ir.modules[0]
 
             # Check outgoing edges for each block.
@@ -873,6 +883,13 @@ class CfgTests(unittest.TestCase):
                     ),
                 ],
                 "call_local_reg_offset_pc": [
+                    ("fun", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_local_reg_load",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_local_reg_load": [
                     ("fun", EdgeLabel(EdgeType.Call, False, False)),
                     (
                         "je_local_direct",
@@ -947,16 +964,14 @@ class CfgTests(unittest.TestCase):
         """
         Test that we create CFG edges to external calls in PE binaries.
         """
-        binary = "ex.exe"
+        binary = Path("ex.exe")
         with cd(ex_asm_dir / "ex_base_relative0"):
             proc = subprocess.run(make("clean"), stdout=subprocess.DEVNULL)
             self.assertEqual(proc.returncode, 0)
             proc = subprocess.run(make("all"), stdout=subprocess.DEVNULL)
             self.assertEqual(proc.returncode, 0)
 
-            self.assertTrue(disassemble(binary, format="--ir")[0])
-
-            ir = gtirb.IR.load_protobuf(binary + ".gtirb")
+            ir = disassemble(binary).ir()
             m = ir.modules[0]
 
             write_console_sym = list(m.symbols_named("WriteConsoleW"))[0]
@@ -965,6 +980,68 @@ class CfgTests(unittest.TestCase):
             self.assertGreaterEqual(len(incoming_edges), 1)
             for edge in incoming_edges:
                 self.assertEqual(edge.label.type, gtirb.EdgeType.Call)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_arm64_calls(self):
+        """
+        Test different kinds of calls for arm64.
+        """
+        binary = Path("ex")
+        ex_cfg_dir = ex_arm64_asm_dir / "ex_cfg"
+        with cd(ex_cfg_dir):
+            self.assertTrue(
+                compile(
+                    "aarch64-linux-gnu-gcc", "aarch64-linux-gnu-g++", "-O0", []
+                )
+            )
+            ir = disassemble(binary).ir()
+            m = ir.modules[0]
+
+            # Check outgoing edges for each block.
+            # src and target blocks are identified with through their symbols.
+            expected_cfg = {
+                "call_direct": [
+                    ("f", EdgeLabel(EdgeType.Call, False, True)),
+                    (
+                        "call_direct_external",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_indirect": [
+                    ("f", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_indirect_offset",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_indirect_offset": [
+                    ("g", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "call_indirect_external",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+                "call_indirect_external": [
+                    ("puts", EdgeLabel(EdgeType.Call, False, False)),
+                    (
+                        "final",
+                        EdgeLabel(EdgeType.Fallthrough, False, True),
+                    ),
+                ],
+            }
+            self.check_edges(m, expected_cfg)
+
+            plt_calls = [
+                (
+                    "call_direct_external",
+                    EdgeLabel(EdgeType.Call, False, True),
+                    EdgeLabel(EdgeType.Branch, False, False),
+                    "puts",
+                )
+            ]
+            self.check_plt_edges(m, plt_calls)
 
 
 if __name__ == "__main__":

@@ -3,10 +3,14 @@ import contextlib
 import gtirb
 import os
 import shlex
+import shutil
+import stat
 import subprocess
+import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 from timeit import default_timer as timer
-from typing import List, Tuple
+from typing import Collection, List, Optional
 
 import platform
 
@@ -46,10 +50,15 @@ class bcolors:
 def get_target(binary, strip_exe, strip, sstrip, extra_strip_flags=None):
     if strip:
         print("# stripping binary\n")
-        subprocess.run(["cp", binary, binary + ".stripped"])
-        binary = binary + ".stripped"
+        stripped_binary = binary.with_suffix(".stripped")
+        shutil.copy(binary, stripped_binary)
+        binary = stripped_binary
 
-        cmd = build_chroot_wrapper() + [strip_exe, "--strip-unneeded", binary]
+        cmd = build_chroot_wrapper() + [
+            strip_exe,
+            "--strip-unneeded",
+            stripped_binary,
+        ]
         if extra_strip_flags:
             cmd.extend(extra_strip_flags)
 
@@ -57,27 +66,25 @@ def get_target(binary, strip_exe, strip, sstrip, extra_strip_flags=None):
         if completed_process.returncode != 0:
             print(bcolors.fail("# strip failed\n"))
             binary = None
-
-        stripped_binary = binary
     if sstrip:
         print("# stripping sections\n")
-        subprocess.run(["cp", binary, binary + ".sstripped"])
-        binary = binary + ".sstripped"
+        sstripped_binary = binary.with_suffix(".sstripped")
+        shutil.copy(binary, sstripped_binary)
+        binary = sstripped_binary
+
         completed_process = subprocess.run(
-            build_chroot_wrapper() + ["sstrip", binary]
+            build_chroot_wrapper() + ["sstrip", sstripped_binary]
         )
         if completed_process.returncode != 0:
             print(bcolors.fail("# sstrip failed\n"))
             binary = None
-
-        sstripped_binary = binary
     try:
         yield binary
     finally:
         if strip:
-            os.remove(stripped_binary)
+            stripped_binary.unlink(missing_ok=True)
         if sstrip:
-            os.remove(sstripped_binary)
+            sstripped_binary.unlink(missing_ok=True)
 
 
 @contextlib.contextmanager
@@ -166,132 +173,128 @@ def compile(
         env["EXEC"] = exec_wrapper
     if arch:
         env["TARGET_ARCH"] = arch
-    completedProcess = subprocess.run(
-        make("clean"), env=env, stdout=subprocess.DEVNULL
-    )
+    completedProcess = subprocess.run(make("clean"), env=env)
     if completedProcess.returncode == 0:
-        completedProcess = subprocess.run(
-            make(), env=env, stdout=subprocess.DEVNULL
-        )
+        completedProcess = subprocess.run(make(), env=env)
     return completedProcess.returncode == 0
 
 
+@dataclass
+class DisassemblyResult:
+    process: subprocess.CompletedProcess
+    ir_path: Path
+    elapsed_time: float
+
+    def ir(self) -> gtirb.IR:
+        return gtirb.IR.load_protobuf(self.ir_path)
+
+
 def disassemble(
-    binary,
-    output=None,
-    strip_exe="strip",
-    strip=False,
-    sstrip=False,
-    format="--asm",
-    extra_args=[],
-    extra_strip_flags=None,
-):
+    binary: Path,
+    output: Optional[Path] = None,
+    strip_exe: str = "strip",
+    strip: bool = False,
+    sstrip: bool = False,
+    extra_args: Collection[str] = (),
+    extra_strip_flags: Collection[str] = (),
+    check=True,
+) -> DisassemblyResult:
     """
-    Disassemble the binary 'binary' and generate ddisasm output 'output'
+    Disassemble the binary 'binary', creating `{binary}.gtirb`
+
+    If check=True, raises an exception if disassembly fails.
     """
     if output is None:
-        if format == "--asm":
-            output = binary + ".s"
-        elif format == "--ir":
-            output = binary + ".gtirb"
+        output = binary.with_suffix(".gtirb")
 
     with get_target(
         binary, strip_exe, strip, sstrip, extra_strip_flags=extra_strip_flags
     ) as target_binary:
-        print("# Disassembling " + target_binary + "\n")
+        print(f"# Disassembling {target_binary}\n")
         start = timer()
-        completedProcess = subprocess.run(
-            ["ddisasm", target_binary, format, output, "-j", "1"] + extra_args,
+        process = subprocess.run(
+            ["ddisasm", target_binary, "--ir", output, "-j", "1"]
+            + list(extra_args),
             timeout=300,
+            check=check,
         )
         time_spent = timer() - start
-    if completedProcess.returncode == 0:
-        print(bcolors.okgreen("Disassembly succeed"))
-        return True, time_spent
-    else:
-        print(bcolors.fail("Disassembly failed"))
-        return False, time_spent
+
+    return DisassemblyResult(process, output, time_spent)
 
 
-def run_reassembler(binary, reassemble_cmd_env) -> bool:
-    if not reassemble_cmd_env:
-        print(bcolors.warning(" No reassemble"))
-        return True
-
-    reassemble_cmd, env = reassemble_cmd_env
-
-    print("# Reassembling", binary + ".s", "into", binary)
-    print("compile command:", reassemble_cmd)
-
-    proc = subprocess.run(reassemble_cmd, env=env)
-
-    if proc.returncode != 0:
-        print(bcolors.fail("# Reassembly failed\n"))
-        return False
-    print(bcolors.okgreen("# Reassembly succeed"))
-    return True
-
-
-def build_reassemble_cmd(assembler, binary, extra_flags) -> Tuple[List, dict]:
+def binary_print(
+    ir_path: Path,
+    binary_path: Path,
+    check=True,
+    build_object=False,
+    extra_flags=(),
+    compiler: Optional[str] = None,
+) -> subprocess.CompletedProcess:
     """
-    Build a reassembler command for reassembling the assembly file
-    binary+'.s' into a new binary
+    Binary-print an IR.
+
+    If check=True, raises an exception if binary-printing fails.
     """
-    if "uasm" in assembler:
-        obj = Path(binary).with_suffix(".o")
-        cmd = [assembler, *extra_flags, "-Fo", obj, binary + ".s"]
-    elif platform.system() == "Linux":
-        cmd = (
-            build_chroot_wrapper()
-            + [assembler, binary + ".s", "-o", binary]
-            + extra_flags
+    cmd = [
+        "gtirb-pprinter",
+        "--dummy-so=no",
+        ir_path,
+        "--binary",
+        binary_path,
+    ]
+
+    with contextlib.ExitStack() as stack:
+        if MAKE_CHROOT:
+            # Generate a script that executes the compiler in the chroot, and
+            # instruct gtirb-pprinter to use this script instead of gcc.
+            chroot_args = build_chroot_wrapper()
+            chroot_args.append(compiler or "gcc")
+            chroot_args.append("$@")
+            script_content = (
+                "#!/bin/bash\n"
+                # Copy intermediate files generated by gtirb-pprinter into the
+                # chroot tmp directory, so they exist where they are specified
+                # by the arguments generated by gtirb-pprinter.
+                f"cp -r /tmp {MAKE_CHROOT_ROOT}\n"
+                # Run gcc in the chroot.
+                f'{" ".join(chroot_args)}\n'
+                # gtirb-pprinter creates results in /tmp and then copies to
+                # the destination, so we have to copy /tmp files back.
+                f"cp -r {MAKE_CHROOT_ROOT}/tmp/* /tmp\n"
+                # Clean up the files we created.
+                f"rm -r {MAKE_CHROOT_ROOT}/tmp/*\n"
+            )
+
+            tmpdir = Path(stack.enter_context(tempfile.TemporaryDirectory()))
+            chroot_script = tmpdir / "compile.sh"
+            chroot_script.write_text(script_content)
+            chroot_script.chmod(chroot_script.stat().st_mode | stat.S_IXUSR)
+
+            cmd.append(f"--use-gcc={chroot_script}")
+        elif compiler:
+            cmd.append(f"--use-gcc={compiler}")
+        if build_object:
+            cmd.append("--object")
+        for flag in extra_flags:
+            cmd.append(f"--compiler-arg={flag}")
+
+        print("# Binary printing", ir_path, "into", binary_path)
+        return subprocess.run(
+            cmd,
+            check=check,
         )
-    elif platform.system() == "Windows":
-        cmd = [assembler, binary + ".s"] + extra_flags
-
-        if "/link" not in cmd:
-            cmd.append("/link")
-        cmd.append("/out:" + binary)
-
-        # NOTE:
-        # Reassembling with SAFESEH support requires redundant `/safeseh' flags
-        # and fails if the first flag does not precede the source file in the
-        # command-line. We insert the flag here as the first argument.
-        if "/safeseh" in extra_flags:
-            cmd.insert(1, "/safeseh")
-
-    return (cmd, dict(os.environ))
-
-
-def build_reassemble_make_call(
-    assembler,
-    makefile_target,
-    extra_assembler_flags,
-) -> Tuple[List, dict]:
-    """
-    Build a reassembler command using Makefile with makefile_target
-    """
-    # Copy the current environment and modify the copy.
-    env = dict(os.environ)
-    env["AS"] = assembler
-    env["ASFLAGS"] = quote_args(*extra_assembler_flags)
-    return (make(makefile_target), env)
 
 
 def link(
-    linker: str, binary: str, obj: List[str], extra_flags: List[str]
+    linker: str, binary: Path, obj: List[Path], extra_flags: List[str]
 ) -> bool:
     """Link a reassembled object file into a new binary."""
-
-    # Strip implicit .o suffix from reassembled object targets.
-    if Path(binary).suffix == ".o":
-        binary = Path(binary).with_suffix("").name
-
-    print("# Linking", ", ".join(obj), "into", binary)
+    print("# Linking", ", ".join(map(str, obj)), "into", binary)
     cmd = (
         build_chroot_wrapper() + [linker] + obj + ["-o", binary] + extra_flags
     )
-    print("link command:", " ".join(cmd))
+    print("link command:", " ".join(map(str, cmd)))
     proc = subprocess.run(cmd)
     if proc.returncode != 0:
         print(bcolors.fail("# Linking failed\n"))
@@ -300,17 +303,19 @@ def link(
     return True
 
 
-def test(exec_wrapper=None):
+def test(
+    compiler: Optional[str] = None, exec_wrapper: Optional[str] = None
+) -> bool:
     """
     Test the project with  'make check'.
     """
     print("# testing\n")
     env = dict(os.environ)
+    if compiler:
+        env["CC"] = compiler
     if exec_wrapper:
         env["EXEC"] = exec_wrapper
-    completedProcess = subprocess.run(
-        make("check"), env=env, stderr=subprocess.DEVNULL, timeout=60
-    )
+    completedProcess = subprocess.run(make("check"), env=env, timeout=60)
     if completedProcess.returncode != 0:
         print(bcolors.fail("# Testing FAILED\n"))
         return False
@@ -319,14 +324,29 @@ def test(exec_wrapper=None):
         return True
 
 
+def asm_print(ir_path: Path, asm_path: Path) -> subprocess.CompletedProcess:
+    """
+    Print assembly from `ir_path`.
+
+    Expects a single-module IR.
+    """
+    return subprocess.run(
+        [
+            "gtirb-pprinter",
+            ir_path,
+            "--asm",
+            asm_path,
+        ]
+    )
+
+
 def disassemble_reassemble_test(
     make_dir,
     binary,
     extra_compile_flags=[],
-    extra_reassemble_flags=["-no-pie"],
+    extra_reassemble_flags=(),
     extra_link_flags=[],
-    reassembly_compiler="gcc",
-    makefile_target=None,
+    reassembly_compiler=None,
     c_compilers=["gcc", "clang"],
     cxx_compilers=["g++", "clang++"],
     optimizations=["-O0", "-O1", "-O2", "-O3", "-Os"],
@@ -347,25 +367,11 @@ def disassemble_reassemble_test(
     optimizations.
     """
     assert len(c_compilers) == len(cxx_compilers)
-    compile_errors = 0
-    disassembly_errors = 0
-    reassembly_errors = 0
-    link_errors = 0
-    test_errors = 0
-    gtirb_errors = 0
+    error_count = 0
+    binary_path = Path(binary)
+
     with cd(make_dir):
-        reassemble_cmd_env = ([], {})
-        if not skip_reassemble:
-            if makefile_target:
-                reassemble_cmd_env = build_reassemble_make_call(
-                    reassembly_compiler,
-                    makefile_target,
-                    extra_reassemble_flags,
-                )
-            else:
-                reassemble_cmd_env = build_reassemble_cmd(
-                    reassembly_compiler, binary, extra_reassemble_flags
-                )
+
         for compiler, cxx_compiler in zip(c_compilers, cxx_compilers):
             for optimization in optimizations:
                 print(
@@ -387,80 +393,89 @@ def disassemble_reassemble_test(
                     exec_wrapper,
                     arch,
                 ):
-                    compile_errors += 1
+                    error_count += 1
                     continue
 
-                gtirb_filename = binary + ".gtirb"
-                success, time = disassemble(
-                    binary,
-                    None,
-                    strip_exe,
-                    strip,
-                    sstrip,
-                    extra_args=["--ir", gtirb_filename] + extra_ddisasm_flags,
+                ir_path = binary_path.with_name(binary_path.name + ".gtirb")
+                disassemble_result = disassemble(
+                    binary_path,
+                    ir_path,
+                    strip_exe=strip_exe,
+                    strip=strip,
+                    sstrip=sstrip,
+                    extra_args=extra_ddisasm_flags,
+                    check=False,
                 )
 
-                # Do some GTIRB checks
-                if success:
-                    module = gtirb.IR.load_protobuf(gtirb_filename).modules[0]
-                    gtirb_errors += check_gtirb.run_checks(
+                print(f"Time: {disassemble_result.elapsed_time}s")
+
+                if disassemble_result.process.returncode == 0:
+                    print(bcolors.okgreen("Disassembly succeed"))
+                    # Do some GTIRB checks
+                    module = disassemble_result.ir().modules[0]
+                    error_count += check_gtirb.run_checks(
                         module, cfg_checks or []
                     )
 
-                if upload:
-                    asm_db.upload(
-                        os.path.basename(make_dir),
-                        binary + ".s",
-                        [compiler, cxx_compiler],
-                        [optimization] + extra_compile_flags,
-                        strip,
-                    )
-                print("Time " + str(time))
-                if not success:
-                    disassembly_errors += 1
+                    # Print assembly source (for upload to database, but
+                    # always print to catch errors)
+                    asm_path = Path(binary + ".s")
+                    asm_print_result = asm_print(ir_path, asm_path)
+                    if asm_print_result.returncode != 0:
+                        print(bcolors.fail("Printing assembly failed"))
+                        error_count += 1
+                        continue
+                    elif upload:
+                        print(bcolors.okgreen("Printing assembly succeed"))
+                        # upload to assembly database
+                        asm_db.upload(
+                            os.path.basename(make_dir),
+                            asm_path,
+                            [compiler, cxx_compiler],
+                            [optimization] + extra_compile_flags,
+                            strip,
+                        )
+
+                else:
+                    print(bcolors.fail("Disassembly failed"))
+                    error_count += 1
                     continue
 
+                if linker:
+                    binary_print_path = binary_path.with_suffix(".o")
+                else:
+                    binary_print_path = binary_path
+
                 if not skip_reassemble:
-                    if reassemble_cmd_env:
-                        reasm_cmd, reasm_env = reassemble_cmd_env
-                        reasm_env["CC"] = compiler
-                        reasm_env["CXX"] = cxx_compiler
-                        reasm_env["CFLAGS"] = quote_args(
-                            optimization, *extra_compile_flags
-                        )
-                        reasm_env["CXXFLAGS"] = quote_args(
-                            optimization, *extra_compile_flags
-                        )
-                        if exec_wrapper:
-                            reasm_env["EXEC"] = exec_wrapper
-                        if arch:
-                            reasm_env["TARGET_ARCH"] = arch
-                        reassemble_cmd_env = (reasm_cmd, reasm_env)
-                if not run_reassembler(binary, reassemble_cmd_env):
-                    reassembly_errors += 1
-                    continue
+                    binary_print_result = binary_print(
+                        ir_path,
+                        binary_print_path,
+                        check=False,
+                        compiler=reassembly_compiler,
+                        build_object=bool(linker),
+                        extra_flags=extra_reassemble_flags,
+                    )
+                    if binary_print_result.returncode != 0:
+                        error_count += 1
+                        continue
+
                 if linker and not link(
                     linker,
-                    binary,
-                    [Path(binary).with_suffix(".o").name],
+                    # strip .o suffix for e.g. binary "ex.o" or "ex.exe.o"
+                    binary_path.with_suffix("")
+                    if binary_path.suffix == ".o"
+                    else binary_path,
+                    [binary_print_path],
                     extra_link_flags,
                 ):
-                    link_errors += 1
+                    error_count += 1
                     continue
                 if skip_test or skip_reassemble:
                     print(bcolors.warning(" No testing"))
                     continue
-                if not test(exec_wrapper):
-                    test_errors += 1
-    total_errors = (
-        compile_errors
-        + gtirb_errors
-        + disassembly_errors
-        + reassembly_errors
-        + link_errors
-        + test_errors
-    )
-    return total_errors == 0
+                if not test(reassembly_compiler, exec_wrapper):
+                    error_count += 1
+    return error_count == 0
 
 
 if __name__ == "__main__":

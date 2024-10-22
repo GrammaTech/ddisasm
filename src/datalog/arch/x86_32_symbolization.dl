@@ -24,10 +24,6 @@
 x86-32 architecture-specific rules for symbolization
 */
 
-abi_intrinsic(EA,Name):-
-    get_pc_thunk(EA,_),
-    symbol(EA,_,_,_,_,_,_,_,Name).
-
 abi_intrinsic(EA,"_GLOBAL_OFFSET_TABLE_"):-
     (
         symbol(EA,_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_");

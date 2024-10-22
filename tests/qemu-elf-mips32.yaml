@@ -5,7 +5,7 @@ default: &default
   binary: ex
 
   # Compilation configuration.
-  build:
+  build: &default-build
     c: ["mips-linux-gnu-gcc"]
     cpp: ["mips-linux-gnu-g++"]
     optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
@@ -14,8 +14,6 @@ default: &default
   # Reassembly configuration.
   reassemble:
     compiler: "mips-linux-gnu-gcc"
-    flags: []
-    skip: false
 
   # Test configuration.
   test:
@@ -26,6 +24,13 @@ default: &default
     skip: false
     cfg_checks:
       - dangling_auxdata
+
+assembly: &assembly
+  <<: *default
+  path: examples/mips_asm_examples
+  build: &assembly-build
+    <<: *default-build
+    optimizations: [""]
 
 test-strip-default: &test-strip-default
   test:
@@ -68,10 +73,6 @@ tests:
 
   - name: ex_memberPointer
     <<: *default
-    reassemble:
-        compiler: "mips-linux-gnu-g++"
-        flags: ["-no-pie"]
-        skip: false
 
   - name: ex_false_pointer_array
     <<: *default
@@ -87,9 +88,6 @@ tests:
 
   - name: ex_init_array
     <<: *zero-optimize
-    reassemble:
-      compiler: "mips-linux-gnu-g++"
-      flags: ["-no-pie"]
 
   - name: ex_noreturn
     <<: *default
@@ -119,10 +117,6 @@ tests:
 
   - name: ex_virtualDispatch
     <<: *default
-    reassemble:
-        compiler: "mips-linux-gnu-g++"
-        flags: ["-no-pie"]
-        skip: false
 
   # FIXME: ex_exceptions{1,2,3}: .gcc_except_table
 
@@ -148,10 +142,6 @@ tests:
   - name: ex_memberPointer
     <<: *default
     <<: *test-strip-default
-    reassemble:
-        compiler: "mips-linux-gnu-g++"
-        flags: ["-no-pie"]
-        skip: false
 
   - name: ex_false_pointer_array
     <<: *default
@@ -206,10 +196,6 @@ tests:
   - name: ex_virtualDispatch
     <<: *default
     <<: *test-strip-default
-    reassemble:
-        compiler: "mips-linux-gnu-g++"
-        flags: ["-no-pie"]
-        skip: false
 
   # ---------------------------------------------------------------------------
   # sectionless (sstripped)
@@ -233,10 +219,6 @@ tests:
   - name: ex_memberPointer
     <<: *default
     <<: *test-sstrip-default
-    reassemble:
-        compiler: "mips-linux-gnu-g++"
-        flags: ["-no-pie"]
-        skip: false
 
   - name: ex_false_pointer_array
     <<: *default
@@ -291,7 +273,6 @@ tests:
   - name: ex_virtualDispatch
     <<: *default
     <<: *test-sstrip-default
-    reassemble:
-        compiler: "mips-linux-gnu-g++"
-        flags: ["-no-pie"]
-        skip: false
+
+  - name: ex_got_ofst
+    <<: *assembly

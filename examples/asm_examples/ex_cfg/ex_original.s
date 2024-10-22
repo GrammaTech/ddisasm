@@ -33,6 +33,11 @@ call_local_reg_offset_pc:
     add rax, 8
     call [rax]
 
+call_local_reg_load:
+    lea rax, [rip+fun_ptr]
+    mov rax, [rax]
+    call rax
+
 je_local_direct:
     mov rdi, offset jmp_local_direct
     cmp rdi, rdi
@@ -53,7 +58,7 @@ jmp_local_reg:
     jmp rax
 
 jmp_local_reg_offset:
-    mov rdi, offset call_ext_reg
+    mov rdi, offset call_ext_reg_printf
     mov rax, offset jump_target_ptr-8
     add rax, 8
     jmp [rax]

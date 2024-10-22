@@ -1,7 +1,6 @@
 import platform
 import unittest
 from disassemble_reassemble_check import compile, disassemble, cd, make
-import gtirb
 import os
 import subprocess
 
@@ -38,26 +37,22 @@ class TestFunctionInference(unittest.TestCase):
             self.assertTrue(
                 compile(c_compiler, cxx_compiler, optimization, [])
             )
-            self.assertTrue(
-                disassemble(
-                    binary,
-                    format="--ir",
-                    extra_args=["--skip-function-analysis"],
-                )[0]
-            )
-            module = gtirb.IR.load_protobuf(binary + ".gtirb").modules[0]
+            ir = disassemble(
+                Path(binary),
+                extra_args=["--skip-function-analysis"],
+            ).ir()
+            module = ir.modules[0]
 
-            self.assertTrue(
-                disassemble(
-                    binary, strip_exe=strip_exe, strip=True, format="--ir"
-                )[0]
-            )
-            moduleStripped = gtirb.IR.load_protobuf(binary + ".gtirb").modules[
-                0
-            ]
+            ir_stripped = disassemble(
+                Path(binary),
+                Path("ex_stripped.gtirb"),
+                strip_exe=strip_exe,
+                strip=True,
+            ).ir()
+            module_stripped = ir_stripped.modules[0]
             self.assertEqual(
                 self.get_function_addresses(module),
-                self.get_function_addresses(moduleStripped),
+                self.get_function_addresses(module_stripped),
             )
 
     @unittest.skipUnless(
@@ -402,8 +397,7 @@ class PEFunctionInferenceTests(unittest.TestCase):
         """
         with cd(ex_asm_dir / "ex_dll_export_thunk"):
             subprocess.run(make("all"), stdout=subprocess.DEVNULL)
-            self.assertTrue(disassemble("ex.dll", format="--ir")[0])
-            ir = gtirb.IR.load_protobuf("ex.dll.gtirb")
+            ir = disassemble(Path("ex.dll")).ir()
             module = ir.modules[0]
             functionNames = {
                 sym.name

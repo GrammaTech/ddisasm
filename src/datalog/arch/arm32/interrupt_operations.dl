@@ -21,7 +21,10 @@
 //
 //===----------------------------------------------------------------------===//
 /**
-The set of interrupt operations in x64
+The set of interrupt operations in arm32
 */
 
 interrupt_operation("SWI").
+
+// Breakpoint operation
+interrupt_operation("BKPT").

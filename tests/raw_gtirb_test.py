@@ -67,11 +67,10 @@ class RawBinaryTests(unittest.TestCase):
                 )
                 bi2.section = s
 
-                ir.save_protobuf("ex_raw")
+                ir_path_in = Path("ex_raw")
+                ir.save_protobuf(ir_path_in)
 
-                self.assertTrue(disassemble("ex_raw", format="--ir")[0])
-
-                ir_disassembled = gtirb.IR.load_protobuf("ex_raw.gtirb")
+                ir_disassembled = disassemble(ir_path_in).ir()
                 m = ir_disassembled.modules[0]
                 code_addresses = sorted(
                     [block.address for block in m.code_blocks]
@@ -118,11 +117,10 @@ class RawBinaryTests(unittest.TestCase):
                 bi2.section = s
 
                 gtirb.CodeBlock(size=6, offset=1, byte_interval=bi2)
-                ir.save_protobuf("ex_raw")
+                ir_path_in = Path("ex_raw")
+                ir.save_protobuf(ir_path_in)
 
-                self.assertTrue(disassemble("ex_raw", format="--ir")[0])
-
-                ir_disassembled = gtirb.IR.load_protobuf("ex_raw.gtirb")
+                ir_disassembled = disassemble(ir_path_in).ir()
                 m = ir_disassembled.modules[0]
                 # the resulting gtirb has 4 blocks
                 # the two previous ones and two additionally discovered
@@ -153,11 +151,9 @@ class RawBinaryTests(unittest.TestCase):
                     address=0x40000,
                 )
                 bi1.section = s
-                ir.save_protobuf("ex_raw")
-
-                self.assertTrue(disassemble("ex_raw", format="--ir")[0])
-
-                ir_disassembled = gtirb.IR.load_protobuf("ex_raw.gtirb")
+                ir_path_in = Path("ex_raw")
+                ir.save_protobuf(ir_path_in)
+                ir_disassembled = disassemble(ir_path_in).ir()
                 m = ir_disassembled.modules[0]
                 # the code section has one data block
                 dblocks = list(m.data_blocks)

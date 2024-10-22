@@ -33,9 +33,9 @@ jobs:
           export IMAGE_PATH=$(echo ghcr.io/${{ github.repository }}/ | awk '{print tolower($0)}')
           echo "image_path=$IMAGE_PATH" >> $GITHUB_ENV
           echo "image_path=$IMAGE_PATH" >> $GITHUB_OUTPUT
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v4
       - name: Kaniko build
-        uses: aevea/action-kaniko@v0.9.0
+        uses: aevea/action-kaniko@v0.12.0
         with:
           registry: ghcr.io
           image: ${{ matrix.os }}
@@ -63,9 +63,9 @@ jobs:
           curl https://download.grammatech.com/gtirb/files/apt-repo/conf/apt.gpg.key | apt-key add -
           echo "deb https://download.grammatech.com/gtirb/files/apt-repo ${{ matrix.os }} unstable" >> /etc/apt/sources.list
           apt-get update
-          apt-get -y install libcapstone-dev=1:5.0.0-gtdev libgtirb libgtirb-dev libgtirb-pprinter libgtirb-pprinter-dev gtirb-pprinter
+          apt-get -y install libcapstone-dev=1:5.0.1-gtdev libgtirb libgtirb-dev libgtirb-pprinter libgtirb-pprinter-dev gtirb-pprinter
       - name: Checkout ddisasm
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Build
         run: |
           mkdir build
@@ -73,7 +73,7 @@ jobs:
           cmake -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DLIEF_ROOT=/usr/ ..
           make
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ddisasm-build-${{ matrix.os }}-${{ matrix.compiler }}
           path: build
@@ -90,19 +90,19 @@ jobs:
     steps:
       # Checkout
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       # Install deps
       - name: Install capstone, gtirb, gtirb-pprinter
         run: |
           curl https://download.grammatech.com/gtirb/files/apt-repo/conf/apt.gpg.key | apt-key add -
           echo "deb https://download.grammatech.com/gtirb/files/apt-repo ${{ matrix.os }} unstable" >> /etc/apt/sources.list
           apt-get update
-          apt-get -y install libcapstone-dev=1:5.0.0-gtdev libgtirb libgtirb-dev libgtirb-pprinter libgtirb-pprinter-dev gtirb-pprinter
-          pip3 install https://download.grammatech.com/gtirb/files/python/gtirb-unstable-py3-none-any.whl
+          apt-get -y install libcapstone-dev=1:5.0.1-gtdev libgtirb libgtirb-dev libgtirb-pprinter libgtirb-pprinter-dev gtirb-pprinter
+          pip3 install https://download.grammatech.com/gtirb/files/python/gtirb-0.dev-py3-none-any.whl
           pip3 install -r requirements-dev.txt
       # Download artifacts
       - name: Download build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ddisasm-build-${{ matrix.os }}-${{ matrix.compiler }}
           path: build
@@ -118,14 +118,14 @@ jobs:
     container: ${{ needs.docker.outputs.image_path }}focal:${{ needs.docker.outputs.image_tag }}
     steps:
       - name: Checkout ddisasm
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Generate API documentation
         run: |
           cd doc
           pip3 install -r requirements-docs.txt
           BUILDDIR=../public make -e
       - name: Upload GitHub Pages artifact
-        uses: actions/upload-pages-artifact@v1.0.8
+        uses: actions/upload-pages-artifact@v3
         with:
           path: public
 
@@ -144,4 +144,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4

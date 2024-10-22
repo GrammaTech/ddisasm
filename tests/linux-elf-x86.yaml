@@ -11,12 +11,6 @@ default: &default
     optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
     flags: ["-m32", "-fno-pie", "-no-pie"]
 
-  # Reassembly configuration.
-  reassemble:
-    compiler: "gcc"
-    flags: ["-m32", "-no-pie", "-nostartfiles"]
-    skip: false
-
   # Test configuration.
   test: &default-test
     wrapper: null
@@ -49,11 +43,6 @@ cpp: &default-cpp
       - edge_instruction_group
       - cfg_completeness
 
-  reassemble:
-    compiler: "g++"
-    flags: ["-m32", "-fno-pie", "-no-pie", "-nostartfiles"]
-    skip: false
-
 position-independent: &position-independent
   <<: *default
 
@@ -63,12 +52,6 @@ position-independent: &position-independent
     cpp: ["g++", "clang++"]
     optimizations: ["-O0", "-O1", "-O2", "-O3", "-Os"]
     flags: ["-m32", "-fpie"]
-
-  # Reassembly configuration.
-  reassemble:
-    compiler: "gcc"
-    flags: ["-m32", "-fpie", "-nostartfiles"]
-    skip: false
 
 strip: &strip
   test:
@@ -89,11 +72,6 @@ position-independent-cpp: &position-independent-cpp
       - outgoing_edges
       - edge_instruction_group
       - cfg_completeness
-
-  reassemble:
-    compiler: "g++"
-    flags: ["-m32", "-pie", "-nostartfiles"]
-    skip: false
 
 assembly-position-independent: &assembly-position-independent
   <<: *position-independent
@@ -124,6 +102,9 @@ tests:
     <<: *default-cpp
 
   - name: ex_exceptions3
+    <<: *default-cpp
+
+  - name: ex_exceptions4
     <<: *default-cpp
 
   - name: ex_false_pointer_array
@@ -181,15 +162,9 @@ tests:
 
   - name: ex_threads
     <<: *default-cpp
-    reassemble:
-      compiler: "g++"
-      flags: ["-m32", "-lpthread", "-no-pie", "-fno-pie", "-nostartfiles"]
 
   - name: ex_call_once
     <<: *default-cpp
-    reassemble:
-      compiler: "g++"
-      flags: ["-m32", "-lpthread", "-no-pie", "-fno-pie", "-nostartfiles"]
 
   # ----------------------------------------------------------------------------
   # Small C and C++ examples.  (position independent code)
@@ -210,6 +185,9 @@ tests:
     <<: *position-independent-cpp
 
   - name: ex_exceptions3
+    <<: *position-independent-cpp
+
+  - name: ex_exceptions4
     <<: *position-independent-cpp
 
   - name: ex_false_pointer_array
@@ -276,31 +254,17 @@ tests:
 
   - name: ex_threads
     <<: *position-independent-cpp
-    reassemble:
-      compiler: "g++"
-      flags: ["-m32", "-lpthread", "-fpie", "-nostartfiles"]
 
   - name: ex_call_once
     <<: *position-independent-cpp
-    reassemble:
-      compiler: "g++"
-      flags: ["-m32", "-lpthread", "-fpie", "-nostartfiles"]
 
   - name: ex_dynamic_tls
     <<: *position-independent
     binary: fun.so
-    reassemble:
-      compiler: "gcc"
-      flags: ["-m32", "-shared", "-nostartfiles"]
-      skip: false
 
   - name: ex_dynamic_tls
     <<: *position-independent
     binary: fun_initial_exec.so
-    reassemble:
-      compiler: "gcc"
-      flags: ["-m32", "-shared", "-nostartfiles"]
-      skip: false
 
   - name: ex_dynamic_tls
     <<: *default
@@ -310,10 +274,6 @@ tests:
       c: ["gcc"]
       cpp: ["g++"]
       flags: ["-mtls-dialect=gnu2"]
-    reassemble:
-      compiler: "gcc"
-      flags: ["-shared", "-nostartfiles"]
-      skip: false
     test:
       <<: *default-test
       # TODO: Revise TLS-related cfg edges
@@ -330,18 +290,10 @@ tests:
   - name: ex_dynamic_tls2
     <<: *position-independent
     binary: fun.so
-    reassemble:
-      compiler: "gcc"
-      flags: ["-m32","-shared", "-nostartfiles"]
-      skip: false
 
   - name: ex_dyn_library2
     <<: *position-independent
     binary: fun.so
-    reassemble:
-      compiler: "gcc"
-      flags: ["-m32", "-shared", "-nostartfiles", "-lm"]
-      skip: false
 
   # ----------------------------------------------------------------------------
   # Small C and C++ examples. (stripped)
@@ -358,28 +310,16 @@ tests:
     <<: *position-independent
     <<: *strip
     binary: fun.so
-    reassemble:
-      compiler: "gcc"
-      flags: ["-m32", "-shared", "-nostartfiles"]
-      skip: false
 
   - name: ex_dynamic_tls
     <<: *position-independent
     <<: *strip
     binary: fun_initial_exec.so
-    reassemble:
-      compiler: "gcc"
-      flags: ["-m32", "-shared", "-nostartfiles"]
-      skip: false
 
   - name: ex_dynamic_tls2
     <<: *position-independent
     <<: *strip
     binary: fun.so
-    reassemble:
-      compiler: "gcc"
-      flags: ["-m32","-shared", "-nostartfiles"]
-      skip: false
 
   # ----------------------------------------------------------------------------
   # Assembly examples.

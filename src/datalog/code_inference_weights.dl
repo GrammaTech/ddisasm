@@ -1,0 +1,94 @@
+//===- code_inference_weights.dl ---------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2024 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===---------------------------------------------------------------------===//
+
+/**
+The heuristic with name 'Name' has type 'Type' and weight 'Weight'.
+The type can be SIMPLE_WEIGHT or PROPORTIONAL_WEIGHT.
+- SIMPLE_WEIGHT heuristics assign X points where X is the heuristic weight.
+- PROPORTIONAL_WEIGHT heuristics assign X*Size points where X is the weight
+and Size is the size of the block in bytes.
+
+Heuristic weights take a default value specified in `default_heuristic_weight`
+unless a user-defined value is provided using `user_heuristic_weight` which
+can be fed to ddisasm as a hint.
+*/
+.decl heuristic_weight(Name:symbol,Type:symbol,Weight:number)
+
+/**
+Default heuristic weights (see `heuristic_weight`)
+*/
+.decl default_heuristic_weight(Name:symbol,Type:symbol,Weight:number)
+
+/**
+User-provided heuristic weights. These take precedence over
+the default weights and can be provided as ddisasm hints.
+*/
+.decl user_heuristic_weight(Name:symbol,Type:symbol,Weight:number)
+.input user_heuristic_weight
+
+heuristic_weight(Name,Type,Weight):-
+    user_heuristic_weight(Name,Type,Weight).
+heuristic_weight(Name,Type,Weight):-
+    !user_heuristic_weight(Name,_,_),
+    default_heuristic_weight(Name,Type,Weight).
+
+// Proportional weights
+default_heuristic_weight("size",PROPORTIONAL_WEIGHT,5).
+default_heuristic_weight("unresolved-may-fallthrough",PROPORTIONAL_WEIGHT,0).
+default_heuristic_weight("resolved-reaches strong",PROPORTIONAL_WEIGHT,2).
+default_heuristic_weight("resolved-reaches weak",PROPORTIONAL_WEIGHT,1).
+default_heuristic_weight("possible string",PROPORTIONAL_WEIGHT,1).
+
+// Simple weights
+default_heuristic_weight("address in data array",SIMPLE_WEIGHT,1).
+default_heuristic_weight("aligned address in data",SIMPLE_WEIGHT,1).
+default_heuristic_weight("appears",SIMPLE_WEIGHT,3).
+default_heuristic_weight("basic point",SIMPLE_WEIGHT,0).
+default_heuristic_weight("code section start",SIMPLE_WEIGHT,1).
+default_heuristic_weight("composite data access: 1 resolved",SIMPLE_WEIGHT,3).
+default_heuristic_weight("composite data access: 2 resolved",SIMPLE_WEIGHT,4).
+default_heuristic_weight("composite data access",SIMPLE_WEIGHT,2).
+default_heuristic_weight("conditional jump/return: fallthrough to invalid",SIMPLE_WEIGHT,-2).
+default_heuristic_weight("dangling block with enclosed instr",SIMPLE_WEIGHT,-1).
+default_heuristic_weight("data access: resolved",SIMPLE_WEIGHT,4).
+default_heuristic_weight("data access",SIMPLE_WEIGHT,2).
+default_heuristic_weight("debug block",SIMPLE_WEIGHT,-1).
+default_heuristic_weight("exc-region",SIMPLE_WEIGHT,3).
+default_heuristic_weight("fallthrough_to",SIMPLE_WEIGHT,1).
+default_heuristic_weight("has well-defined call",SIMPLE_WEIGHT,1).
+default_heuristic_weight("has well-defined call to a function symbol",SIMPLE_WEIGHT,3).
+default_heuristic_weight("has well-defined jump",SIMPLE_WEIGHT,1).
+default_heuristic_weight("incremental linking target",SIMPLE_WEIGHT,3).
+default_heuristic_weight("landing-pad",SIMPLE_WEIGHT,10).
+default_heuristic_weight("overlaps with relocation",SIMPLE_WEIGHT,-3).
+default_heuristic_weight("padding nop block",SIMPLE_WEIGHT,2).
+default_heuristic_weight("plt call",SIMPLE_WEIGHT,1).
+default_heuristic_weight("relative-jump-table",SIMPLE_WEIGHT,6).
+default_heuristic_weight("relative-jump-table-start",SIMPLE_WEIGHT,3).
+default_heuristic_weight("relative jump table target: absolute",SIMPLE_WEIGHT,1).
+default_heuristic_weight("relative jump table target",SIMPLE_WEIGHT,2).
+default_heuristic_weight("repeated byte",SIMPLE_WEIGHT,10).
+
+default_heuristic_weight("seh handler",SIMPLE_WEIGHT,5).
+default_heuristic_weight("unresolved-direct-call",SIMPLE_WEIGHT,2).
+default_heuristic_weight("unresolved-direct-jump",SIMPLE_WEIGHT,2).

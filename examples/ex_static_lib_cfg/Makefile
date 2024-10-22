@@ -42,17 +42,10 @@ libtest.a: $(LIB_OBJ) $(LIB_ASM_OBJ)
 $(LIB_ASM_OBJ): $(LIB_ASM_SRC)
 	$(CC) -c -o $@ $^
 
-reassemble_bar: bar.o.s
-	$(CC) -c bar.o.s -o bar.o -nostartfiles
-	$(AR) -rcs libtest.a $(LIB_ASM_OBJ) bar.o
-	$(CC) $(CFLAGS) -o ex ex.c libtest.a
-	@ $(EXEC) ./ex >/tmp/res.txt
-	@ diff out.txt /tmp/res.txt && echo TEST OK
-
 clean:
 	rm -f ex out.txt libtest.a ex.o $(LIB_OBJ) $(LIB_ASM_OBJ_ALL)
 	rm -fr ex.unstripped libtest-tmp libtest.gtirb
 
-check:
+check: ex
 	@ $(EXEC) ./ex >/tmp/res.txt
 	@ diff out.txt /tmp/res.txt && echo TEST OK

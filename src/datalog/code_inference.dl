@@ -42,10 +42,10 @@ The disassembly consists of several phases:
   - Populate `impossible_block` with blocks which overlap known_blocks, and
     propagate backward through "must" edges
   - Identify remaining overlapping blocks in `unresolved_block` and assign
-    points in `block_points` according to heuristics
+    points in `block_points` and `block_points_proportional` according to heuristics.
   - Resolve blocks with different boundaries using weighted interval
     scheduling, which weights blocks according to points and binary coverage
-  - Resolve blocks with identical boundaries according to `block_points`
+  - Resolve blocks with identical boundaries according to their points.
 */
 
 // The postprocess refines the blocks by merging contiguous blocks
@@ -98,7 +98,7 @@ There is a segment of data in a code section that spans from 'Begin' to 'End'.
 .decl data_in_code(Begin:address,End:address)
 
 /**
-A block candidate can be a "code" or "data" block candidate.
+A block candidate can be a "code", "data", or "padding" block candidate.
 */
 .type block_type <: symbol
 /**
@@ -112,7 +112,11 @@ code inference. In that case the analysis has failed to resolve all conflicts.
 /////////////////////////////////////////////////////////////
 // Basic facts to define fallthrough
 
-.decl may_fallthrough(o:address,d:address)
+/**
+Instruction at address `From` might fallthrough to
+instruction at address `To`.
+*/
+.decl may_fallthrough(From:address,To:address)
 
 // Branch with a delay-slot can always fallthrough
 may_fallthrough(From,To):-
@@ -136,6 +140,10 @@ may_fallthrough(From,To):-
     !halt(From),
     !no_return_call(From).
 
+/**
+Instruction at address `From` must fallthrough to
+instruction at address `To`.
+*/
 .decl must_fallthrough(From:address,To:address)
 
 // Branch with a delay-slot must fallthrough
@@ -154,6 +162,23 @@ must_fallthrough(From,To):-
     !conditional_return(From),
     !arch.delay_slot(_,From).
 
+/**
+This predicate is a special case of `may_fallthrough`.
+`must_fallthrough` is very conservative and does not include
+things like conditional jumps. However, conditional jumps
+can almost always fallthrough (unless there is obfuscation).
+`likely_fallthrough` captures those instructions.
+*/
+.decl likely_fallthrough(From:address,To:address)
+
+
+likely_fallthrough(From,To):-
+    may_fallthrough(From,To),
+    (
+        instruction_has_loop_prefix(From);
+        conditional_jump(From)
+    ).
+
 //////////////////////////////////////////////////////////////
 // This is a small refinement for discarding immediates as targets
 // in some obvious cases. This is specially useful for PIE code where
@@ -164,7 +189,7 @@ must_fallthrough(From,To):-
 may_have_symbolic_immediate(Src,as(Dest,address)):-
     instruction_immediate_offset(Src,Index,Offset,_),
     instruction_get_op(Src,Index,Op),
-    op_immediate(Op,Dest),
+    op_immediate(Op,Dest,_),
     (
         binary_type("DYN"),
         relocation(Src+Offset,_,_,_,_,_,_)
@@ -261,7 +286,8 @@ invalid(EA+1,"INT3"):-
          binary_isa("X64")
     ),
     instruction_get_operation(EA,"INT3"),
-    instruction_get_operation(EA+1,"INT3").
+    instruction_get_operation(EA+1,"INT3"),
+    instruction_get_operation(EA+2,"INT3").
 
 .decl possible_ea(EA:address) inline
 
@@ -332,14 +358,43 @@ basic_target(Val):-
 
 block_limit(as(EA,address)):-
     (
-        op_immediate(_,EA);
+        op_immediate(_,EA,_);
         pc_relative_operand(_,_,EA);
-        arch.pc_relative_addr(_,_,EA);
         basic_target(EA);
         instruction_has_loop_prefix(EA);
         fde_addresses(_,EA);
         lsda_callsite_addresses(_,EA, _)
     ).
+
+// block limits before and after data accesses
+block_limit(Inst):-
+    (
+        arch.simple_data_load(_,EA,_);
+        composite_data_access(_,_,EA,_);
+        arch.pc_relative_addr(_,_,EA)
+    ),
+    arch.instruction_at(EA,Inst).
+
+block_limit(Inst):-
+    (
+        arch.simple_data_load(_,EA,Size);
+        composite_data_access(_,_,EA,Size);
+        repeated_byte(EA,_,Size), Size > 8
+    ),
+    arch.instruction_at(EA+Size,Inst).
+
+/**
+We want to split blocks that go from non-padding to padding.
+However, this cannot be a regular block_limit because several
+instructions could fallthrough into another one.
+We need to consider the source address too.
+*/
+.decl transition_block_limit(EA:address,Next:address)
+
+transition_block_limit(EA,Next):-
+    is_padding(Next),
+    next(EA,Next),
+    !is_padding(EA).
 
 // The targets are computed incrementally now as we traverse the code
 // likely_ea and possible_target_from are mutually recursive
@@ -384,22 +439,25 @@ code_in_block_candidate(EA,EA):-
     possible_target(EA),
     possible_ea(EA).
 
-// extend the block as long as we are sure to fallthrough and we have not
+// Extend the block as long as we are sure to fallthrough and we have not
 // reached a block limit
 code_in_block_candidate(EA,Start):-
     code_in_block_candidate(EA2,Start),
     must_fallthrough(EA2,EA),
-    !block_limit(EA).
+    !block_limit(EA),
+    !transition_block_limit(EA2,EA).
 
 
-// if reached a block limit or an instruction that does not necessarily
+// If reached a block limit or an instruction that does not necessarily
 // fallthrough continue exploring but start a new block
+// Always start a new block if we switch to padding instructions.
 code_in_block_candidate(EA,EA):-
     code_in_block_candidate(EA2,_),
     may_fallthrough(EA2,EA),
     (
         !must_fallthrough(EA2,EA);
-        block_limit(EA)
+        block_limit(EA);
+        transition_block_limit(EA2,EA)
     ),
     possible_ea(EA).
 
@@ -425,18 +483,23 @@ padding_block_limit(Inst):-
 /**
 Build padding candidates from nop instructions
 
-This is analagous to code_in_block_candidate, but for blocks of type "padding".
+This is analogous to code_in_block_candidate, but for blocks of type "padding".
 */
 .decl nop_in_padding_candidate(EA:address,Start:address)
 
 nop_in_padding_candidate(EA,EA):-
     is_padding(EA),
+    !code_in_block_candidate_refined(EA,_),
     next(Prev,EA),
-    !is_padding(Prev).
+    (
+        !is_padding(Prev);
+        code_in_block_candidate_refined(Prev,_)
+    ).
 
 nop_in_padding_candidate(EA,EA):-
     padding_block_limit(EA),
-    is_padding(EA).
+    is_padding(EA),
+    !code_in_block_candidate_refined(EA,EA).
 
 nop_in_padding_candidate(Next,Start):-
     nop_in_padding_candidate(EA,Start),
@@ -455,39 +518,55 @@ padding_block_candidate(Start,Next-Start):-
     next(EA,Next),
     !nop_in_padding_candidate(Next,Start).
 
-// in case we cannot fallthrough, we skip any nops that we might find
-// and generate a new possible_target once the nops finish
+
+/**
+Linear component of the forward traversal. after_end traverses
+the code lineraly skipping nops. Traversals starts at points
+where there is a no-fallthough, after jump tables and after literal pools.
+`End` represents where the traversal started and `EA` represents the current
+address.
+*/
 .decl after_end(EA:address,End:address)
 
+// Start propagating after no-fallthrough blocks
 after_end(Next,End):-
     code_in_block_candidate(End,_),
     next(End,Next),
     !may_fallthrough(End,Next).
 
+// If we have a may_fallthrough that goes to invalid, we start an after_end
+// propagation.
 after_end(Next,End):-
-    after_end(EA,End),
-    is_padding(EA),
-    !block_limit(EA),
-    next(EA,Next).
+    code_in_block_candidate(End,_),
+    may_fallthrough(End,Next),
+    !must_fallthrough(End,Next),
+    invalid(Next,_).
 
-after_end(Next,End):-
-    relative_address(End,Size,_,_,_,_), Next=End+Size,
-    !relative_address(Next,_,_,_,_,_),
-    is_padding(Next).
-
-// This is used to find code after literal pools in ARM.
-after_end(Next,End):-
-    binary_isa("ARM"),
-    after_end(Next0,End),
-    EA = Next0 - (Next0 band 1),
-    data_block_candidate(EA,Size),
-    Next = Next0 + Size.
-
+// Search after int3 instructions in PEs
 after_end(Next,End):-
     binary_format("PE"),
     instruction_get_operation(End,"INT3"),
     next(End,Next),
     !instruction_get_operation(Next,"INT3").
+
+// Search after jump tables and literal pools
+after_end(Next,EA):-
+    data_block_candidate(EA,Size),
+    Next = EA + Size,
+    !relative_address(Next,_,_,_,_,_).
+
+// Search thumb code after literal pools
+after_end(NextThumb,EA):-
+    binary_isa("ARM"),
+    data_block_candidate(EA,Size),
+    NextThumb = EA + Size + 1.
+
+// Propagation through nops
+after_end(Next,End):-
+    after_end(EA,End),
+    is_padding(EA),
+    next(EA,Next).
+
 
 possible_target(EA):-
     after_end(EA,_),
@@ -495,6 +574,14 @@ possible_target(EA):-
         !is_padding(EA);
         block_limit(EA)
     ).
+
+// In ARM, if we find invalid instructions, we try with the other decode mode.
+possible_target(SwitchDecodeModeEA):-
+    binary_isa("ARM"),
+    after_end(EA,_),
+    !is_padding(EA),
+    invalid(EA,_),
+    SwitchDecodeModeEA = EA bxor 1.
 
 ///////////////////////////////////////////////////////////////////////
 // We are done with the recursive exploration
@@ -557,6 +644,7 @@ data_block_candidate(Block,AccessSize):-
     code_in_block_candidate(EA,_),
     code_in_block_candidate(EA_load,_).
 
+// Repeated bytes in code section
 data_block_candidate(EA,Size):-
     repeated_byte(EA,_,Size), Size > 8,
     !is_padding(EA).
@@ -579,6 +667,38 @@ known_block(Block,"data",4,"relocation"):-
     !instruction_has_relocation(_,Block),
     address_in_data(Block,_).
 
+/**
+String in code section, either it is referenced
+or it is long enough (>8 bytes).
+
+EA:    adr r0, RefAddr
+...
+RefAddr: .string "..."
+*/
+block_heuristic(RefAddr,"data",Size,0,"possible string"),
+data_block_candidate(RefAddr,Size):-
+    code_section(Name),
+    loaded_section(BegSect,EndSect,Name),
+    BegSect <= RefAddr, RefAddr < EndSect,
+    ascii_string(RefAddr,End),
+    Size = End - RefAddr,
+    (
+        arch.pc_relative_addr(EA,_,RefAddr),
+        code_in_block_candidate(EA,_),
+        !composite_data_access(EA,_,_,_)
+        ;
+        Size > 8
+    ).
+
+// Pointer to a string
+data_block_candidate(Addr,Pt_size):-
+    code_section(Name),
+    loaded_section(BegSect,EndSect,Name),
+    BegSect <= Addr, Addr < EndSect,
+    aligned_address_in_data(Addr,Dest),
+    ascii_string(StrBeg,StrEnd),
+    StrBeg <= Dest, Dest < StrEnd,
+    arch.pointer_size(Pt_size).
 /**
 The block candidate defined by address 'Block' extends from 'BegAddr' to 'EndAddr'.
 In most cases 'BegAddr' and 'Block' coincide, but there are exceptions such as
@@ -652,6 +772,7 @@ block_candidate_dependency_edge(BlockA,"code",EndAddrA-BegAddrA,BlockB,"code",En
         direct_jump(EA,BlockB);
         direct_call(EA,BlockB)
     ),
+    !candidate_block_is_padding(BlockA),
     block_candidate_boundaries(BlockA,"code",BegAddrA,EndAddrA),
     block_candidate_boundaries(BlockB,"code",BegAddrB,EndAddrB),
     BlockA != BlockB.
@@ -831,7 +952,7 @@ unresolved_block(Other,"data",OtherSize):-
 
 // If some rule assigns negative points, make sure positive point rules are considered.
 unresolved_block(Block,Type,Size):-
-    negative_block_points(Block,Type,Size,_,_,_),
+    negative_block_heuristic(Block,Type,Size,_,_),
     !known_block(Block,Type,Size,_),
     !impossible_block(Block,Type,Size,_).
 
@@ -871,81 +992,132 @@ unresolved_block_overlap(Block1,Type1,Size1,Block2,Type2,Size2):-
 // https://www.cs.umd.edu/class/fall2017/cmsc451-0101/Lects/lect10-dp-intv-sched.pdf
 
 /**
+A numerical value that encodes the type of the interval for the WIS algorithm.
+*/
+.type interval_type <: unsigned
+
+/**
+This predicate allows us to translate back and forth from block types (padding, code, or data)
+into numerical interval types that are easily sorted. For padding and code blocks, we can
+have Default or Thumb blocks and we distinguish those with a different interval type.
+The field `AddrAdjust` allows us to adjust the addresses of Thumb blocks.
+
+This predicate also defines an implicit priority. If two blocks have the same weight
+and the same boundaries, the one with higher interval_type will be chosen.
+This derives from the way we deal with ties in the WIS algorithm. In case of a tie,
+the algorithm selects the block, which means that the last block in the ordering will
+be selected first.
+*/
+.decl type_ordering_map(Type:block_type,IntervalType:interval_type,AddrAdjust:address)
+
+type_ordering_map("padding",0,0).
+// padding thumb
+type_ordering_map("padding",1,1).
+type_ordering_map("code",2,0).
+// code thumb
+type_ordering_map("code",3,1).
+type_ordering_map("data",4,0).
+
+/**
 Valid unresolved intervals
 */
-.decl unresolved_interval(Start:address,End:address)
+.decl unresolved_interval(Start:address,End:address,TypeOrd:interval_type,Weight:number)
 
-unresolved_interval(Start,End):-
+unresolved_interval(Start,End,IntervalType, Points):-
     unresolved_block(Block,Type,Size),
     block_total_points(Block,Type,Size,Points),
-    Points >= 0,
+    type_ordering_map(Type,IntervalType,AddrAdjust),
+    Start = Block - AddrAdjust,
     block_candidate_boundaries(Block,Type,Start,End),
     Size = End - Start.
 
-/**
-Sort intervals by end address
-*/
-.decl unresolved_interval_order(ID:unsigned,Start:address,End:address)
 
-unresolved_interval_order(ID,FirstStart,FirstEnd):-
+
+/**
+Auxiliary predicate to help sorting the intervals.
+`next_type` captures the next type for a fixed start and end addresses.
+*/
+.decl next_type(Start:address,End:address,PrevType:interval_type,NextType:interval_type)
+
+/**
+Auxiliary predicate to help sorting the intervals.
+`next_start` captures the next starting address for a fixed end address.
+*/
+.decl next_start(PrevStart:address,End:address,NextStart:address)
+
+/**
+Auxiliary predicate to help sorting the intervals.
+`next_end` captures the next end address overall.
+*/
+.decl next_end(PrevEnd:address,NextEnd:address)
+
+next_type(Start,End,PrevType,NextType):-
+    unresolved_interval(Start,End,PrevType,_),
+    NextType = min Type : {
+        unresolved_interval(Start,End,Type,_),
+        Type > PrevType
+    }.
+
+next_start(PrevStart,End,NextStart):-
+    unresolved_interval(PrevStart,End,_,_),
+    NextStart = min Start : {
+        unresolved_interval(Start,End,_,_),
+        Start > PrevStart
+    }.
+
+next_end(PrevEnd,NextEnd):-
+    unresolved_interval(_,PrevEnd,_,_),
+    NextEnd = min End : {
+        unresolved_interval(_,End,_,_),
+        End > PrevEnd
+    }.
+
+
+/**
+Sort intervals lexicographically by <end address, start address, interval_type>
+*/
+.decl unresolved_interval_order(ID:unsigned,Start:address,End:address,Type:interval_type,Weight:number)
+
+unresolved_interval_order(ID,FirstStart,FirstEnd,FirstType,Weight):-
     ID = 1,
     FirstEnd = min End : {
-        unresolved_interval(_,End)
+        unresolved_interval(_,End,_,_)
     },
     FirstStart = min Start : {
-        unresolved_interval(Start,FirstEnd)
-    }.
-
-unresolved_interval_order(LastID+1,NextStart,LastEnd):-
-    unresolved_interval_order(LastID,LastStart,LastEnd),
-    NextStart = min Start : {
-        unresolved_interval(Start,LastEnd),
-        Start > LastStart
-    }.
-
-unresolved_interval_order(LastID+1,NextStart,NextEnd):-
-    unresolved_interval_order(LastID,LastStart,LastEnd),
-    0 = count : {
-        unresolved_interval(Start,LastEnd),
-        Start > LastStart
+        unresolved_interval(Start,FirstEnd,_,_)
     },
-    NextEnd = min End : {
-        unresolved_interval(_,End),
-        End > LastEnd
+    FirstType = min Type : {
+        unresolved_interval(FirstStart,FirstEnd,Type,_)
     },
-    NextStart = min Start : {
-        unresolved_interval(Start,NextEnd)
-    }.
+    unresolved_interval(FirstStart,FirstEnd,FirstType,Weight).
 
-.decl block_type_priority(Type:block_type,Priority:unsigned)
+unresolved_interval_order(ID+1,Start,End,NextType,Weight):-
+    unresolved_interval_order(ID,Start,End,Type,_),
+    next_type(Start,End,Type,NextType),
+    unresolved_interval(Start,End,NextType,Weight).
 
-block_type_priority("code",2).
-block_type_priority("data",1).
-block_type_priority("padding",0).
-
-/**
-Select best block in an unresolved interval and calculate weight
-*/
-.decl unresolved_interval_best_block(ID:unsigned,Block:address,Type:block_type,Size:unsigned,Weight:unsigned)
-
-unresolved_interval_best_block(ID,SelectedBlock,SelectedType,Size,Weight):-
-    unresolved_interval_order(ID,Start,End),
-    Size = End - Start,
-    MaxPoints = max Points : {
-        block_candidate_boundaries(Block,Type,Start,End),
-        block_total_points(Block,Type,Size,Points),
-        // Don't select intervals with negative score.
-        Points >= 0
+unresolved_interval_order(ID+1,NextStart,End,FirstType,Weight):-
+    unresolved_interval_order(ID,Start,End,PrevType,_),
+    !next_type(Start,End,PrevType,_),
+    next_start(Start,End,NextStart),
+    FirstType = min Type : {
+        unresolved_interval(NextStart,End,Type,_)
     },
-    MaxPriority = max Priority : {
-        block_candidate_boundaries(Block,Type,Start,End),
-        block_total_points(Block,Type,Size,MaxPoints),
-        block_type_priority(Type,Priority)
+    unresolved_interval(NextStart,End,FirstType,Weight).
+
+unresolved_interval_order(ID+1,FirstStart,NextEnd,FirstType,Weight):-
+    unresolved_interval_order(ID,PrevStart,End,PrevType,_),
+    !next_type(PrevStart,End,PrevType,_),
+    !next_start(PrevStart,End,_),
+    next_end(End,NextEnd),
+    FirstStart = min Start : {
+        unresolved_interval(Start,NextEnd,_,_)
     },
-    block_type_priority(SelectedType,MaxPriority),
-    block_total_points(SelectedBlock,SelectedType,Size,MaxPoints),
-    block_candidate_boundaries(SelectedBlock,SelectedType,Start,End),
-    Weight = Size * 5 + as(MaxPoints, unsigned).
+    FirstType = min Type : {
+        unresolved_interval(FirstStart,NextEnd,Type,_)
+    },
+    unresolved_interval(FirstStart,NextEnd,FirstType,Weight).
+
 
 /**
 Weighted interval schedule: `Count` of intervals that end prior to the start of
@@ -956,13 +1128,13 @@ Only calculated for intervals that have prior intervals.
 .decl wis_has_prior(I:unsigned,Count:unsigned)
 
 wis_has_prior(I,Prior):-
-    unresolved_interval_order(Prior,_,PriorEnd),
+    unresolved_interval_order(Prior,_,PriorEnd,_,_),
     // check the we have the last interval ending at PriorEnd
-    unresolved_interval_order(Prior+1,_,NextEnd),
+    unresolved_interval_order(Prior+1,_,NextEnd,_,_),
     NextEnd > PriorEnd,
     // find intervals that start after PriorEnd but before NextEnd.
     // for those intervals `Prior` is the prior.
-    unresolved_interval_order(I,Start,_),
+    unresolved_interval_order(I,Start,_,_,_),
     NextEnd > Start, Start >= PriorEnd.
 
 /**
@@ -972,7 +1144,7 @@ intervals (i.e., with `Count` of 0).
 .decl wis_prior(I:unsigned,Count:unsigned)
 
 wis_prior(I,0):-
-    unresolved_interval_order(I,_,_),
+    unresolved_interval_order(I,_,_,_,_),
     !wis_has_prior(I,_).
 
 wis_prior(I,Prior):-
@@ -981,7 +1153,7 @@ wis_prior(I,Prior):-
 /**
 If Val1 >= Val2, return Id1. Otherwise, return Id2.
 */
-.functor functor_choose_max(Val1:unsigned,Val2:unsigned,Id1:unsigned,Id2:unsigned):unsigned
+.functor functor_choose_max(Val1:number,Val2:number,Id1:unsigned,Id2:unsigned):unsigned
 
 /**
 Weighted interval schedule: memoized subproblems
@@ -992,7 +1164,7 @@ Value is the optimized total weight for intervals [1:I].
 Predecessor) is the previous entry in `wis_memo`, later used to reconstruct
 the optimal solution.
 */
-.decl wis_memo(I:unsigned,Value:unsigned,Pred:unsigned)
+.decl wis_memo(I:unsigned,Value:number,Pred:unsigned)
 
 wis_memo(0,0,0).
 
@@ -1001,13 +1173,14 @@ wis_memo(I,Value,Pred):-
     // specifying this expression in both forms allows it to be indexed in both rule plans.
     I = IPrev + 1,
     IPrev = I - 1,
-    unresolved_interval_best_block(I,_,_,_,IWeight),
+    unresolved_interval_order(I,_,_,_,IWeight),
     wis_prior(I,P),
     wis_memo(P,TakeWeight0,_),
     TakeWeight = TakeWeight0 + IWeight,
     Value = max(LeaveWeight,TakeWeight),
     // functor_choose_max used for efficiency here instead of a disjunction
     // for performance.
+    // In case of equality, it defaults to including P.
     Pred = @functor_choose_max(LeaveWeight,TakeWeight,IPrev,P).
 
 // ensure @delta_wis_memo is evaluated first in both plans
@@ -1023,14 +1196,24 @@ selected.
 interval_schedule_tie(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB):-
     wis_memo(IPrev,LeaveWeight,_),
     I = IPrev + 1,
-    unresolved_interval_best_block(I,BlockA,TypeA,SizeA,IWeight),
+    unresolved_interval_order(I,StartA,EndA,IntervalTypeA,IWeight),
+
+    SizeA = as(EndA - StartA,unsigned),
+    type_ordering_map(TypeA,IntervalTypeA,AddrAdjustA),
+    BlockA = StartA + AddrAdjustA,
+
     // Don't warn if the selected block is later discarded.
     !discarded_block(BlockA,TypeA,SizeA,_,_),
     wis_prior(I,P),
     wis_memo(P,TakeWeight0,_),
     TakeWeight = TakeWeight0 + IWeight,
     LeaveWeight = TakeWeight,
-    unresolved_interval_best_block(IPrev,BlockB,TypeB,SizeB,_),
+    unresolved_interval_order(IPrev,StartB,EndB,IntervalTypeB,_),
+
+    SizeB = as(EndB - StartB,unsigned),
+    type_ordering_map(TypeB,IntervalTypeB,AddrAdjustB),
+    BlockB = StartB + AddrAdjustB,
+
     // We only care about ties if I is selected in the final schedule.
     // Otherwise, it had no impact on the output.
     // It's a non-issue if IPrev is selected. Because the wis_memo rule favors
@@ -1047,8 +1230,8 @@ Weighted interval schedule: reconstruct schedule of selected intervals
 
 // Start from the end, which holds the completed optimal solution.
 wis_schedule_iter(I):-
-    unresolved_interval_order(I,_,_),
-    !unresolved_interval_order(I+1,_,_).
+    unresolved_interval_order(I,_,_,_,_),
+    !unresolved_interval_order(I+1,_,_,_,_).
 
 // Add to schedule if interval I was taken.
 wis_schedule(I):-
@@ -1067,9 +1250,10 @@ wis_schedule_iter(Pred):-
 ///
 .decl block_total_points(Block:address,Type:block_type,Size:unsigned,Points:number)
 
-block_total_points(Block,Type,Size,Points):-
+block_total_points(Block,Type,Size,Points + Proportional_points):-
     unresolved_block(Block,Type,Size),
-    Points = sum X:{block_points(Block,Type,Size,_,X,_)}.
+    Points = sum X:{block_points(Block,Type,Size,_,X,_)},
+    Proportional_points = sum X:{block_points_proportional(Block,Type,Size,Mult,_), X = as(Size,number)*Mult}.
 
 /**
 Block: block to be discarded
@@ -1080,11 +1264,13 @@ BlockPropagated (for debugging purpose):
 .decl discarded_block(Block:address,Type:block_type,Size:unsigned,Reason:symbol,BlockPropagated:address)
 
 discarded_block(Block,Type,Size,"interval discarded",0):-
-    unresolved_block(Block,Type,Size),
-    block_candidate_boundaries(Block,Type,Start,End),
-    unresolved_interval_order(I,Start,End),
+    unresolved_interval_order(I,Start,End,IntervalType,_),
     Size = End - Start,
-    !wis_schedule(I).
+    !wis_schedule(I),
+    type_ordering_map(Type,IntervalType,AddrAdjust),
+    Block = Start + AddrAdjust,
+    unresolved_block(Block,Type,Size).
+
 
 // If both a code and data block are both known, and the data block is only
 // known by propagation, discard the data block.
@@ -1106,19 +1292,9 @@ discarded_block(Block2,Type2,Size2,"overlaps known code",Block1):-
     known_block(Block2,Type2,Size2,"propagated"),
     Type1 = "code", Type2 = "data".
 
-discarded_block(Block,Type,Size,"less points",0):-
-    wis_schedule(I),
-    unresolved_interval_order(I,Start,End),
-    Size = End - Start,
-    block_candidate_boundaries(Block,Type,Start,End),
-    !unresolved_interval_best_block(I,Block,Type,Size,_).
 
 discarded_block(Block,Type,Size,"impossible",0):-
     impossible_block(Block,Type,Size,_).
-
-discarded_block(Block,Type,Size,"negative points",0):-
-    block_total_points(Block,Type,Size,Points),
-    Points < 0.
 
 // propagate discarding blocks through direct jumps, calls, and must_fallthrough
 discarded_block(Block1,Type1,Size1,"propagated",Block2):-
@@ -1153,56 +1329,80 @@ candidate_block_is_not_padding(Block):-
     code_in_block_candidate_refined(EA,Block),
     !is_padding(EA).
 
-// has a direct call from a non-overlapping block
-// don't consider it to be padding.
-candidate_block_is_not_padding(Block):-
-    code_in_block_candidate_refined(Block,Block),
-    direct_call(From,Block),
-    code_in_block_candidate_refined(From,FromBlock),
-    !unresolved_block(FromBlock,"code",_),
-    !impossible_block(FromBlock,"code",_,_).
-
 .decl candidate_block_is_padding(Block:address)
 
 candidate_block_is_padding(Block):-
     code_in_block_candidate_refined(_,Block),
     !candidate_block_is_not_padding(Block).
 
+
 /**
- The heuristics give a variable number of points for things like number
- of predecessors, how the block is reached (through direct jump, fallthough, etc.)
- and if the block's address appears in the data section, whether it appears aligned
- or in a pointer array.
+`block_heuristic` defines properties of blocks that will receive points. This predicate
+uniquely identifies a block and the 'HeuristicName' property associated to it.
+
+Some heuristics can be assigned to a block multiple times, this is made possible by
+the 'Instance' field. E.g. if we give points for specific instructions in the block
+or for each block predecessor. For heuristics that can only be applied once per block, the
+instance field is always 0.
 */
-.decl block_points(Block:address,Type:block_type,Size:unsigned,Predecessor:address,Importance:number,HeuristicName:symbol)
+.decl block_heuristic(Block:address,Type:block_type,Size:unsigned,Instance:address,HeuristicName:symbol)
 
 /**
-Negative block points are collected in their own relation.
+Negative block heuristics are collected in their own relation.
 
-This allows any block with negative_block_points to be marked as
+This allows any block with negative_block_heuristic to be marked as
 unresolved_block without causing cyclic negation.
 */
-.decl negative_block_points(Block:address,Type:block_type,Size:unsigned,Predecessor:address,Importance:number,HeuristicName:symbol)
+.decl negative_block_heuristic(Block:address,Type:block_type,Size:unsigned,Instance:address,HeuristicName:symbol)
 
-block_points(Block,Type,Size,Predecessor,Importance,HeuristicName):-
-    negative_block_points(Block,Type,Size,Predecessor,Importance,HeuristicName).
+/**
+ A block defined by its address 'Block', 'Type', and 'Size' has been assigned a heuristic 'HeuristicName'
+ with weight 'Weight'. The 'Instance' field can be used to assign a single heuristic to a block multiple times,
+ see `block_heuristics`.
+ The heuristic weights are determined by the `heuristic_weight` predicate.
+*/
+.decl block_points(Block:address,Type:block_type,Size:unsigned,Instance:address,Weight:number,HeuristicName:symbol)
+
+/**
+This predicate specifies heuristics whose weight is proportional to the block size.
+A block defined by its address 'Block', 'Type', and 'Size' has been assigned a heuristic 'HeuristicName'
+ with weight 'WeightMult'*'Size'.
+*/
+.decl block_points_proportional(Block:address,Type:block_type,Size:unsigned,WeightMult:number,HeuristicName:symbol)
+
+
+block_points(Block,Type,Size,Instance,Weight,HeuristicName):-
+    block_heuristic(Block,Type,Size,Instance,HeuristicName),
+    heuristic_weight(HeuristicName,SIMPLE_WEIGHT,Weight).
+
+block_points(Block,Type,Size,Instance,Weight,HeuristicName):-
+    negative_block_heuristic(Block,Type,Size,Instance,HeuristicName),
+    heuristic_weight(HeuristicName,SIMPLE_WEIGHT,Weight).
+
+block_points_proportional(Block,Type,Size,Weight,HeuristicName):-
+    block_heuristic(Block,Type,Size,_,HeuristicName),
+    heuristic_weight(HeuristicName,PROPORTIONAL_WEIGHT,Weight).
+
+block_heuristic(Block,Type,Size,0,"size"):-
+    unresolved_block(Block,Type,Size).
+
 
 //////////////////////////////////////////////////////////////////////
-// data block candidate points
+// data block candidate heuristics
 
-block_points(Block,"data",Size,0,6,"relative-jump-table"):-
+block_heuristic(Block,"data",Size,0,"relative-jump-table"):-
     data_block_candidate(Block,Size),
     relative_address(Block,Size,_,_,_,_).
 
 
-block_points(Block,"data",Size,0,3,"relative-jump-table-start"):-
+block_heuristic(Block,"data",Size,0,"relative-jump-table-start"):-
     data_block_candidate(Block,Size),
     relative_address_start(Block,_,_,_,_).
 
 //////////////////////////////////////////////////////////////////////
 // code block candidate points
 
-block_points(Block,"code",BlockSize,0,-3,"overlaps with relocation"):-
+block_heuristic(Block,"code",BlockSize,0,"overlaps with relocation"):-
     (
         binary_isa("X86");
         binary_isa("X64")
@@ -1224,21 +1424,21 @@ block_points(Block,"code",BlockSize,0,-3,"overlaps with relocation"):-
     block_candidate_boundaries(Block,"code",Start,End),
     BlockSize = End - Start.
 
-block_points(Block,Type,Size,0,0,"basic point"):-
+block_heuristic(Block,Type,Size,0,"basic point"):-
     unresolved_block(Block,Type,Size).
 
-block_points(Block,"code",Size,0,1,"code section start"):-
+block_heuristic(Block,"code",Size,0,"code section start"):-
     unresolved_block(Block,"code",Size),
     code_section(Section),
     loaded_section(Block,_,Section).
 
-block_points(Block,"code",Size,0,1,"aligned address in data"):-
+block_heuristic(Block,"code",Size,0,"aligned address in data"):-
     !binary_isa("X86"),
     !binary_isa("ARM"),
     unresolved_block(Block,"code",Size),
     aligned_address_in_data(_,Block).
 
-block_points(Block,"code",Size,0,1,"address in data array"):-
+block_heuristic(Block,"code",Size,0,"address in data array"):-
     !binary_isa("ARM"),
     unresolved_block(Block,"code",Size),
     address_in_data(Address,Block),
@@ -1258,31 +1458,29 @@ block_points(Block,"code",Size,0,1,"address in data array"):-
         address_in_data(Address-Pt_size,_)
     ).
 
-block_points(Block,"code",Size,BlockPred,Points,"unresolved-direct-jump"):-
+block_heuristic(Block,"code",Size,BlockPred,"unresolved-direct-jump"):-
     unresolved_block(Block,"code",Size),
     direct_jump(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     BlockPred != Block,
-    unresolved_block(BlockPred,"code",_),
-    Points = 2.
+    unresolved_block(BlockPred,"code",_).
 
 
-block_points(Block,"code",Size,BlockPred,Points,"unresolved-direct-call"):-
+block_heuristic(Block,"code",Size,BlockPred,"unresolved-direct-call"):-
     unresolved_block(Block,"code",Size),
     direct_call(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     BlockPred != Block,
-    unresolved_block(BlockPred,"code",_),
-    Points = 2.
+    unresolved_block(BlockPred,"code",_).
 
-block_points(Block,"code",Size,0,2,"unresolved-may-fallthrough"):-
+block_heuristic(Block,"code",Size,0,"unresolved-may-fallthrough"):-
     unresolved_block(Block,"code",Size),
     may_fallthrough(EA,Block),
     code_in_block_candidate_refined(EA,BlockPred),
     !candidate_block_is_padding(BlockPred),
     unresolved_block(BlockPred,"code",_).
 
-block_points(Block,"code",Size,0,3,"incremental linking target"):-
+block_heuristic(Block,"code",Size,0,"incremental linking target"):-
     incremental_linking(First,Last),
     direct_jump(EA,Block),
     EA >= First, EA <= Last,
@@ -1291,17 +1489,19 @@ block_points(Block,"code",Size,0,3,"incremental linking target"):-
 /**
 Points for reachability
 
-These start at 7 if reachable directly from a non-overlapping block, and are
-propagated forward to blocks that they must reach, and propagated forward
-while subtracting a point to blocks that they may reach.
+Give points to blocks that are reachable from a non-overlapping block.
+We distinguish two kinds of reachability "strong" and "weak" which get
+different amount of points. "weak" reachability is for may fallthroughs
+that have higher uncertainty such as function calls.
 */
-.decl resolved_reaches(Block:address,Size:unsigned,Points:number)
+.decl resolved_reaches(Block:address,Size:unsigned, Type:symbol)
 
-// Base case: a non-overlapping block directly falls through to this block.
-resolved_reaches(Block,Size,7):-
+// Base cases: a non-overlapping block reaches a block
+resolved_reaches(Block,Size, "strong"):-
     unresolved_block(Block,"code",Size),
     (
-        may_fallthrough(EA,Block);
+        must_fallthrough(EA,Block);
+        likely_fallthrough(EA,Block);
         direct_jump(EA,Block);
         direct_call(EA,Block);
         jump_table_candidate(EA,_,_,Block)
@@ -1312,29 +1512,45 @@ resolved_reaches(Block,Size,7):-
     !unresolved_block(BlockPred,"code",_),
     !impossible_block(BlockPred,"code",_,_).
 
-resolved_reaches(Block,Size,Points):-
+resolved_reaches(Block,Size, "weak"):-
+    unresolved_block(Block,"code",Size),
+    may_fallthrough(EA,Block),
+    !likely_fallthrough(EA,Block),
+    code_in_block_candidate_refined(EA,BlockPred),
+    // No fallthrough from padding blocks
+    !candidate_block_is_padding(BlockPred),
+    !unresolved_block(BlockPred,"code",_),
+    !impossible_block(BlockPred,"code",_,_).
+
+// Propagation
+resolved_reaches(Block,Size,Type):-
     unresolved_block(Block,"code",Size),
     (
-        must_fallthrough(EA,Block), Adjust = 0;
-        direct_jump(EA,Block), Adjust = 0;
-        direct_call(EA,Block), Adjust = 0;
-        may_fallthrough(EA,Block), Adjust = 1;
-        jump_table_candidate(EA,_,_,Block), Adjust = 1
+        must_fallthrough(EA,Block);
+        likely_fallthrough(EA,Block);
+        direct_jump(EA,Block);
+        direct_call(EA,Block);
+        jump_table_candidate(EA,_,_,Block)
     ),
     code_in_block_candidate_refined(EA,BlockPred),
-    resolved_reaches(BlockPred,_,Points0),
-    Points = Points0 - Adjust,
-    Points0 > Adjust.
+    resolved_reaches(BlockPred,_,Type).
 
-// Blocks retain their highest reachability score.
-resolved_reaches(Block,Size,Points1) <= resolved_reaches(Block,Size,Points2):-
-    Points2 >= Points1.
+resolved_reaches(Block,Size,"weak"):-
+    unresolved_block(Block,"code",Size),
+    may_fallthrough(EA,Block),
+    !likely_fallthrough(EA,Block),
+    code_in_block_candidate_refined(EA,BlockPred),
+    resolved_reaches(BlockPred,_,_).
 
-block_points(Block,"code",Size,0,Points,"resolved-reaches"):-
-    resolved_reaches(Block,Size,Points).
+// "strong" reachability subsumes "weak" reachability.
+resolved_reaches(Block,Size,"weak") <= resolved_reaches(Block,Size,"strong"):- true.
+
+
+block_heuristic(Block,"code",Size,0,cat("resolved-reaches ",Type)):-
+    resolved_reaches(Block,Size,Type).
 
 // its address appears somewhere
-block_points(Block,"code",Size,0,3,"appears"):-
+block_heuristic(Block,"code",Size,0,"appears"):-
     unresolved_block(Block,"code",Size),
     possible_target_from(Block,EA),
     !unlikely_have_symbolic_immediate(EA),
@@ -1345,21 +1561,23 @@ block_points(Block,"code",Size,0,3,"appears"):-
     !unresolved_block(BlockPred,"code",_),
     !impossible_block(BlockPred,"code",_,_).
 
-block_points(Block,"code",Size,0,Points,"relative jump table target"):-
+block_heuristic(Block,"code",Size,0,Heuristic):-
     unresolved_block(Block,"code",Size),
     relative_address(EA,_,_,_,Block,_),
     count :{ relative_address(EA,_,_,_,_,_) } = 1,
     !relative_address(Block,_,_,_,_,_),
     (
-        !address_in_data(EA,_), Points = 3
+        !address_in_data(EA,_),
+        Heuristic = "relative jump table target"
         ;
         // If it is possible that EA has an absolute address instead of
         // a relative address, give less points.
-        address_in_data(EA,_), Points = 1
+        address_in_data(EA,_),
+        Heuristic = "relative jump table target: absolute"
     ).
 
 // give a point if it may fallthrough to another block
-block_points(Block,"code",Size,Block_succ,1,"fallthrough_to"):-
+block_heuristic(Block,"code",Size,Block_succ,"fallthrough_to"):-
     unresolved_block(Block,"code",Size),
     code_in_block_candidate_refined(EA,Block),
     may_fallthrough(EA,Block_succ),
@@ -1368,36 +1586,36 @@ block_points(Block,"code",Size,Block_succ,1,"fallthrough_to"):-
     !impossible_block(Block_succ,"code",_,_),
     !is_padding(Block_succ).
 
-block_points(Block,"code",Size,0,1,"has well-defined jump"):-
+block_heuristic(Block,"code",Size,0,"has well-defined jump"):-
     unresolved_block(Block,"code",Size),
     code_in_block_candidate_refined(EA,Block),
     direct_jump(EA,BlockDest),
     !unresolved_block(BlockDest,"code",_).
 
-block_points(Block,"code",Size,0,1,"has well-defined call"):-
+block_heuristic(Block,"code",Size,0,"has well-defined call"):-
     unresolved_block(Block,"code",Size),
     code_in_block_candidate_refined(EA,Block),
     direct_call(EA,BlockDest),
     !unresolved_block(BlockDest,"code",_).
 
-block_points(Block,"code",Size,0,3,"has well-defined call to a function symbol"):-
+block_heuristic(Block,"code",Size,0,"has well-defined call to a function symbol"):-
     unresolved_block(Block,"code",Size),
     code_in_block_candidate_refined(EA,Block),
     direct_call(EA,BlockDest),
     function_symbol(BlockDest,_).
 
-block_points(Block,"code",Size,0,1,"plt call"):-
+block_heuristic(Block,"code",Size,0,"plt call"):-
     unresolved_block(Block,"code",Size),
     code_in_block_candidate_refined(EA,Block),
     direct_call(EA,BlockDest),
     plt_entry(BlockDest,_).
 
-block_points(Block,"code",Size,0,2,"padding nop block"):-
+block_heuristic(Block,"code",Size,0,"padding nop block"):-
     unresolved_block(Block,"code",Size),
     fde_addresses(_,Block),
     arch.is_nop(Block).
 
-block_points(Block,"data",Size,0,10,"repeated byte"):-
+block_heuristic(Block,"data",Size,0,"repeated byte"):-
     unresolved_block(Block,"data",Size),
     repeated_byte(Block,_,Count), Count >= 8,
     !is_padding(Block).
@@ -1406,7 +1624,7 @@ block_points(Block,"data",Size,0,10,"repeated byte"):-
 Give penalty on the dangling block where one or two instructions are enclosed
 in a bigger instruction.
 */
-block_points(Block2,"code",BlockSize2,0,-1,"dangling block with enclosed instr"):-
+block_heuristic(Block2,"code",BlockSize2,0,"dangling block with enclosed instr"):-
     unresolved_block_overlap(Block,"code",_,Block2,"code",BlockSize2),
     Block < Block2,
     instruction(Block,Size,_,_,_,_,_,_,_,_),   // Instr
@@ -1420,15 +1638,15 @@ block_points(Block2,"code",BlockSize2,0,-1,"dangling block with enclosed instr")
     block_candidate_boundaries(Block2,"code",Beg2,_),
     !block_candidate_boundaries(_,"code",_,Beg2).
 
-block_points(Block,"code",Size,0,3,"exc-region"):-
+block_heuristic(Block,"code",Size,0,"exc-region"):-
     unresolved_block(Block,"code",Size),
     lsda_callsite_addresses(Block, _, _).
 
-block_points(Block,"code",Size,0,10,"landing-pad"):-
+block_heuristic(Block,"code",Size,0,"landing-pad"):-
     unresolved_block(Block,"code",Size),
     lsda_callsite_addresses( _, _, Block).
 
-negative_block_points(Block,"code",Size,0,-2,"conditional jump/return: fallthrough to invalid"):-
+negative_block_heuristic(Block,"code",Size,0,"conditional jump/return: fallthrough to invalid"):-
     code_in_block_candidate_refined(EA,Block),
     block_candidate_boundaries(Block,"code",Start,End),
     Size = End - Start,
@@ -1439,7 +1657,8 @@ negative_block_points(Block,"code",Size,0,-2,"conditional jump/return: fallthrou
     next(EA,Invalid),
     invalid(Invalid,_).
 
-negative_block_points(Block,"code",Size,0,-1,"jump to string"):-
+
+negative_block_heuristic(Block,"code",Size,0,"jump to string"):-
     ascii_string(Beg,End),
     direct_jump(EA,Dest),
     Dest >= Beg,
@@ -1453,21 +1672,25 @@ negative_block_points(Block,"code",Size,0,-1,"jump to string"):-
     block_candidate_boundaries(Block,"code",Start,End),
     Size = End - Start.
 
-block_points(Block,"code",Size,0,5,"seh handler"):-
+block_heuristic(Block,"code",Size,0,"seh handler"):-
     unresolved_block(Block,"code",Size),
     seh_handler_entry(_,Block).
 
-block_points(Block,"data",AccessSize,0,Points,"data access"):-
+block_heuristic(Block,"data",AccessSize,0,Heuristic):-
     !binary_isa("ARM"), // ARM's litpool_ref system gives points
     arch.simple_data_load(EA,Block,AccessSize),
     unresolved_block(Block,"data",AccessSize),
     code_in_block_candidate_refined(EA,Block0),
     (
-        !unresolved_block(Block0,"code",_), !impossible_block(Block0,"code",_,_), Points = 4;
-        unresolved_block(Block0,"code",_), Points = 2
+        !unresolved_block(Block0,"code",_),
+        !impossible_block(Block0,"code",_,_),
+        Heuristic = "data access: resolved"
+        ;
+        unresolved_block(Block0,"code",_),
+        Heuristic = "data access"
     ).
 
-block_points(Block,"data",AccessSize,0,Points,"composite data access"):-
+block_heuristic(Block,"data",AccessSize,0,Heuristic):-
     !binary_isa("ARM"), // ARM's litpool_ref system gives points
     composite_data_access(EA,EA_load,Block,AccessSize),
     unresolved_block(Block,"data",AccessSize),
@@ -1478,24 +1701,24 @@ block_points(Block,"data",AccessSize,0,Points,"composite data access"):-
         !impossible_block(CodeBlock1,"code",_,_),
         !unresolved_block(CodeBlock2,"code",_),
         !impossible_block(CodeBlock2,"code",_,_),
-        Points = 4
+        Heuristic = "composite data access: 2 resolved"
         ;
         unresolved_block(CodeBlock1,"code",_),
         !unresolved_block(CodeBlock2,"code",_),
         !impossible_block(CodeBlock2,"code",_,_),
-        Points = 3
+        Heuristic = "composite data access: 1 resolved"
         ;
         !unresolved_block(CodeBlock1,"code",_),
         !impossible_block(CodeBlock1,"code",_,_),
         unresolved_block(CodeBlock2,"code",_),
-        Points = 3
+        Heuristic = "composite data access: 1 resolved"
         ;
         unresolved_block(CodeBlock1,"code",_),
         unresolved_block(CodeBlock2,"code",_),
-        Points = 2
+        Heuristic = "composite data access"
     ).
 
-block_points(Block,"code",Size,0,-1,"debug block"):-
+block_heuristic(Block,"code",Size,0,"debug block"):-
     (
         binary_isa("X86");
         binary_isa("X64")
@@ -1546,9 +1769,7 @@ block_still_overlap(Block1,Type1,Size1,Block2,Type2,Size2):-
         ;
         Block1 = Block2,
         Size1 = Size2,
-        block_type_priority(Type1,Priority1),
-        block_type_priority(Type2,Priority2),
-        Priority1 < Priority2
+        Type1 < Type2
     ).
 
 /**

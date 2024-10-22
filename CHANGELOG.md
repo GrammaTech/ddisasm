@@ -1,7 +1,57 @@
-# 1.8.1 (Unreleased)
+# 1.9.1 (Unreleased)
 
+* Fix a hang due to incorrect jump-table boundaries inferred from irrelevant register correlations to the index register
+* Requires gtirb >=2.2.0
+* Improved code inference:
+    - Do not miss code after literal pools.
+    - Switch decode mode if invalid instruction found in ARM.
+    - Fixed bug in pointers to string data blocks.
+    - Restrict padding blocks so they do not share instructions with code blocks.
+    - Start a new block if we transition from padding to not padding
+    - Change the type of several heuristics from "simple" to "proportional"
+    - Additional heuristic: Simple string literals in literal pools
+    - Additional heuristic: Function beginning pattern with push/adjust-sp as plausible instruction sequence
+* Fix bug that led to string data blocks potentially overlapping code blocks.
+* Fix bug that resulted in integral symbols on ISAs other than x64 (ARM and x86).
+* Fix symbolization bug of ADR instructions in ARM32 that refer to code.
+* Fix bug in PE code inference that could lead to the whole .text section being
+  declared invalid if a data directory was attached to the end of the section.
+* Add alignments to data blocks that require alignment even within data
+  sections
 * Fix 16-Thumb STM instructions considered to be invalid if the same register
   in is used in reglist and register operands with writeback enabled.
+
+# 1.9.0
+
+* Stop generating debian metapackages and packages with the version attached
+  to the package name. Updates in the apt-repository now support multiple
+  package versions and upgrading `ddisasm` with `apt-get upgrade`.
+* Improve def-use and value-reg stack analysis to consider push and pop
+  instructions. These changes also fix a couple of bugs in the stack variable
+  propagation.
+* Update LIEF to 0.13.2
+* No longer consider `_x86.get_pc_thunk*` functions as ABI-intrinsic; this
+  means `_copy` is not appended to the original symbol, and a symbol forwarding
+  entry is not created.
+* Fix handling of BLR instruction in ARM64.
+* Fix size access of LDR instruction in ARM64.
+* Extend value_reg analysis to support memory loads using a register with
+  constant address.
+* Refactor the code inference point system. Decouple heuristics from their weights.
+  Heuristic weights can now be modified by providing user hints.
+* Generate GOT, PAGE and GOT, OFST symbolic expression attributes for split
+  .got loads on MIPS.
+* Correct symbol_minus_symbol in lsda entries with a reference to the end of `.gcc_except_table`: add `boundary_sym_expr` for such reference
+* Add `ElfSoname` aux-data for `SONAME` dynamic-section entry
+* Requires gtirb >=2.1.0
+* Track values of registers R8B - R15B on x86-64, which are in some cases needed for inferring jump table boundaries.
+* Infer jump table boundaries from comparisons of registers correlated to the index register.
+* Relax constraints for inferring jump table boundaries from comparisons of indirect operands
+* Fix bug where a relative jump table starting with consecutive zero offsets was truncated at the first non-zero value.
+* Add alignment for x86-64 instructions that require explicitly aligned memory
+  (e.g., some SIMD instructions)
+* Update capstone version from 4.0.1 to 5.0.1
+* Avoid generating `_start` symbol when the entry-point address is not a code block.
 
 # 1.8.0
 
