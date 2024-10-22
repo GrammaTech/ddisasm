@@ -12,7 +12,7 @@
 get_tls_var:
     pushq   %rbp
     movq    %rsp, %rbp
-    movq    $-8, %rax
+    movq    $var@tpoff, %rax
     movq    %fs:0(%rax),%rax
     popq    %rbp
     ret
@@ -26,7 +26,7 @@ set_tls_var:
     pushq   %rbp
     movq    %rsp, %rbp
     movq    %rdi, -8(%rbp)
-    movq    $-8, %rax
+    movq    $var@tpoff, %rax
     movq    -8(%rbp), %rdx
     movq    %rdx, %fs:0(%rax)
     nop
