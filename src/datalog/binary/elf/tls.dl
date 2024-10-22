@@ -520,15 +520,27 @@ tls_relative_operand(EA,Index,Dest,Type):-
         Type = "NTPOFF"
     ),
     instruction_get_op(EA,Index,Op),
+    op_indirect(Op,Reg,"NONE","NONE",_,Offset,_), Offset < 0,
+    tls_segment(_,TlsEnd,Align),
+    Base = as(@functor_aligned(TlsEnd, max(Align,1)),number),
+    Dest = as(Base+Offset,address).
+
+// Local Executable (LE) TLS model,
+//   i.e. mov $var@tpoff, %rax
+//        mov %fs:0(%rax), %rdx
+tls_relative_operand(EA,Index,Dest,Type):-
+    tls_segment_register(Reg),
     (
-        op_indirect(Op,Reg,"NONE","NONE",_,Offset,_)
+        binary_isa("X64"),
+        Type = "TPOFF"
         ;
-        // e.g., mov OffReg, X
-        //       mov REG, FS:X@TPOFF(OffReg)
-        op_indirect(Op,Reg,OffReg0,"NONE",_,0,_),
-        reg_map_nullable(OffReg0,OffReg),
-        const_value_reg_used(EA,_,_,OffReg,Offset)
+        binary_isa("X86"),
+        Type = "NTPOFF"
     ),
+    const_value_reg_used(IndEA,_,EA,OffReg,Offset),
+    instruction_get_op(IndEA,Index,Op),
+    op_indirect(Op,Reg,OffReg0,"NONE",_,0,_),
+    reg_map_nullable(OffReg0,OffReg),
     Offset < 0,
     tls_segment(_,TlsEnd,Align),
     Base = as(@functor_aligned(TlsEnd, max(Align,1)),number),

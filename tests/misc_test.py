@@ -1046,6 +1046,7 @@ class TLSLocalExecTests(unittest.TestCase):
             se1 = next(iter(sexpr1))[2]
             self.assertIsInstance(se1, gtirb.SymAddrConst)
             self.assertEqual(se1.symbol.name, "var")
+            self.assertEqual(se1.offset, 0)
             self.assertEqual(
                 se1.attributes, {SymbolicExpression.Attribute.TPOFF}
             )
@@ -1064,6 +1065,7 @@ class TLSLocalExecTests(unittest.TestCase):
             se2 = next(iter(sexpr2))[2]
             self.assertIsInstance(se2, gtirb.SymAddrConst)
             self.assertEqual(se2.symbol.name, "var")
+            self.assertEqual(se1.offset, 0)
             self.assertEqual(
                 se2.attributes, {SymbolicExpression.Attribute.TPOFF}
             )
