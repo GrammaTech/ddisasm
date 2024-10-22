@@ -19,7 +19,7 @@
 * Add alignments to data blocks that require alignment even within data
   sections
 * Fix 16-Thumb STM instructions considered to be invalid if the same register
-  in is used in reglist and register operands with writeback enabled.
+  is used in reglist and register operands with writeback enabled.
 
 # 1.9.0
 
