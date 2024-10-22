@@ -8,6 +8,7 @@
     - Fixed bug in pointers to string data blocks.
     - Restrict padding blocks so they do not share instructions with code blocks.
     - Start a new block if we transition from padding to not padding
+      or from not padding to padding.
     - Change the type of several heuristics from "simple" to "proportional"
     - Additional heuristic: Simple string literals in literal pools
     - Additional heuristic: Function beginning pattern with push/adjust-sp as plausible instruction sequence
