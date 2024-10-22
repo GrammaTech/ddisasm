@@ -537,11 +537,13 @@ tls_relative_operand(EA,Index,Dest,Type):-
         binary_isa("X86"),
         Type = "NTPOFF"
     ),
-    const_value_reg_used(IndEA,_,EA,OffReg,Offset),
-    instruction_get_op(IndEA,Index,Op),
+    const_value_reg_used(IndEA,EA,_,OffReg,Offset),
+    Offset < 0,
+    instruction_get_op(IndEA,_,Op),
     op_indirect(Op,Reg,OffReg0,"NONE",_,0,_),
     reg_map_nullable(OffReg0,OffReg),
-    Offset < 0,
+    instruction_get_op(EA,Index,ImmOp),
+    op_immediate(ImmOp,_,_),
     tls_segment(_,TlsEnd,Align),
     Base = as(@functor_aligned(TlsEnd, max(Align,1)),number),
     Dest = as(Base+Offset,address).
