@@ -68,8 +68,14 @@ invalid(EA,"arm: pre/post-index disallows Rt[2] eq Rn"):-
     // For LDRD operations, there will be an 'arch.memory_access' for each of
     // Rt and Rt2, so this rule will check both for conflict with Rn.
     arch.memory_access(_,EA,_,_,Rt,Rn,_,_,_),
+    Rt = Rn,
     instruction_writeback(EA),
-    Rt = Rn.
+    instruction_get_operation(EA,Operation),
+    BaseOperation = substr(Operation,0,3),
+    (
+        BaseOperation = "LDR";
+        BaseOperation = "STR"
+    ).
 
 // Rm must be different from Rt and Rt2 in LDRD instructions.
 // LDRD{cond} Rt, Rt2, [Rn], ±Rm
@@ -188,17 +194,13 @@ invalid(EA, "arm: invalid stm/ldm"):-
     op_regdirect_contains_reg(RegOp,Reg),
     op_regdirect_contains_reg(RegListOp,Reg),
     (
-        // Reg is not the lowest-indexed register in the reglist.
-        op_regdirect_contains_reg(RegListOp,Reg2),
-        arch.reg_index(Reg,RegIdx),
-        arch.reg_index(Reg2,Reg2Idx),
-        Reg2Idx < RegIdx
-        ;
         // Reg is not allowed in the reglist in 32-bit Thumb instructions
-        EA band 1 = 1, Size = 4
+        EA band 1 = 1,
+        Size = 4
         ;
         // Reg is not allowed in the reglist in LDM instructions (all modes)
-        BaseOperation = "LDM"
+        BaseOperation = "LDM",
+        UNUSED(Size)
     ).
 
 
