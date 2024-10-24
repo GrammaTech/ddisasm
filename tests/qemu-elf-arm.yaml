@@ -22,6 +22,7 @@ default: &default
     strip: false
     skip: false
     cfg_checks:
+      - main_is_code
       - dangling_auxdata
 
 assembly: &assembly
@@ -119,6 +120,9 @@ tests:
     <<: *assembly
 
   - name: ex_zero_size_object_sym
+    <<: *assembly
+
+  - name: ex_stm_reglist_invalid
     <<: *assembly
 
   - name: ex_adr_to_code

@@ -8,6 +8,7 @@
     - Fixed bug in pointers to string data blocks.
     - Restrict padding blocks so they do not share instructions with code blocks.
     - Start a new block if we transition from padding to not padding
+      or from not padding to padding.
     - Change the type of several heuristics from "simple" to "proportional"
     - Additional heuristic: Simple string literals in literal pools
     - Additional heuristic: Function beginning pattern with push/adjust-sp as plausible instruction sequence
@@ -18,6 +19,8 @@
   declared invalid if a data directory was attached to the end of the section.
 * Add alignments to data blocks that require alignment even within data
   sections
+* Fix 16-Thumb STM instructions considered to be invalid if the same register
+  is used in reglist and register operands with writeback enabled.
 * Fixed bug that could result in missed symbolic expressions with TLS variables for `local-executable` TLS model
 
 # 1.9.0
