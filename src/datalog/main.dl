@@ -724,11 +724,11 @@ alignment_candidate(DataEA, AlignInBits):-
     DataEA >= Begin,
     DataEA < End.
 
-// Align potential indirect-call targets to avoid any alignment issues:
-// If the call target crosses a page boundary, it could result in a
-// segmentation fault if the next page isn't mapped or accessible.
+// In addition to global/weak functions,
+// some local functions may need alignments: e.g., member function pointers
+// (https://itanium-cxx-abi.github.io/cxx-abi/abi.html#member-function-pointers)
+// As the simplest solution, add alignment to each function
 alignment_candidate(FuncEA,AlignInBits):-
-    pc_relative_operand(_,_,FuncEA),
     function_inference.function_entry(FuncEA),
     alignment_from_address(FuncEA,AlignInBits).
 

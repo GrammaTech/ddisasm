@@ -462,16 +462,13 @@ class AuxDataTests(unittest.TestCase):
             main_sym = next(m.symbols_named("main"))
             main_block = main_sym.referent
 
-            libc_csu_init_sym = next(m.symbols_named("__libc_csu_init"))
-            libc_csu_init_block = libc_csu_init_sym.referent
-
             alignments = m.aux_data["alignment"].data.items()
             alignment_list = [
                 alignment
                 for block, alignment in alignments
                 if (
                     block.address > main_block.address
-                    and block.address < libc_csu_init_block.address
+                    and block in m.data_blocks
                 )
             ]
 
@@ -514,26 +511,27 @@ class AuxDataTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
-    def test_aligned_call_targets(self):
+    def test_func_align(self):
         """
-        Test that alignment directives are correctly generated for
-        local functions potentially called by indirect calls.
+        Test that alignment directives are correctly generated for functions.
         """
         binary = "ex"
-        with cd(ex_asm_dir / "ex_call_target_alignment"):
+        with cd(ex_dir / "ex_memberFunction"):
             self.assertTrue(compile("gcc", "g++", "-O0", []))
             ir = disassemble(Path(binary)).ir()
             m = ir.modules[0]
 
-            local_func = ["one", "two", "three", "four"]
+            funcs = ["_ZN1a3fooEv", "_ZN1a3barEv", "_ZN1a3bazEv"]
+            #        -------------  -------------  -------------
+            #           global          local          weak
 
-            local_func_blocks = [
-                next(m.symbols_named(sym)).referent for sym in local_func
+            func_blocks = [
+                next(m.symbols_named(sym)).referent for sym in funcs
             ]
 
             alignments = m.aux_data["alignment"].data
 
-            self.assertTrue(all(b in alignments for b in local_func_blocks))
+            self.assertTrue(all(b in alignments for b in func_blocks))
 
 
 class RawGtirbTests(unittest.TestCase):
