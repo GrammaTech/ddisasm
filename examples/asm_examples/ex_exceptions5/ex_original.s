@@ -57,7 +57,7 @@ callThrower:
     #
     # With this example, if a boundary_sym_expr is not correctly created
     # for symbol_minus_symbol (either the first or the second symbol, or
-    # both) or an END symbol is not chosen up for such a symbol,
+    # both) or an END symbol is not chosen for such a symbol,
     # the assembler will fail with an error, such as
     #
     # "Error: invalid operands (.note.gnu.property and .gcc_except_table
