@@ -55,12 +55,13 @@ callThrower:
     .byte 0xff          # Additional indicator byte
     .byte 0x1           # Additional indicator byte
     #
-	# With this example, if a boundary_sym_expr is not correctly created
-	# for symbol_minus_symbol (either the first or the second symbol, or
-	# both), the assembler will fail with an error, such as
-	#
-	# "Error: invalid operands (.note.gnu.property and .gcc_except_table
-	# sections) for '-'"
+    # With this example, if a boundary_sym_expr is not correctly created
+    # for symbol_minus_symbol (either the first or the second symbol, or
+    # both) or an END symbol is not chosen up for such a symbol,
+    # the assembler will fail with an error, such as
+    #
+    # "Error: invalid operands (.note.gnu.property and .gcc_except_table
+    # sections) for '-'"
     #
     .uleb128 .L_end - .L_end  # Zero-length entry at the very end of the table
 .L_end:
