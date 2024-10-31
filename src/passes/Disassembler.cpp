@@ -688,8 +688,8 @@ void buildCodeBlocks(gtirb::Context &Context, gtirb::Module &Module,
                     {
                         DecodeMode = gtirb::DecodeMode::Thumb;
                     }
-                    const auto *CodeBlock = ByteInterval.addBlock<gtirb::CodeBlock>(
-                        Context, BlockOffset, BlockSize, DecodeMode);
+                    ByteInterval.addBlock<gtirb::CodeBlock>(Context, BlockOffset, BlockSize,
+                                                            DecodeMode);
                 }
             }
         }
@@ -842,28 +842,12 @@ void buildAlignments(gtirb::Module &Module, souffle::SouffleProgram &Program)
         Alignment = Module.getAuxData<gtirb::schema::Alignment>();
     }
 
-    for(auto &BI : Module.byte_intervals())
+    for(auto &AlignInfo : Alignments)
     {
-        for(auto &Block : BI.blocks())
+        if(auto BlockIt = Module.findBlocksAt(AlignInfo.EA); !BlockIt.empty())
         {
-            std::optional<gtirb::Addr> BlockAddr;
-            if(auto *CB = gtirb::dyn_cast<gtirb::CodeBlock>(&Block))
-            {
-                BlockAddr = CB->getAddress();
-            }
-            else if(auto *DB = gtirb::dyn_cast<gtirb::DataBlock>(&Block))
-            {
-                BlockAddr = DB->getAddress();
-            }
-
-            if(BlockAddr)
-            {
-                const auto AlignInfo = Alignments.find(*BlockAddr);
-                if(AlignInfo != Alignments.end())
-                {
-                    (*Alignment)[Block.getUUID()] = AlignInfo->Num;
-                }
-            }
+            gtirb::Node &Block = BlockIt.front();
+            (*Alignment)[Block.getUUID()] = AlignInfo.Num;
         }
     }
 }
