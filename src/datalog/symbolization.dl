@@ -954,7 +954,12 @@ symbolic_expr_symbol_minus_symbol(EA,Size,SymbolName1,SymbolName2,Scale,FinalOff
         NewSymbol2 = Symbol2,
         FinalOffset = Offset1
     ),
-    best_symexpr_symbol(NewSymbol1,SymbolName1,"Beg"),
+    (
+        boundary_sym_expr(EA,NewSymbol1), Symbol1Loc = "End"
+        ;
+        !boundary_sym_expr(EA,NewSymbol1), Symbol1Loc = "Beg"
+    ),
+    best_symexpr_symbol(NewSymbol1,SymbolName1,Symbol1Loc),
     (
         boundary_sym_expr(EA,NewSymbol2), Symbol2Loc = "End"
         ;

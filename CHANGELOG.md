@@ -21,6 +21,8 @@
   sections
 * Fix 16-Thumb STM instructions considered to be invalid if the same register
   is used in reglist and register operands with writeback enabled.
+* Fix bug that caused assembling error due to wrong `symbol_minus_symbol`
+  for lsda entries with references to the end of `.gcc_except_table`
 
 # 1.9.0
 
