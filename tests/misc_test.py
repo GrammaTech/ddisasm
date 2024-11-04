@@ -1032,15 +1032,17 @@ class TLSLocalExecTests(unittest.TestCase):
             ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
 
-            for func in ["set_tls_var", "get_tls_var"]:
-                func_sym = next(m.symbols_named(func))
-                self.assertIsInstance(func_sym.referent, gtirb.CodeBlock)
+            for sym_name in ["var_tpoff_1", "var_tpoff_2"]:
+                sym = next(m.symbols_named(sym_name))
+                self.assertIsInstance(sym.referent, gtirb.CodeBlock)
 
-                block = func_sym.referent
+                block = sym.referent
                 bi = block.byte_interval
+                # Get the sym-expr for the first instruction of size 7:
+                # movq var@tpoff, %rax
                 sexpr = set(
                     bi.symbolic_expressions_at(
-                        range(block.address, block.address + block.size)
+                        range(block.address, block.address + 7)
                     )
                 )
                 self.assertEqual(len(sexpr), 1)

@@ -542,8 +542,7 @@ tls_relative_operand(EA,Index,Dest,Type):-
     instruction_get_op(IndEA,_,Op),
     op_indirect(Op,Reg,OffReg0,"NONE",_,0,_),
     reg_map_nullable(OffReg0,OffReg),
-    instruction_get_op(EA,Index,ImmOp),
-    op_immediate(ImmOp,_,_),
+    arch.move_reg_imm(EA,OffReg,Offset,Index),
     tls_segment(_,TlsEnd,Align),
     Base = as(@functor_aligned(TlsEnd, max(Align,1)),number),
     Dest = as(Base+Offset,address).
