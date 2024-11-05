@@ -959,7 +959,7 @@ symbolic_expr_symbol_minus_symbol(EA,Size,SymbolName1,SymbolName2,Scale,FinalOff
         // NewSymbol1 is a section beginning and
         // NewSymbol2 is in the same section.
         loaded_section(NewSymbol1,SectionEnd,_),
-        NewSymbol2 >= NewSymbol1,
+        NewSymbol2 > NewSymbol1,
         NewSymbol2 <= SectionEnd,
         Symbol1Loc = "Beg"
         ;
