@@ -515,6 +515,9 @@ tests:
   - name: ex_exceptions5
     <<: *assembly
 
+  - name: ex_tls_local_exec
+    <<: *assembly
+
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
   # ----------------------------------------------------------------------------
@@ -601,6 +604,10 @@ tests:
     binary: fun.so
 
   - name: ex_exceptions5
+    <<: *assembly
+    <<: *test-strip-default
+
+  - name: ex_tls_local_exec
     <<: *assembly
     <<: *test-strip-default
 

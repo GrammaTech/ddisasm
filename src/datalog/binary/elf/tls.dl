@@ -526,6 +526,28 @@ tls_relative_operand(EA,Index,Dest,Type):-
     Dest = as(Base+Offset,address).
 
 // Local Executable (LE) TLS model,
+//   i.e. mov $var@tpoff, %rax
+//        mov %fs:0(%rax), %rdx
+tls_relative_operand(EA,Index,Dest,Type):-
+    tls_segment_register(Reg),
+    (
+        binary_isa("X64"),
+        Type = "TPOFF"
+        ;
+        binary_isa("X86"),
+        Type = "NTPOFF"
+    ),
+    const_value_reg_used(IndEA,EA,_,OffReg,Offset),
+    Offset < 0,
+    instruction_get_op(IndEA,_,Op),
+    op_indirect(Op,Reg,OffReg0,"NONE",_,0,_),
+    reg_map_nullable(OffReg0,OffReg),
+    arch.move_reg_imm(EA,OffReg,Offset,Index),
+    tls_segment(_,TlsEnd,Align),
+    Base = as(@functor_aligned(TlsEnd, max(Align,1)),number),
+    Dest = as(Base+Offset,address).
+
+// Local Executable (LE) TLS model,
 //   i.e. mov REG, FS:[0]
 //        lea REG, [REG + X@TPOFF]
 tls_relative_operand(EA_used,Index,Dest,Type):-
