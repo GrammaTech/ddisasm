@@ -47,4 +47,4 @@ results:
     - unzip artifacts.zip
   artifacts:
     reports:
-      metrics: metrics.txt
+      metrics: metrics-ddisasm-yaml.txt

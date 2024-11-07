@@ -21,6 +21,7 @@
   sections
 * Fix 16-Thumb STM instructions considered to be invalid if the same register
   is used in reglist and register operands with writeback enabled.
+* Fixed bug that could result in missed symbolic expressions with TLS variables for `local-executable` TLS model
 * Generate alignments for function entry blocks depending on address
 
 # 1.9.0

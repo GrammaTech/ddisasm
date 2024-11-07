@@ -14,6 +14,7 @@ from disassemble_reassemble_check import (
 from pathlib import Path
 from typing import Optional, Tuple
 from gtirb.cfg import EdgeType
+from gtirb.symbolicexpression import SymbolicExpression
 import gtirb
 import lief
 
@@ -1042,6 +1043,44 @@ class ZeroEntryPointTests(unittest.TestCase):
 
             # `_start` should not exist in the module.
             self.assertEqual(len(list(m.symbols_named("_start"))), 0)
+
+
+class TLSLocalExecTests(unittest.TestCase):
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_tls_local_exec(self):
+        """
+        Test that TLS attributes are correctly generated.
+        """
+
+        binary = Path("ex")
+        with cd(ex_asm_dir / "ex_tls_local_exec"):
+            self.assertTrue(compile("gcc", "g++", "-Os", []))
+            ir_library = disassemble(binary).ir()
+            m = ir_library.modules[0]
+
+            for sym_name in ["var_tpoff_1", "var_tpoff_2"]:
+                sym = next(m.symbols_named(sym_name))
+                self.assertIsInstance(sym.referent, gtirb.CodeBlock)
+
+                block = sym.referent
+                bi = block.byte_interval
+                # Get the sym-expr for the first instruction of size 7:
+                # movq var@tpoff, %rax
+                sexpr = set(
+                    bi.symbolic_expressions_at(
+                        range(block.address, block.address + 7)
+                    )
+                )
+                self.assertEqual(len(sexpr), 1)
+                se = next(iter(sexpr))[2]
+                self.assertIsInstance(se, gtirb.SymAddrConst)
+                self.assertEqual(se.symbol.name, "var")
+                self.assertEqual(se.offset, 0)
+                self.assertEqual(
+                    se.attributes, {SymbolicExpression.Attribute.TPOFF}
+                )
 
 
 if __name__ == "__main__":
