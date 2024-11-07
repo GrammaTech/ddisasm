@@ -512,9 +512,11 @@ tests:
     <<: *assembly
     binary: fun.so
 
+  - name: ex_exceptions5
+    <<: *assembly
+
   - name: ex_tls_local_exec
     <<: *assembly
-    binary: ex
 
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
@@ -601,10 +603,13 @@ tests:
     <<: *test-strip-default
     binary: fun.so
 
+  - name: ex_exceptions5
+    <<: *assembly
+    <<: *test-strip-default
+
   - name: ex_tls_local_exec
     <<: *assembly
     <<: *test-strip-default
-    binary: ex
 
   # ----------------------------------------------------------------------------
   # Relocatable ELF objects (.o).

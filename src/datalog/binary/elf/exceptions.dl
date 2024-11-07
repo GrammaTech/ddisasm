@@ -176,20 +176,20 @@ labeled_ea(Personality):-
 Same as `symbol_minus_symbol`: this is to avoid cyclic aggregation by
 `boundary_sym_expr` using `symbol_minus_symbol`.
 */
-.decl lsda_symbol_minus_symbol(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned,Offset:number)
+.decl lsda_symbol_minus_symbol(EA:address,Size:unsigned,Symbol1:address,Symbol2:address,Scale:unsigned,Offset:number,Reason:symbol)
 
 symbol_minus_symbol(EA,Size,Symbol1,Symbol2,Scale,Offset):-
-    lsda_symbol_minus_symbol(EA,Size,Symbol1,Symbol2,Scale,Offset).
+    lsda_symbol_minus_symbol(EA,Size,Symbol1,Symbol2,Scale,Offset,_).
 
 // If the second address is the end of the section, create `boundary_sym_expr`
 // for the address.
 boundary_sym_expr(EA, Dest):-
-    lsda_symbol_minus_symbol(EA,_,_,Dest,_,_),
+    lsda_symbol_minus_symbol(EA,_,_,Dest,_,_,_),
     loaded_section(_,Dest,_).
 
 // type table pointer
 symbol_special_encoding(TypeTablePointerLocation,"uleb128"),
-lsda_symbol_minus_symbol(TypeTablePointerLocation,Size,CallsiteTablePointerLoc-1,LsdaTypeTableAddress,1,0):-
+lsda_symbol_minus_symbol(TypeTablePointerLocation,Size,CallsiteTablePointerLoc-1,LsdaTypeTableAddress,1,0,"type-table-pointer"):-
     lsda_pointer_locations(Lsda,TypeTablePointerLocation,CallsiteTablePointerLoc),
     lsda(Lsda,_,_,_,LsdaTypeTableAddress, _, _),
     LsdaTypeTableAddress != 0,
@@ -198,7 +198,7 @@ lsda_symbol_minus_symbol(TypeTablePointerLocation,Size,CallsiteTablePointerLoc-1
 
 //callsite table size
 symbol_special_encoding(CallsiteTablePointerLoc,"uleb128"),
-lsda_symbol_minus_symbol(CallsiteTablePointerLoc,Size,CallSiteTable_address,CallSiteTable_address+CallSiteTableLength,1,0):-
+lsda_symbol_minus_symbol(CallsiteTablePointerLoc,Size,CallSiteTable_address,CallSiteTable_address+CallSiteTableLength,1,0,"callsite-table-size"):-
     lsda_pointer_locations(Lsda,_,CallsiteTablePointerLoc),
     lsda(Lsda,CallSiteTable_address,_,CallSiteTableLength,_, _, _),
     Size = CallSiteTable_address - CallsiteTablePointerLoc,
@@ -217,7 +217,7 @@ symbol_special_encoding(EA_landingPad,EncodingName):-
 
 
 //region beginning
-lsda_symbol_minus_symbol(EA_start,Size,LandingPadBaseAddress,StartRegion,1,0):-
+lsda_symbol_minus_symbol(EA_start,Size,LandingPadBaseAddress,StartRegion,1,0,"region-beginning"):-
     lsda_callsite(CallSiteTable_address, EA_start, StartRegion,EA_end,_,_,_,_),
     lsda(_,CallSiteTable_address,_,_,_,_,LandingPadBaseAddress),
     Size = EA_end-EA_start,
@@ -225,7 +225,7 @@ lsda_symbol_minus_symbol(EA_start,Size,LandingPadBaseAddress,StartRegion,1,0):-
 
 //region end
 boundary_sym_expr(EA_end,EndRegion),
-lsda_symbol_minus_symbol(EA_end,Size,StartRegion,EndRegion,1,0):-
+lsda_symbol_minus_symbol(EA_end,Size,StartRegion,EndRegion,1,0,"region-end"):-
     lsda_callsite(_, _, StartRegion,EA_end,EndRegion,EA_landingPad,_,_),
     Size = EA_landingPad-EA_end,
     Size > 0,
@@ -233,7 +233,7 @@ lsda_symbol_minus_symbol(EA_end,Size,StartRegion,EndRegion,1,0):-
     block_boundaries(_,_,EndRegion).
 
 //landing pad
-lsda_symbol_minus_symbol(EA_landingPad,Size,LandingPadBaseAddress,LandingPad,1,0):-
+lsda_symbol_minus_symbol(EA_landingPad,Size,LandingPadBaseAddress,LandingPad,1,0,"landing-pad"):-
     lsda_callsite(CallSiteTable_address, _, _,_,_,EA_landingPad,LandingPad,EA_endLandingPad),
     lsda(_,CallSiteTable_address,_,_,_,_,LandingPadBaseAddress),
     LandingPad != 0,
@@ -251,7 +251,7 @@ symbolic_data(EAType,EncodingSize,Type):-
     EAType=LsdaTypeTableAddress-(EncodingSize*(Index+1)),
     Type != 0.
 
-lsda_symbol_minus_symbol(EAType,EncodingSize,EAType,Type,1,0):-
+lsda_symbol_minus_symbol(EAType,EncodingSize,EAType,Type,1,0,"type-table"):-
     lsda_type_entry(LsdaTypeTableAddress, Index,Type),
     lsda(_,_,_,_,LsdaTypeTableAddress, TypeTableEncoding, _),
     TypeTableEncoding band 0xF = Encoding,
