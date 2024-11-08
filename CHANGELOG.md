@@ -24,6 +24,7 @@
 * Fixed bug that could result in missed symbolic expressions with TLS variables for `local-executable` TLS model
 * Fix bug that caused assembling error due to wrong `symbol_minus_symbol`
   for lsda entries with references to the end of `.gcc_except_table`
+* Generate alignments for function entry blocks depending on address
 
 # 1.9.0
 
