@@ -396,3 +396,27 @@ EARegDef: The address where Reg is defined as Value. Often EADef = EARegDef.
 const_value_reg_used(UsedEA,EADef,EARegDef,Reg,Value):-
     value_reg(EARegDef,Reg,EADef,"NONE",0,Value,_),
     reg_def_use.def_used(EARegDef,Reg,UsedEA,_).
+
+/**
+`AddrValue` represents the value of register `Reg` *before* `EA`.
+The value should be an address.
+*/
+.decl value_reg_address_before(EA:address,Reg:register,AddrValue:number,Steps:unsigned)
+
+// At the jump-table target from indirect-jump via register,
+// the register should have an address value.
+value_reg_address_before(EA,Reg,Address,1):-
+    code(EA),
+    relative_jump_table_entry(_,TableStart,_,_,EA,_,_),
+    jump_table_start(EA_jump,_,TableStart,_,_),
+    reg_jump(EA_jump,Reg),
+    Address = as(EA,number).
+
+// Propagate address value
+value_reg_address_before(UsedEA,Reg,Address+Offset,Steps+1):-
+    step_limit(StepLimit),
+    value_reg_address_before(EADef,RegDef,Address,Steps),
+    Steps < StepLimit,
+    reg_def_use.def_used(EADef,Reg,UsedEA,_),
+    arch.reg_arithmetic_operation(EADef,Reg,RegDef,1,Offset),
+    track_register(Reg).

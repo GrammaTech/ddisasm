@@ -59,6 +59,38 @@ class SymbolicOperandsTests(unittest.TestCase):
                     )
                 )
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_lea_sym_minus_sym(self):
+        """
+        Test cases where the displacement of indirect operand in LEA is the
+        distance between EAs.
+        Such displacements should be symbolized as symbol_minus_symbol.
+        """
+        binary = Path("ex")
+        with cd(ex_asm_dir / "ex_sym_minus_sym"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            ir_library = disassemble(binary).ir()
+            m = ir_library.modules[0]
+
+            # check that we symbolize the LEA instructions
+            symbolized = [
+                "lea_sym_minus_sym1",
+                "lea_sym_minus_sym2",
+            ]
+            for name in symbolized:
+                symbol = next(m.symbols_named(name))
+                block = symbol.referent
+                self.assertIsInstance(block, gtirb.CodeBlock)
+                _, _, sym_expr = next(
+                    block.byte_interval.symbolic_expressions_at(
+                        range(block.address, block.address + block.size)
+                    )
+                )
+                self.assertIsInstance(sym_expr, gtirb.SymAddrAddr)
+                self.assertEqual(sym_expr.offset, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
