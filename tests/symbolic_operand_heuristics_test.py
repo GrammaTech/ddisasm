@@ -76,10 +76,10 @@ class SymbolicOperandsTests(unittest.TestCase):
 
             # check that we symbolize the LEA instructions
             symbolized = [
-                "lea_sym_minus_sym1",
-                "lea_sym_minus_sym2",
+                ("lea_sym_minus_sym1", "target2", "lea_sym_minus_sym1"),
+                ("lea_sym_minus_sym2", "target1", "target2"),
             ]
-            for name in symbolized:
+            for name, sym1, sym2 in symbolized:
                 symbol = next(m.symbols_named(name))
                 block = symbol.referent
                 self.assertIsInstance(block, gtirb.CodeBlock)
@@ -89,7 +89,10 @@ class SymbolicOperandsTests(unittest.TestCase):
                     )
                 )
                 self.assertIsInstance(sym_expr, gtirb.SymAddrAddr)
+                self.assertEqual(sym_expr.scale, 1)
                 self.assertEqual(sym_expr.offset, 0)
+                self.assertEqual(sym_expr.symbol1.name, sym1)
+                self.assertEqual(sym_expr.symbol2.name, sym2)
 
 
 if __name__ == "__main__":

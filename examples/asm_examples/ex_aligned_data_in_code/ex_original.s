@@ -27,7 +27,7 @@ main:
     # Load data into YMM register using vmovups: `data256u` does not need to be aligned.
     vmovups data256u(%rip), %ymm1
 
-    # Integer arithmetic/logigal instructions that require alignment
+    # Integer arithmetic/logical instructions that require alignment
     paddq data128.3(%rip), %xmm0
     pand data128.4(%rip), %xmm0
     psllq data128.5(%rip), %xmm0
