@@ -40,7 +40,7 @@ fun:
     cmp	ebx, ebp
     jge	.L3
     lea	r14, [rip + jump_table]
-loop_header:                        # =>This Inner Loop Header: Depth=1
+loop_header:
     lea	eax, [rbx - 1]
     cmp	eax, 1
     ja	.L0
@@ -48,11 +48,11 @@ jumping_block:
     movsxd	rax, dword ptr [r14 + 4*rax]
     add	rax, r14
     jmp	rax
-jt_target_1:                        #   in Loop: Header=BB5_2 Depth=1
+jt_target_1:
     mov	edi, ebx
     call	one
     jmp .L2
-.L0:                                #   in Loop: Header=BB5_2 Depth=1
+.L0:
     mov	edi, ebx
     jmp	.L2
 lea_sym_minus_sym1:
