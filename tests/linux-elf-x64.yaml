@@ -518,6 +518,12 @@ tests:
   - name: ex_tls_local_exec
     <<: *assembly
 
+  - name: ex_sym_minus_sym
+    <<: *assembly
+    test:
+      <<: *default-test
+      cfg_checks: []
+
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
   # ----------------------------------------------------------------------------
@@ -610,6 +616,13 @@ tests:
   - name: ex_tls_local_exec
     <<: *assembly
     <<: *test-strip-default
+
+  - name: ex_sym_minus_sym
+    <<: *assembly
+    <<: *test-strip-default
+    test:
+      <<: *default-test
+      cfg_checks: []
 
   # ----------------------------------------------------------------------------
   # Relocatable ELF objects (.o).
