@@ -417,8 +417,8 @@ symbol_minus_symbol_candidate(EA,Size,Symbol1,Symbol2,as(Scale,unsigned),Offset)
 // Similarly, before line 6, R9's value is the address of .L_4.
 // After line 6 (.L_4 - 7 = .L3), R9's value is .L_3.
 //
-// The displacements ini the indirect operands for both the LEAs
-// at line 2 and 6 need to be symbolized as
+// The displacements in the indirect operands for both the LEAs
+// at lines 2 and 6 need to be symbolized as
 // leaq (.L_4 - .L_1)(%r9), %r9
 // and
 // leaq (.L_3 - .L_4)(%r9), %r9

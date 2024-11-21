@@ -21,11 +21,11 @@
   sections
 * Fix 16-Thumb STM instructions considered to be invalid if the same register
   is used in reglist and register operands with writeback enabled.
-* Fixed bug that could result in missed symbolic expressions with TLS variables for `local-executable` TLS model
+* Fix bug that could result in missed symbolic expressions with TLS variables for `local-executable` TLS model
 * Fix bug that caused assembling error due to wrong `symbol_minus_symbol`
   for lsda entries with references to the end of `.gcc_except_table`
 * Generate alignments for function entry blocks depending on address
-* Fixed bug that could result in missed symbolic expressions
+* Fix bug that could result in missed symbolic expressions
   (`symbol_minus_symbol`) in LEA
 
 # 1.9.0
