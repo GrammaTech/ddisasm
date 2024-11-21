@@ -25,6 +25,8 @@
 * Fix bug that caused assembling error due to wrong `symbol_minus_symbol`
   for lsda entries with references to the end of `.gcc_except_table`
 * Generate alignments for function entry blocks depending on address
+* Fixed bug that could result in missed symbolic expressions
+  (`symbol_minus_symbol`) in LEA
 
 # 1.9.0
 

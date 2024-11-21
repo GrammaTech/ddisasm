@@ -473,8 +473,8 @@ class AuxDataTests(unittest.TestCase):
                 )
             ]
 
-            # alignment=16: `data128.1`, `data128.2`
-            self.assertEqual(alignment_list.count(16), 2)
+            # alignment=16: `data128.1`~`data128.7`
+            self.assertEqual(alignment_list.count(16), 7)
             # alignment=32: `data256`
             self.assertEqual(alignment_list.count(32), 1)
 

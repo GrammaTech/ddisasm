@@ -27,6 +27,15 @@ main:
     # Load data into YMM register using vmovups: `data256u` does not need to be aligned.
     vmovups data256u(%rip), %ymm1
 
+    # Integer arithmetic/logical instructions that require alignment
+    paddq data128.3(%rip), %xmm0
+    pand data128.4(%rip), %xmm0
+    psllq data128.5(%rip), %xmm0
+
+    # Floating-point instructions that require alignment
+    addps data128.6(%rip), %xmm0
+    andpd data128.7(%rip), %xmm0
+
     call print_message2
 
     xorq %rax, %rax
@@ -52,6 +61,21 @@ data128.1:
     .byte 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 .align 16
 data128.2:
+    .byte 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+.align 16
+data128.3:
+    .byte 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+.align 16
+data128.4:
+    .byte 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+.align 16
+data128.5:
+    .byte 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+.align 16
+data128.6:
+    .byte 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+.align 16
+data128.7:
     .byte 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 .align 32
 data256:

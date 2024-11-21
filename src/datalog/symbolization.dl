@@ -388,6 +388,55 @@ symbol_minus_symbol_candidate(EA,Size,Symbol1,Symbol2,as(Scale,unsigned),Offset)
     // If Symbol1 is zero, we have an absolute address.
     Symbol1 != 0.
 
+// Displacements in indirect operands with address-value register
+// need to be symbolized.
+//
+// E.g., `__memcpy_ssse3` in libc.so:
+// 01:.L_1:
+// 02:    leaq 40(%r9),%r9
+// 03:    cmpq %rcx,%rdx
+// 04:    movaps -12(%rsi),%xmm1
+// 05:    jb .L_aade7
+// 06:    leaq -7(%r9),%r9
+// 07:.L_2:
+// 08:    leaq -64(%rdx),%rdx
+// 09:    notrack jmpq *%r9
+// 10:    ud2
+// 11:.L_3:
+// 12:    prefetchnta -448(%rsi)
+// 13:.L_4:
+// 14:    movaps -28(%rsi),%xmm2
+//
+// .L_1 is one of the targets of a jump-table jump (jmp %9).
+// Before line 2, R9's value is the address of itself.
+// After line2 (.L_1 + 40 = .L_4), R9's value is .L_4.
+// Note that the LEA instructions can be encoded in either 4 bytes or
+// 7 bytes depending on assemblers.
+// Therefore, it is important to symbolize the displacements.
+//
+// Similarly, before line 6, R9's value is the address of .L_4.
+// After line 6 (.L_4 - 7 = .L3), R9's value is .L_3.
+//
+// The displacements ini the indirect operands for both the LEAs
+// at line 2 and 6 need to be symbolized as
+// leaq (.L_4 - .L_1)(%r9), %r9
+// and
+// leaq (.L_3 - .L_4)(%r9), %r9
+// respectively.
+//
+symbol_minus_symbol_candidate(EA+DispOffset,DispSize,Symbol1,Symbol2,1,0):-
+    binary_isa("X64"),
+    code(EA),
+    value_reg_address_before(EA,Reg,Address,_),
+    !arch.pc_reg(Reg),
+    !instruction_has_relocation(EA,_),
+    instruction_get_op(EA,Index,Op),
+    op_indirect_mapped(Op,"NONE",Reg,"NONE",1,Disp,_),
+    Symbol1 = as(Address,address),
+    Symbol2 = as(Address+Disp,address),
+    instruction_displacement_offset(EA,Index,DispOffset,DispSize).
+
+
 ////////////////////////////////////////////////////////////////////////
 
 /**

@@ -295,6 +295,36 @@ operation_alignment_required("VMOVNTPD").
 operation_alignment_required("VMOVNTDQ").
 operation_alignment_required("VMOVNTDQA").
 
+operation_alignment_required(Operation):-
+    instruction_get_operation(_, Operation),
+    (
+        // Floating-Point/Integer Packed Arithmetic
+        substr(Operation,0,4) = "ADDP";
+        substr(Operation,0,4) = "SUBP";
+        substr(Operation,0,4) = "MULP";
+        substr(Operation,0,4) = "DIVP";
+
+        // Integer Packed Arithmetic
+        substr(Operation,0,4) = "PADD";
+        substr(Operation,0,4) = "PSUB";
+        substr(Operation,0,4) = "PMUL";
+        substr(Operation,0,4) = "PDIV";
+
+        // Logical Packed Operations
+        substr(Operation,0,4) = "ANDP";
+        substr(Operation,0,3) = "ORP";
+        substr(Operation,0,4) = "XORP";
+
+        substr(Operation,0,4) = "PAND";
+        substr(Operation,0,3) = "POR";
+        substr(Operation,0,4) = "PXOR";
+
+        // Packed Shifts and Blends
+        substr(Operation,0,4) = "PSLL";
+        substr(Operation,0,4) = "PSRL";
+        substr(Operation,0,4) = "PSRA"
+    ).
+
 alignment_required(EA,AlignInBits):-
     instruction_get_operation(EA,Operation),
     operation_alignment_required(Operation),
