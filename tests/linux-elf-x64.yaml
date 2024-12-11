@@ -524,6 +524,9 @@ tests:
       <<: *default-test
       cfg_checks: []
 
+  - name: ex_referred_string
+    <<: *assembly
+
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
   # ----------------------------------------------------------------------------
@@ -623,6 +626,10 @@ tests:
     test:
       <<: *default-test
       cfg_checks: []
+
+  - name: ex_referred_string
+    <<: *assembly
+    <<: *test-strip-default
 
   # ----------------------------------------------------------------------------
   # Relocatable ELF objects (.o).

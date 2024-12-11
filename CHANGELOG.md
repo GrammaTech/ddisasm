@@ -27,6 +27,7 @@
 * Generate alignments for function entry blocks depending on address
 * Fix bug that could result in missed symbolic expressions
   (`symbol_minus_symbol`) in LEA
+* Fix bug that could result in false-positive symbolic data conflicting with real strings
 
 # 1.9.0
 
