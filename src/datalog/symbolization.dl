@@ -824,7 +824,7 @@ data_object_point(EA,Size,"string",-2,"string in jump table"):-
 data_object_point(EA,Size,"string",1,"string that has reference"):-
     data_object_candidate(EA,Size,"string"),
     may_have_symbolic_immediate(Code,EA),
-    code_in_block(Code,_),
+    code(Code),
     data_limit(EA).
 
 // data access negative heuristic
