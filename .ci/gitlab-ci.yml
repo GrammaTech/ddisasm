@@ -253,7 +253,7 @@ python-manylinux-2010-publish-internal:
     *publish-rules
   script:
     - cd _build/wheelhouse/
-    - pip3 install twine wheel setuptools --upgrade
+    - pip3 install twine wheel setuptools pkginfo --upgrade
     - wget https://git.grammatech.com/research/templates/python-module/raw/master/.pypirc
     - sed "s/password = <access token>/password = $GL_PKG_API_TOKEN/" .pypirc > ~/.pypirc
     - pip3 install ddisasm-*.whl --extra-index-url=$EXTRA_INDEX_URL
@@ -281,7 +281,7 @@ python-manylinux-2010-publish-external:
     - python-manylinux-2010-release
   script:
     - cd _build/wheelhouse/
-    - pip3 install twine ddisasm-*.whl
+    - pip3 install twine pkginfo ddisasm-*.whl
     - VERSION=$(python3 -c "import ddisasm; print(ddisasm.__version__)")
     # Do not publish .dev versions on the public pypi
     - if [[ "$VERSION" =~ \.dev[[:digit:]]*.*$ ]]; then exit 1; fi
