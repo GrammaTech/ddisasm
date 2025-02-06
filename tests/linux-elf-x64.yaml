@@ -265,6 +265,10 @@ tests:
       # original.
       flags: ["fun.so", "-Wl,-Ttext=0x500000"]
 
+  - name: ex_symbol_selection
+    <<: *default
+    binary: fun.so
+
   # ----------------------------------------------------------------------------
   # Static examples
   # ----------------------------------------------------------------------------
@@ -413,6 +417,11 @@ tests:
       # 0x500000 is to make the addresses of .text and .data changed from the
       # original.
       flags: ["fun.so", "-Wl,-Ttext=0x500000"]
+
+  - name: ex_symbol_selection
+    <<: *default
+    <<: *test-strip-default
+    binary: fun.so
 
   # ----------------------------------------------------------------------------
   # Assembly examples.

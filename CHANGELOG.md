@@ -28,6 +28,7 @@
 * Fix bug that could result in missed symbolic expressions
   (`symbol_minus_symbol`) in LEA
 * Fix bug that could result in false-positive symbolic data conflicting with real strings
+* Fix bug that could result in incorrect symbol references due to incorrect GOT entries when multiple symbols share the same name
 
 # 1.9.0
 
