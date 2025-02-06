@@ -438,7 +438,7 @@ gtirb::Symbol *findFirstSymbol(gtirb::Module &Module, std::string Name, bool fin
                 if(SymbolInfoIt != SymbolInfo->end())
                 {
                     std::string Binding = std::get<2>(SymbolInfoIt->second);
-                    if(Binding == "GLOBAL" || binding == "WEAK")
+                    if(Binding == "GLOBAL" || Binding == "WEAK")
                     {
                         return &Symbol;
                     }
