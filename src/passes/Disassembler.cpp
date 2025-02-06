@@ -438,13 +438,14 @@ gtirb::Symbol *findFirstSymbol(gtirb::Module &Module, std::string Name, bool fin
                 if(SymbolInfoIt != SymbolInfo->end())
                 {
                     std::string Binding = std::get<2>(SymbolInfoIt->second);
-                    if(Binding == "GLOBAL")
+                    if(Binding == "GLOBAL" || binding == "WEAK")
                     {
                         return &Symbol;
                     }
                 }
             }
         }
+        std::cerr << "WARNING: Could not find GLOBAL/WEAK symbol for " << Name << std::endl;
     }
     return &*Found.begin();
 }
@@ -814,20 +815,19 @@ void buildDataBlocks(gtirb::Context &Context, gtirb::Module &Module,
                             SymExprSymMinusSym->Offset, Sym2, Sym1, Attributes);
                         SymbolicSizes[Offset] = SymExprSymMinusSym->Size;
                     }
+                    // string
+                    else if(const auto S = DataStrings.find(CurrentAddr); S != DataStrings.end())
+                    {
+                        DataBlock = gtirb::DataBlock::Create(Context, S->End - CurrentAddr);
+                        TypesTable[DataBlock->getUUID()] = S->Encoding;
+                    }
                     else
-                        // string
-                        if(const auto S = DataStrings.find(CurrentAddr); S != DataStrings.end())
-                        {
-                            DataBlock = gtirb::DataBlock::Create(Context, S->End - CurrentAddr);
-                            TypesTable[DataBlock->getUUID()] = S->Encoding;
-                        }
-                        else
-                        {
-                            // Accumulate region with no symbols into a single DataBlock.
-                            auto NextDataObject = DataBoundary.lower_bound(CurrentAddr + 1);
-                            DataBlock =
-                                gtirb::DataBlock::Create(Context, *NextDataObject - CurrentAddr);
-                        }
+                    {
+                        // Accumulate region with no symbols into a single DataBlock.
+                        auto NextDataObject = DataBoundary.lower_bound(CurrentAddr + 1);
+                        DataBlock =
+                            gtirb::DataBlock::Create(Context, *NextDataObject - CurrentAddr);
+                    }
                     // symbol special types
                     const auto specialType = SymbolSpecialTypes.find(CurrentAddr);
                     if(specialType != SymbolSpecialTypes.end())

@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-static const char* my_strings[] = {"hello four", "hello five", "hello fix"};
+static const char* my_strings[] = {"hello four", "hello five", "hello six"};
 
 void bar()
 {
