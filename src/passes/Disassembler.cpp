@@ -419,13 +419,33 @@ gtirb::Symbol *findSymbol(gtirb::Module &module, gtirb::Addr Ea, std::string Nam
 
 // Auxiliary function to get the first symbol with a given name.
 // The function will exit with an error if no such symbol exists.
-gtirb::Symbol *findFirstSymbol(gtirb::Module &Module, std::string Name)
+gtirb::Symbol *findFirstSymbol(gtirb::Module &Module, std::string Name, bool findGlobal = false)
 {
     auto Found = Module.findSymbols(Name);
     if(Found.begin() == Found.end())
     {
         std::cerr << "Missing symbol: " << Name << std::endl;
         exit(1);
+    }
+    if(findGlobal)
+    {
+        auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
+        if(SymbolInfo)
+        {
+            for(gtirb::Symbol &Symbol : Found)
+            {
+                auto SymbolInfoIt = SymbolInfo->find(Symbol.getUUID());
+                if(SymbolInfoIt != SymbolInfo->end())
+                {
+                    std::string Binding = std::get<2>(SymbolInfoIt->second);
+                    if(Binding == "GLOBAL" || Binding == "WEAK")
+                    {
+                        return &Symbol;
+                    }
+                }
+            }
+        }
+        std::cerr << "WARNING: Could not find GLOBAL/WEAK symbol for " << Name << std::endl;
     }
     return &*Found.begin();
 }
@@ -567,7 +587,7 @@ void expandSymbolForwarding(gtirb::Module &Module, souffle::SouffleProgram &Prog
         std::string Name;
         Output >> Ea >> Name;
         auto FoundSrc = Module.findSymbols(Ea);
-        gtirb::Symbol *Dest = findFirstSymbol(Module, Name);
+        gtirb::Symbol *Dest = findFirstSymbol(Module, Name, true);
         for(gtirb::Symbol &Src : FoundSrc)
         {
             (*SymbolForwarding)[Src.getUUID()] = Dest->getUUID();
@@ -795,9 +815,8 @@ void buildDataBlocks(gtirb::Context &Context, gtirb::Module &Module,
                             SymExprSymMinusSym->Offset, Sym2, Sym1, Attributes);
                         SymbolicSizes[Offset] = SymExprSymMinusSym->Size;
                     }
-                    else
-                        // string
-                        if(const auto S = DataStrings.find(CurrentAddr); S != DataStrings.end())
+                    // string
+                    else if(const auto S = DataStrings.find(CurrentAddr); S != DataStrings.end())
                     {
                         DataBlock = gtirb::DataBlock::Create(Context, S->End - CurrentAddr);
                         TypesTable[DataBlock->getUUID()] = S->Encoding;

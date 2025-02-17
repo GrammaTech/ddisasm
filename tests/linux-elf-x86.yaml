@@ -295,6 +295,10 @@ tests:
     <<: *position-independent
     binary: fun.so
 
+  - name: ex_symbol_selection
+    <<: *position-independent
+    binary: fun.so
+
   # ----------------------------------------------------------------------------
   # Small C and C++ examples. (stripped)
   # ----------------------------------------------------------------------------
@@ -317,6 +321,11 @@ tests:
     binary: fun_initial_exec.so
 
   - name: ex_dynamic_tls2
+    <<: *position-independent
+    <<: *strip
+    binary: fun.so
+
+  - name: ex_symbol_selection
     <<: *position-independent
     <<: *strip
     binary: fun.so
