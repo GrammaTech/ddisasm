@@ -128,6 +128,9 @@ tests:
   - name: ex_adr_to_code
     <<: *assembly
 
+  - name: ex_func_after_litpool
+    <<: *assembly
+
   - name: ex1
     <<: *default
 
