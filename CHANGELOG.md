@@ -29,6 +29,7 @@
   (`symbol_minus_symbol`) in LEA
 * Fix bug that could result in false-positive symbolic data conflicting with real strings
 * Fix bug that could result in incorrect symbol references due to incorrect GOT entries when multiple symbols share the same name
+* Fix bug that could result in missing functions for ARM32
 
 # 1.9.0
 

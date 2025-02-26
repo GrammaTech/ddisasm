@@ -91,6 +91,19 @@ function_entry(EA):-
     direct_jump(Src,EA),
     code(EA).
 
+#if defined(ARCH_ARM32)
+// ARM32: Code right after literal pool
+function_entry(EA):-
+    binary_isa("ARM"),
+    refined_block(EA),
+    !function_entry_initial(EA),
+    possible_target(EA),
+    after_end(EA,PrevEA),
+    data_object(PrevEA,_,_),
+    litpool_boundaries(PrevEA,EA0),
+    EA0 = EA - (EA band 1).
+#endif
+
 function_without_callframe(EA):-
     function_entry(EA),
     !fde_addresses(EA,_).
