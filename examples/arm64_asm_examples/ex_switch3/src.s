@@ -20,6 +20,7 @@ main:
     cmp w0, #3
     b.hi .L_exit
 
+.jump:
     # split the loads across the jumptable to ensure that they are not
     # correctly symbolized unless the jumptable is correct.
     adrp x22, .s_zero

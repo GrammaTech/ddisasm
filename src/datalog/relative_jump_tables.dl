@@ -329,7 +329,8 @@ relative_jump_table_entry_target(EA,TableStart,Size,Reference,NewDest,Scale):-
     jump_table_signed(TableStart,Signed),
     (
         Signed = 0, data_uword(EA,Size,UDiff),
-        Dest = Reference + UDiff
+        Reference_unsigned = as(Reference,unsigned),
+        Dest = as(Reference_unsigned + as(Scale,unsigned)*UDiff,address)
         ;
         Signed = 1, data_word(EA,Size,SDiff),
         Reference_signed = as(Reference,number),
