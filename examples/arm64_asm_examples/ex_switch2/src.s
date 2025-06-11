@@ -22,15 +22,15 @@ main:
     nop
     adrp x0, .s_zero
     add x0, x0, :lo12:.s_zero
-    b .L_exit
+    b .L_print
 .L1:
     adrp x0, .s_one
     add x0, x0, :lo12:.s_one
-    b .L_exit
+    b .L_print
 .L2:
     adrp x0, .s_two
     add x0, x0, :lo12:.s_two
-    b .L_exit
+    b .L_print
 .L3:
     adrp x0, .s_three
     add x0, x0, :lo12:.s_three

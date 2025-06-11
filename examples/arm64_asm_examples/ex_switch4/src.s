@@ -1,4 +1,4 @@
-# Test switch with shift in indirect operand
+# Test switch with shift in indirect operand /w memory load of unsigned data
 
 .arch armv8-a
 .file "src.s"
@@ -16,9 +16,9 @@ main:
     b.hi .L_exit
 
 .jump:
-    ldrb w0,[x22,w0,uxtw]
+    ldrh w0,[x22,x0, lsl #1]
     adr x1, .L0
-    add x0,x1,w0, sxtb #2
+    add x0,x1,x0, lsl #2
     br x0
 
 .L0:
@@ -51,14 +51,10 @@ main:
     ret
 
 .L_jumptable:
-    .byte (.L0-.L0)/4
-    .byte (.L1-.L0)/4
-    .byte (.L2-.L0)/4
-    .byte (.L3-.L0)/4
-
-    # This is a jump table entry that appears valid, but is unreachable due to
-    # a comparison on the index register.
-    .byte (.L_exit2-.L0)/4
+    .short (.L0-.L0)/4
+    .short (.L1-.L0)/4
+    .short (.L2-.L0)/4
+    .short (.L3-.L0)/4
 
 .section .rodata
 .s_zero:
