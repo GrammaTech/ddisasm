@@ -30,6 +30,7 @@
 * Fix bug that could result in false-positive symbolic data conflicting with real strings
 * Fix bug that could result in incorrect symbol references due to incorrect GOT entries when multiple symbols share the same name
 * Fix bug that could result in missing functions for ARM32
+* Fix bug that could result in incorrect targets in jump tables for ARM64
 
 # 1.9.0
 
