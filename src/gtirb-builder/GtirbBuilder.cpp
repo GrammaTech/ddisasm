@@ -43,18 +43,13 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
     {
         gtirb::IR* IR = gtirb::IR::Create(*Context);
 
-        // LIEF's DYNSYM_COUNT_METHOD::AUTO for counting dynamic symbols
-        // is broken in 0.13.x, use the COUNT_SECTION method until 0.14
-        // is released.
         std::shared_ptr<LIEF::Binary> Binary{
-            LIEF::ELF::is_elf(Path)
-                ? LIEF::ELF::Parser::parse(Path, LIEF::ELF::DYNSYM_COUNT_METHODS::COUNT_SECTION)
-                : LIEF::Parser::parse(Path)};
+            LIEF::ELF::is_elf(Path) ? LIEF::ELF::Parser::parse(Path) : LIEF::Parser::parse(Path)};
 
         // If the binary had no sections, parse again with AUTO count method.
         if(LIEF::ELF::is_elf(Path) && Binary->sections().empty())
         {
-            Binary = LIEF::ELF::Parser::parse(Path, LIEF::ELF::DYNSYM_COUNT_METHODS::COUNT_AUTO);
+            Binary = LIEF::ELF::Parser::parse(Path);
         }
 
         if(!Binary)
@@ -65,20 +60,20 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
         // Build GTIRB from supported binary object formats.
         switch(Binary->format())
         {
-            case LIEF::EXE_FORMATS::FORMAT_ELF:
+            case LIEF::Binary::FORMATS::ELF:
             {
                 ElfReader Elf(Path, fs::path(Path).filename().string(), Context, IR, Binary);
                 Elf.build();
                 break;
             }
-            case LIEF::EXE_FORMATS::FORMAT_PE:
+            case LIEF::Binary::FORMATS::PE:
             {
                 PeReader Pe(Path, fs::path(Path).filename().string(), Context, IR, Binary);
                 Pe.build();
                 break;
             }
-            case LIEF::EXE_FORMATS::FORMAT_MACHO:
-            case LIEF::EXE_FORMATS::FORMAT_UNKNOWN:
+            case LIEF::Binary::FORMATS::MACHO:
+            case LIEF::Binary::FORMATS::UNKNOWN:
             default:
                 return GtirbBuilder::build_error::NotSupported;
         }
@@ -99,14 +94,13 @@ gtirb::ErrorOr<GTIRB> GtirbBuilder::read(std::string Path)
                 std::vector<uint8_t> ObjectData;
                 Archive.readFile(Object, ObjectData);
 
-                std::shared_ptr<LIEF::Binary> Binary{
-                    LIEF::Parser::parse(ObjectData, Object.FileName)};
+                std::shared_ptr<LIEF::Binary> Binary{LIEF::Parser::parse(ObjectData)};
                 if(!Binary)
                 {
                     return GtirbBuilder::build_error::ParseError;
                 }
 
-                if(Binary->format() != LIEF::EXE_FORMATS::FORMAT_ELF)
+                if(Binary->format() != LIEF::Binary::FORMATS::ELF)
                 {
                     return GtirbBuilder::build_error::NotSupported;
                 }
@@ -163,9 +157,9 @@ gtirb::ByteOrder GtirbBuilder::endianness()
 {
     switch(Binary->header().endianness())
     {
-        case LIEF::ENDIANNESS::ENDIAN_BIG:
+        case LIEF::Header::ENDIANNESS::BIG:
             return gtirb::ByteOrder::Big;
-        case LIEF::ENDIANNESS::ENDIAN_LITTLE:
+        case LIEF::Header::ENDIANNESS::LITTLE:
             return gtirb::ByteOrder::Little;
         default:
             break;
@@ -177,9 +171,9 @@ gtirb::FileFormat GtirbBuilder::format()
 {
     switch(Binary->format())
     {
-        case LIEF::EXE_FORMATS::FORMAT_ELF:
+        case LIEF::Binary::FORMATS::ELF:
             return gtirb::FileFormat::ELF;
-        case LIEF::EXE_FORMATS::FORMAT_PE:
+        case LIEF::Binary::FORMATS::PE:
             return gtirb::FileFormat::PE;
         default:
             break;
@@ -191,20 +185,19 @@ gtirb::ISA GtirbBuilder::isa()
 {
     switch(Binary->header().architecture())
     {
-        case LIEF::ARCHITECTURES::ARCH_X86:
-            if(Binary->header().is_32())
-                return gtirb::ISA::IA32;
-            else
-                return gtirb::ISA::X64;
-        case LIEF::ARCHITECTURES::ARCH_PPC:
+        case LIEF::Header::ARCHITECTURES::X86:
+            return gtirb::ISA::IA32;
+        case LIEF::Header::ARCHITECTURES::X86_64:
+            return gtirb::ISA::X64;
+        case LIEF::Header::ARCHITECTURES::PPC:
             return gtirb::ISA::PPC32;
-        case LIEF::ARCHITECTURES::ARCH_ARM:
+        case LIEF::Header::ARCHITECTURES::ARM:
             return gtirb::ISA::ARM;
-        case LIEF::ARCHITECTURES::ARCH_ARM64:
+        case LIEF::Header::ARCHITECTURES::ARM64:
             return gtirb::ISA::ARM64;
-        case LIEF::ARCHITECTURES::ARCH_MIPS:
+        case LIEF::Header::ARCHITECTURES::MIPS:
             return gtirb::ISA::MIPS32;
-        case LIEF::ARCHITECTURES::ARCH_NONE:
+        case LIEF::Header::ARCHITECTURES::UNKNOWN:
             return gtirb::ISA::Undefined;
         default:
             break;

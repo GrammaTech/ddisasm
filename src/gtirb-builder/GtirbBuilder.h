@@ -24,6 +24,16 @@
 #ifndef GTIRB_BUILDER_H_
 #define GTIRB_BUILDER_H_
 
+// NOTE: As of LIEF version 0.16.6:
+// The enum class TYPE in LIEF/ELF/NoteDetails/core/CoreAuxv.hpp includes an
+// entry named `IGNORE`.
+// On Windows, `IGNORE` is a predefined macro, which may cause conflicts and
+// result in build errors.
+// We undefine it here to avoid such conflicts.
+#ifdef IGNORE
+#undef IGNORE
+#endif
+
 #include <LIEF/LIEF.hpp>
 #include <boost/filesystem.hpp>
 #include <gtirb/gtirb.hpp>

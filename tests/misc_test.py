@@ -82,8 +82,8 @@ class IFuncSymbolsTests(unittest.TestCase):
                 # relocation: the relocation for strcmp should be
                 # R_X86_64_IRELATIVE instead of R_X86_64_JUMP_SLOT.
                 self.assertTrue(
-                    lief.ELF.RELOCATION_X86_64(relocation.type)
-                    != lief.ELF.RELOCATION_X86_64.JUMP_SLOT
+                    lief.ELF.Relocation.TYPE(relocation.type)
+                    != lief.ELF.Relocation.TYPE.X86_64_JUMP_SLOT
                 )
 
 
