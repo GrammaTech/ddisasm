@@ -23,12 +23,14 @@
 
 #include "ElfReader.h"
 
+#include <LIEF/ELF/enums.h>
+
 #include <algorithm>
 #include <sstream>
 
 // NOTE:
 // Elf32_Sym is defined here in duplicate of LIEF::ELF::details::Elf32_Sym,
-// which is an incomplete type in version 0.12.1 (not defined in a header).
+// which is an incomplete type in version 0.16.6 (not defined in a header).
 namespace
 {
     typedef uint32_t Elf32_Addr;
@@ -86,9 +88,9 @@ void ElfReader::resurrectSections()
     LIEF::ELF::Segment LoadedSegmentRX; // for fake executable section
     for(auto &Segment : Elf->segments())
     {
-        if(Segment.type() == LIEF::ELF::SEGMENT_TYPES::PT_LOAD)
+        if(Segment.type() == LIEF::ELF::Segment::TYPE::LOAD)
         {
-            if(Segment.has(LIEF::ELF::ELF_SEGMENT_FLAGS::PF_X))
+            if(Segment.has(LIEF::ELF::Segment::FLAGS::X))
             {
                 // Check if there's multiple LoadedSegmentRX
                 assert((LoadedSegmentRX.physical_size() == 0)
@@ -128,10 +130,10 @@ void ElfReader::resurrectSections()
                            Bytes.size());
 
         uint64_t Type = static_cast<uint64_t>(Segment.type())
-                        | static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS);
+                        | static_cast<uint64_t>(LIEF::ELF::Section::TYPE::PROGBITS);
         uint64_t Flags = static_cast<uint64_t>(Segment.flags())
-                         | static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC)
-                         | static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE);
+                         | static_cast<uint64_t>(LIEF::ELF::Section::FLAGS::ALLOC)
+                         | static_cast<uint64_t>(LIEF::ELF::Section::FLAGS::WRITE);
 
         Alignment[S->getUUID()] = 16;
         SectionIndex[Index] = S->getUUID();
@@ -160,9 +162,9 @@ void ElfReader::resurrectSections()
         GotS->addFlag(gtirb::SectionFlag::Writable);
         GotS->addFlag(gtirb::SectionFlag::Initialized);
 
-        uint64_t Type = static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS);
-        uint64_t Flags = static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC
-                                               | LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE);
+        uint64_t Type = static_cast<uint64_t>(LIEF::ELF::Section::TYPE::PROGBITS);
+        uint64_t Flags = static_cast<uint64_t>(LIEF::ELF::Section::FLAGS::ALLOC
+                                               | LIEF::ELF::Section::FLAGS::WRITE);
 
         auto It = DynamicEntries.find("PLTGOT");
         assert((It != DynamicEntries.end()) && "PLTGOT not found");
@@ -223,9 +225,9 @@ void ElfReader::resurrectSections()
             Alignment[DataS2->getUUID()] = 16;
             SectionIndex[Index] = DataS2->getUUID();
             SectionProperties[DataS2->getUUID()] = {
-                static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS),
-                static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC
-                                      | LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE)};
+                static_cast<uint64_t>(LIEF::ELF::Section::TYPE::PROGBITS),
+                static_cast<uint64_t>(LIEF::ELF::Section::FLAGS::ALLOC
+                                      | LIEF::ELF::Section::FLAGS::WRITE)};
 
             ++Index;
         }
@@ -255,9 +257,9 @@ void ElfReader::resurrectSections()
             Alignment[Bss->getUUID()] = 16;
             SectionIndex[Index] = Bss->getUUID();
             SectionProperties[Bss->getUUID()] = {
-                static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_TYPES::SHT_PROGBITS),
-                static_cast<uint64_t>(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC
-                                      | LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE)};
+                static_cast<uint64_t>(LIEF::ELF::Section::TYPE::PROGBITS),
+                static_cast<uint64_t>(LIEF::ELF::Section::FLAGS::ALLOC
+                                      | LIEF::ELF::Section::FLAGS::WRITE)};
 
             ++Index;
         }
@@ -294,9 +296,9 @@ void ElfReader::createGPforMIPS(
 
     gtirb::Symbol *S = Module->addSymbol(*Context, gtirb::Addr(GpAddr), "_gp");
     uint64_t Size = 0;
-    std::string Type = LIEF::ELF::to_string(LIEF::ELF::ELF_SYMBOL_TYPES::STT_NOTYPE);
-    std::string Scope = LIEF::ELF::to_string(LIEF::ELF::SYMBOL_BINDINGS::STB_LOCAL);
-    std::string Visibility = LIEF::ELF::to_string((LIEF::ELF::ELF_SYMBOL_VISIBILITY)0);
+    std::string Type = LIEF::ELF::to_string(LIEF::ELF::Symbol::TYPE::NOTYPE);
+    std::string Scope = LIEF::ELF::to_string(LIEF::ELF::Symbol::BINDING::LOCAL);
+    std::string Visibility = LIEF::ELF::to_string(LIEF::ELF::Symbol::VISIBILITY::DEFAULT);
     std::vector<std::tuple<std::string, uint64_t>> Indexes;
     Indexes.push_back({".symtab", 0});
 
@@ -417,9 +419,10 @@ void ElfReader::resurrectSymbols()
                 reinterpret_cast<LIEF::ELF::details::Elf32_Sym *>(&S);
             if(Module->getByteOrder() == gtirb::ByteOrder::Big)
             {
-                LIEF::Convert::swap_endian<LIEF::ELF::details::Elf32_Sym>(P);
+                LIEF::swap_endian<LIEF::ELF::details::Elf32_Sym>(P);
             }
-            LIEF::ELF::Symbol Symbol(*P);
+            LIEF::ELF::Symbol *_Symbol = reinterpret_cast<LIEF::ELF::Symbol *>(P);
+            LIEF::ELF::Symbol Symbol(*_Symbol);
             std::optional<std::string> Name = getStringAt(S.st_name);
             if(Name)
             {
@@ -602,7 +605,7 @@ std::optional<std::pair<uint64_t, uint64_t>> ElfReader::getTls()
     std::optional<std::pair<uint64_t, uint64_t>> Ans;
     for(auto &Segment : Elf->segments())
     {
-        if(Segment.type() == LIEF::ELF::SEGMENT_TYPES::PT_TLS)
+        if(Segment.type() == LIEF::ELF::Segment::TYPE::TLS)
         {
             uint64_t TlsBegin = Segment.virtual_address();
             uint64_t TlsEnd = Segment.virtual_address() + Segment.virtual_size();
@@ -628,7 +631,7 @@ void ElfReader::buildSections()
     std::optional<std::pair<uint64_t, uint64_t>> TlsAddr = getTls();
 
     // ELF object files do not have allocated address spaces.
-    if(Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_REL)
+    if(Elf->header().file_type() == LIEF::ELF::Header::FILE_TYPE::REL)
     {
         relocateSections();
     }
@@ -636,14 +639,14 @@ void ElfReader::buildSections()
     uint64_t Index = 0;
     for(auto &Section : Elf->sections())
     {
-        bool Loaded = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC);
-        bool Executable = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_EXECINSTR);
-        bool Writable = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_WRITE);
-        bool Initialized = Loaded && Section.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS;
-        bool Tls = Section.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_TLS);
+        bool Loaded = Section.has(LIEF::ELF::Section::FLAGS::ALLOC);
+        bool Executable = Section.has(LIEF::ELF::Section::FLAGS::EXECINSTR);
+        bool Writable = Section.has(LIEF::ELF::Section::FLAGS::WRITE);
+        bool Initialized = Loaded && Section.type() != LIEF::ELF::Section::TYPE::NOBITS;
+        bool Tls = Section.has(LIEF::ELF::Section::FLAGS::TLS);
         bool Literal = Literals.count(Section.name()) > 0;
         bool Relocatable = Loaded && Section.virtual_address() == 0
-                           && Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_REL;
+                           && Elf->header().file_type() == LIEF::ELF::Header::FILE_TYPE::REL;
 
         if(!Loaded && !Literal)
         {
@@ -760,7 +763,8 @@ void ElfReader::buildSections()
     // Add `overlay` aux data table.
     if(auto Overlay = Elf->overlay(); Overlay.size() > 0)
     {
-        Module->addAuxData<gtirb::schema::Overlay>(std::move(Overlay));
+        std::vector<uint8_t> Vec = std::vector<uint8_t>(Overlay.begin(), Overlay.end());
+        Module->addAuxData<gtirb::schema::Overlay>(std::move(Vec));
     }
 
     Module->addAuxData<gtirb::schema::Alignment>(std::move(Alignment));
@@ -776,7 +780,7 @@ uint64_t ElfReader::getSymbolValue(const LIEF::ELF::Symbol &Symbol)
     uint64_t Value = Symbol.value();
 
     // Rebase symbols onto their respective relocated section address.
-    bool Relocatable = Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_REL;
+    bool Relocatable = Elf->header().file_type() == LIEF::ELF::Header::FILE_TYPE::REL;
     if(Relocatable)
     {
         if(Symbol.shndx() > 0 && Symbol.shndx() < Elf->sections().size())
@@ -788,9 +792,9 @@ uint64_t ElfReader::getSymbolValue(const LIEF::ELF::Symbol &Symbol)
     }
 
     // Rebase a TLS symbol onto the relocated TLS segment.
-    bool Tls = Symbol.type() == LIEF::ELF::ELF_SYMBOL_TYPES::STT_TLS;
+    bool Tls = Symbol.type() == LIEF::ELF::Symbol::TYPE::TLS;
     if(Tls && !Relocatable
-       && (Symbol.shndx() != static_cast<uint16_t>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_UNDEF)))
+       && (Symbol.shndx() != static_cast<uint16_t>(LIEF::ELF::Symbol::SECTION_INDEX::UNDEF)))
     {
         // STT_TLS symbols are relative to PT_TLS segment base.
         Value = tlsBaseAddress() + Value;
@@ -859,7 +863,7 @@ Update Symbols with the updated VersionMap for the symbol.
 void ElfReader::updateVersionMap(const LIEF::ELF::Symbol &Symbol, const std::string &TableName,
                                  uint64_t TableIndex)
 {
-    gtirb::provisional_schema::SymbolVersionId Version = LIEF::ELF::VER_NDX_LOCAL;
+    gtirb::provisional_schema::SymbolVersionId Version = LIEF_VER_NDX_LOCAL;
 
     std::string Name;
     std::string VersionStr;
@@ -916,9 +920,9 @@ void ElfReader::updateVersionMap(const LIEF::ELF::Symbol &Symbol, const std::str
         }
         // If there is no version but there is a global
         // instance of this symbol, we consider this one global too.
-        else if(VersionMap.find(LIEF::ELF::VER_NDX_GLOBAL) != VersionMap.end())
+        else if(VersionMap.find(LIEF_VER_NDX_GLOBAL) != VersionMap.end())
         {
-            Version = LIEF::ELF::VER_NDX_GLOBAL;
+            Version = LIEF_VER_NDX_GLOBAL;
         }
     }
     VersionMap[Version].push_back({TableName, TableIndex});
@@ -927,7 +931,7 @@ void ElfReader::updateVersionMap(const LIEF::ELF::Symbol &Symbol, const std::str
 void ElfReader::buildSymbols()
 {
     // If there's no existing dynamic symbols, resurrect them.
-    bool Relocatable = Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_REL;
+    bool Relocatable = Elf->header().file_type() == LIEF::ELF::Header::FILE_TYPE::REL;
     if(!Relocatable && Elf->dynamic_symbols().size() == 0)
     {
         resurrectSymbols();
@@ -967,7 +971,7 @@ void ElfReader::buildSymbols()
     };
 
     LoadSymbols(Elf->dynamic_symbols(), ".dynsym");
-    LoadSymbols(Elf->static_symbols(), ".symtab");
+    LoadSymbols(Elf->symtab_symbols(), ".symtab");
 
     std::map<gtirb::UUID, auxdata::ElfSymbolInfo> SymbolInfo;
     std::map<gtirb::UUID, auxdata::ElfSymbolTabIdxInfo> SymbolTabIdxInfo;
@@ -980,7 +984,7 @@ void ElfReader::buildSymbols()
             std::string VersionedName = Name;
             // For datalog, we add the version id to the name.
             // This will be removed later
-            if(Version > LIEF::ELF::VER_NDX_GLOBAL)
+            if(Version > LIEF_VER_NDX_GLOBAL)
             {
                 VersionedName += "@" + std::to_string(Version);
             }
@@ -990,10 +994,10 @@ void ElfReader::buildSymbols()
             // See
             // https://docs.oracle.com/cd/E23824_01/html/819-0690/chapter6-94076.html#chapter6-tbl-16
             // FILE symbols do not have an address either.
-            if((SecIndex == static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_UNDEF)
-                || (SecIndex >= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_LORESERVE)
-                    && SecIndex <= static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_HIRESERVE)
-                    && SecIndex != static_cast<int>(LIEF::ELF::SYMBOL_SECTION_INDEX::SHN_ABS))
+            if((SecIndex == static_cast<int>(LIEF::ELF::Symbol::SECTION_INDEX::UNDEF)
+                || (SecIndex >= static_cast<int>(LIEF_SYMBOL_SECTION_INDEX::LIEF_SHN_LORESERVE)
+                    && SecIndex <= static_cast<int>(LIEF_SYMBOL_SECTION_INDEX::LIEF_SHN_HIRESERVE)
+                    && SecIndex != static_cast<int>(LIEF::ELF::Symbol::SECTION_INDEX::ABS))
                 || Type == "FILE")
                && Value == 0)
             {
@@ -1014,7 +1018,7 @@ void ElfReader::buildSymbols()
             SymbolTabIdxInfo[S->getUUID()] = Indexes;
             // 0 and 1 are used to denote local and global scope with no version.
             // anything higher is a valid version index.
-            if(Version > LIEF::ELF::VER_NDX_GLOBAL)
+            if(Version > LIEF_VER_NDX_GLOBAL)
             {
                 SymVerEntries[S->getUUID()] = {Version & 0x7FFF, Version & 0x8000};
             }
@@ -1066,7 +1070,7 @@ const LIEF::ELF::Section *ElfReader::findRelocationSection(const LIEF::ELF::Relo
             std::find_if(Elf->sections().begin(), Elf->sections().end(), [Address](auto &S) {
                 return (Address >= S.virtual_address()
                         && Address < (S.virtual_address() + S.size()))
-                       && (S.type() != LIEF::ELF::ELF_SECTION_TYPES::SHT_NOBITS);
+                       && (S.type() != LIEF::ELF::Section::TYPE::NOBITS);
             });
         if(Section != Elf->sections().end())
             return &(*Section);
@@ -1092,7 +1096,7 @@ const LIEF::ELF::Section *ElfReader::findRelocationSection(const LIEF::ELF::Relo
 #define DYN_MODE_PIE "PIE"
 std::string ElfReader::inferDynMode()
 {
-    assert(Elf->header().file_type() == LIEF::ELF::E_TYPE::ET_DYN);
+    assert(Elf->header().file_type() == LIEF::ELF::Header::FILE_TYPE::DYN);
 
     // SONAME is used at compilation time by linker to provide version
     // backwards-compatibility information, which is used only for shared
@@ -1116,7 +1120,7 @@ std::string ElfReader::inferDynMode()
     // Executables should include a `INTERP` segment.
     // If there is no `INTERP` segment, it should be Shared.
     auto InterpSegment = std::find_if(Elf->segments().begin(), Elf->segments().end(), [](auto &S) {
-        return S.type() == LIEF::ELF::SEGMENT_TYPES::PT_INTERP;
+        return S.type() == LIEF::ELF::Segment::TYPE::INTERP;
     });
     if(InterpSegment == Elf->segments().end())
     {
@@ -1144,14 +1148,14 @@ void ElfReader::addAuxData()
     std::vector<std::string> BinaryType;
     switch(Elf->header().file_type())
     {
-        case LIEF::ELF::E_TYPE::ET_DYN:
+        case LIEF::ELF::Header::FILE_TYPE::DYN:
             BinaryType.emplace_back("DYN");
             BinaryType.emplace_back(inferDynMode());
             break;
-        case LIEF::ELF::E_TYPE::ET_EXEC:
+        case LIEF::ELF::Header::FILE_TYPE::EXEC:
             BinaryType.emplace_back("EXEC");
             break;
-        case LIEF::ELF::E_TYPE::ET_REL:
+        case LIEF::ELF::Header::FILE_TYPE::REL:
             BinaryType.emplace_back("REL");
             break;
         default:
@@ -1172,7 +1176,7 @@ void ElfReader::addAuxData()
         if(Relocation.has_section())
         {
             const LIEF::ELF::Section *Section = Relocation.section();
-            if(!Section->has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC))
+            if(!Section->has(LIEF::ELF::Section::FLAGS::ALLOC))
             {
                 // Ignore relocations that are applied to un-loaded sections.
                 continue;
@@ -1194,7 +1198,7 @@ void ElfReader::addAuxData()
                 SymbolKey Key = getSymbolKey(Symbol, Name);
                 SymbolName = getVersionedName(Key);
             }
-            else if(SymbolVersion->value() > LIEF::ELF::VER_NDX_GLOBAL)
+            else if(SymbolVersion->value() > LIEF_VER_NDX_GLOBAL)
             {
                 SymbolName += "@" + std::to_string(SymbolVersion->value());
             }
@@ -1274,7 +1278,7 @@ void ElfReader::addAuxData()
     {
         switch(Segment.type())
         {
-            case LIEF::ELF::SEGMENT_TYPES::PT_GNU_STACK:
+            case LIEF::ELF::Segment::TYPE::GNU_STACK:
             {
                 if(FoundStackSegment)
                 {
@@ -1283,7 +1287,7 @@ void ElfReader::addAuxData()
                 }
                 Module->addAuxData<gtirb::schema::ElfStackSize>(Segment.virtual_size());
                 Module->addAuxData<gtirb::schema::ElfStackExec>(
-                    Segment.has(LIEF::ELF::ELF_SEGMENT_FLAGS::PF_X));
+                    Segment.has(LIEF::ELF::Segment::FLAGS::X));
             }
             default:
                 // all other segments types are currently ignored.
@@ -1294,23 +1298,58 @@ void ElfReader::addAuxData()
 
 std::string ElfReader::getRelocationType(const LIEF::ELF::Relocation &Entry)
 {
+    // Get the raw relocation-name from LIEF
+    std::string RawType = LIEF::ELF::to_string(Entry.type());
+
+    // Pick the ISA-specific C-string prefix
+    const char *Prefix = nullptr;
     switch(Entry.architecture())
     {
-        case LIEF::ELF::ARCH::EM_X86_64:
-            return LIEF::ELF::to_string(static_cast<LIEF::ELF::RELOC_x86_64>(Entry.type()));
-        case LIEF::ELF::ARCH::EM_386:
-            return LIEF::ELF::to_string(static_cast<LIEF::ELF::RELOC_i386>(Entry.type()));
-        case LIEF::ELF::ARCH::EM_ARM:
-            return LIEF::ELF::to_string(static_cast<LIEF::ELF::RELOC_ARM>(Entry.type()));
-        case LIEF::ELF::ARCH::EM_AARCH64:
-            return LIEF::ELF::to_string(static_cast<LIEF::ELF::RELOC_AARCH64>(Entry.type()));
-        case LIEF::ELF::ARCH::EM_PPC:
-            return LIEF::ELF::to_string(static_cast<LIEF::ELF::RELOC_POWERPC32>(Entry.type()));
-        case LIEF::ELF::ARCH::EM_PPC64:
-            return LIEF::ELF::to_string(static_cast<LIEF::ELF::RELOC_POWERPC64>(Entry.type()));
+        case LIEF::ELF::ARCH::X86_64:
+            Prefix = "X86_64_";
+            break;
+        case LIEF::ELF::ARCH::I386:
+            Prefix = "X86_";
+            break;
+        case LIEF::ELF::ARCH::ARM:
+            Prefix = "ARM_";
+            break;
+        case LIEF::ELF::ARCH::AARCH64:
+            Prefix = "AARCH64_";
+            break;
+        case LIEF::ELF::ARCH::PPC:
+            Prefix = "PPC_";
+            break;
+        case LIEF::ELF::ARCH::PPC64:
+            Prefix = "PPC64_";
+            break;
+        case LIEF::ELF::ARCH::MIPS:
+            Prefix = "MIPS_";
+            break;
         default:
-            return std::to_string(Entry.type());
+            break;
     }
+
+    // Strip the prefix.
+    std::string Type = RawType;
+    if(Prefix && RawType.rfind(Prefix, 0) == 0)
+    {
+        Type = RawType.substr(std::char_traits<char>::length(Prefix));
+    }
+    else
+    {
+        std::string Msg("Unsupported Relocation Type: ");
+        Msg += RawType;
+        assert(false && Msg.c_str());
+    }
+
+    // If it starts with number, prepend "R"
+    if(!Type.empty() && std::isdigit(static_cast<unsigned char>(Type[0])))
+    {
+        return "R" + Type;
+    }
+
+    return Type;
 }
 
 uint64_t ElfReader::tlsBaseAddress()
@@ -1355,8 +1394,7 @@ void ElfReader::relocateSections()
     std::multiset<AddressRange> Offsets;
     for(const auto &S : Elf->sections())
     {
-        if(S.virtual_address() == 0 && S.size() > 0
-           && S.has(LIEF::ELF::ELF_SECTION_FLAGS::SHF_ALLOC))
+        if(S.virtual_address() == 0 && S.size() > 0 && S.has(LIEF::ELF::Section::FLAGS::ALLOC))
         {
             uint64_t Start = S.offset() - Elf->header().header_size();
             uint64_t End = Start + S.size();

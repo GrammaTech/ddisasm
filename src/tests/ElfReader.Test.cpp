@@ -77,7 +77,7 @@ TEST_P(ElfReaderTest, libraries)
         if(const auto DynamicEntryLibrary =
                dynamic_cast<const LIEF::ELF::DynamicEntryLibrary*>(&DynamicEntry))
         {
-            if(DynamicEntryLibrary->tag() == LIEF::ELF::DYNAMIC_TAGS::DT_NEEDED)
+            if(DynamicEntryLibrary->tag() == LIEF::ELF::DynamicEntry::TAG::NEEDED)
             {
                 Libraries.insert(DynamicEntryLibrary->name());
             }

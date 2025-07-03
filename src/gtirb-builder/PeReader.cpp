@@ -20,8 +20,11 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+#include <LIEF/PE/enums.h>
+
 #include <boost/filesystem.hpp>
 #include <boost/uuid/uuid_io.hpp>
+
 namespace fs = boost::filesystem;
 #include "PeReader.h"
 
@@ -38,14 +41,14 @@ PeReader::PeReader(std::string Path, std::string Name, std::shared_ptr<gtirb::Co
 void PeReader::build()
 {
     // TODO: Add support for Control Flow Guard.
-    if(Pe->optional_header().has(LIEF::PE::DLL_CHARACTERISTICS::IMAGE_DLL_CHARACTERISTICS_GUARD_CF))
+    if(Pe->optional_header().has(LIEF::PE::OptionalHeader::DLL_CHARACTERISTICS::GUARD_CF))
     {
         std::cerr << "WARNING: Input binary has Control Flow Guard enabled. (unsupported)\n";
     }
     // TODO: Add support for Profile Guided Optimization (POGO).
     for(const auto &Debug : Pe->debug())
     {
-        if(Debug.has_pogo())
+        if(LIEF::PE::Pogo::classof(&Debug))
         {
             std::cerr << "WARNING: Input binary compiled with Profile Guided Optimization. "
                          "(unsupported)\n";
@@ -67,12 +70,12 @@ void PeReader::buildSections()
 
     for(auto &Section : Pe->sections())
     {
-        using Flags = LIEF::PE::SECTION_CHARACTERISTICS;
-        bool Executable = Section.has_characteristic(Flags::IMAGE_SCN_MEM_EXECUTE);
-        bool Readable = Section.has_characteristic(Flags::IMAGE_SCN_MEM_READ);
-        bool Writable = Section.has_characteristic(Flags::IMAGE_SCN_MEM_WRITE);
-        bool Initialized = !Section.has_characteristic(Flags::IMAGE_SCN_CNT_UNINITIALIZED_DATA);
-        bool Discardable = Section.has_characteristic(Flags::IMAGE_SCN_MEM_DISCARDABLE);
+        using Flags = LIEF::PE::Section::CHARACTERISTICS;
+        bool Executable = Section.has_characteristic(Flags::MEM_EXECUTE);
+        bool Readable = Section.has_characteristic(Flags::MEM_READ);
+        bool Writable = Section.has_characteristic(Flags::MEM_WRITE);
+        bool Initialized = !Section.has_characteristic(Flags::CNT_UNINITIALIZED_DATA);
+        bool Discardable = Section.has_characteristic(Flags::MEM_DISCARDABLE);
         bool Allocated = Readable;
 
         // Skip sections that are not loaded into memory.
@@ -169,7 +172,7 @@ void PeReader::addEntryBlock()
 void PeReader::addAuxData()
 {
     // Add `binaryType' aux data table.
-    bool DLL = Pe->header().has_characteristic(LIEF::PE::HEADER_CHARACTERISTICS::IMAGE_FILE_DLL);
+    bool DLL = Pe->header().has_characteristic(LIEF::PE::Header::CHARACTERISTICS::DLL);
     std::string Subsystem = LIEF::PE::to_string(Pe->optional_header().subsystem());
     std::vector<std::string> BinaryType = {"EXEC", DLL ? "DLL" : "EXE", Subsystem};
     Module->addAuxData<gtirb::schema::BinaryType>(std::move(BinaryType));
@@ -213,8 +216,8 @@ void PeReader::addAuxData()
     {
         std::map<std::string, uint64_t> PeLoadConfig;
 
-        LIEF::PE::WIN_VERSION Version = Pe->load_configuration()->version();
-        if(Version != LIEF::PE::WIN_VERSION::WIN_UNKNOWN)
+        LIEF::PE::LoadConfiguration::VERSION Version = Pe->load_configuration()->version();
+        if(Version != LIEF::PE::LoadConfiguration::VERSION::UNKNOWN)
         {
             auto *LoadConfiguration =
                 reinterpret_cast<LIEF::PE::LoadConfigurationV0 *>(Pe->load_configuration());
@@ -413,7 +416,7 @@ std::vector<auxdata::PeExportEntry> PeReader::exportEntries()
     if(Pe->has_exports())
     {
         uint64_t ImageBase = Pe->optional_header().imagebase();
-        for(auto &Entry : Pe->get_export().entries())
+        for(auto &Entry : Pe->get_export()->entries())
         {
             ExportEntries.push_back({ImageBase + Entry.address(), Entry.ordinal(), Entry.name()});
         }

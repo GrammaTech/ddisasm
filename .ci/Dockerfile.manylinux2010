@@ -1,5 +1,16 @@
 FROM quay.io/pypa/manylinux2010_x86_64
 
-RUN yum install ccache ninja-build -y
+RUN yum install -y \
+      ccache \
+      ninja-build \
+      wget
 
 ENV PATH="${PATH}:/opt/python/cp39-cp39/bin/"
+
+ENV CMAKE_VERSION=3.24.0
+RUN wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz && \
+    tar -xzf cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz && \
+    mv cmake-${CMAKE_VERSION}-linux-x86_64 /opt/cmake && \
+    rm /usr/local/bin/cmake && \
+    ln -s /opt/cmake/bin/cmake /usr/local/bin/cmake && \
+    rm cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz

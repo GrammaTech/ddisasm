@@ -30,19 +30,52 @@ RUN git clone -b 2.4 https://github.com/souffle-lang/souffle && \
 # ------------------------------------------------------------------------------
 # Install LIEF
 # ------------------------------------------------------------------------------
-FROM ubuntu:20.04 AS LIEF
-RUN export DEBIAN_FRONTEND=noninteractive
+FROM ubuntu:20.04 AS lief
+
 RUN ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
-RUN apt-get -y update \
- && apt-get -y install \
+
+RUN apt-get -y update && \
+    apt-get -y install \
       build-essential \
       cmake \
       git \
-      python3
+      python3 \
+      python3-pip \
+      wget
 
-RUN git clone -b 0.13.2 --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF
-RUN cmake -DLIEF_PYTHON_API=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF /usr/local/src/LIEF -B/usr/local/src/LIEF/build
-RUN cmake --build /usr/local/src/LIEF/build -j4 --target all install
+# Install CMake 3.24.0 (needed by LIEF 0.16.6)
+ENV CMAKE_VERSION=3.24.0
+RUN wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz && \
+    tar -xzf cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz && \
+    mv cmake-${CMAKE_VERSION}-linux-x86_64 /opt/cmake && \
+    rm /usr/bin/cmake && \
+    ln -s /opt/cmake/bin/cmake /usr/bin/cmake && \
+    rm cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz
+
+RUN pip install conan==1.59 && \
+    conan profile new default --detect && \
+    conan remote add rewriting_remote https://git.grammatech.com/api/v4/packages/conan
+
+ENV LIEF_VERSION="0.16.6"
+
+RUN echo "[requires]\n\
+lief/${LIEF_VERSION}@rewriting+extra-packages/stable\n\
+\n\
+[generators]\n\
+CMakeDeps\n\
+CMakeToolchain" > /tmp/conanfile.txt
+
+RUN conan install /tmp/conanfile.txt \
+    --build=missing \
+    --remote=rewriting_remote \
+    -pr:b=default -pr:h=default
+
+RUN PKG_DIR=$(find /root/.conan/data/lief/${LIEF_VERSION}/rewriting+extra-packages/stable/package -mindepth 1 -maxdepth 1 -type d) && \
+    mkdir -p /opt/lief-pkg && \
+    cp -a $PKG_DIR/include /opt/lief-pkg/ && \
+    cp -a $PKG_DIR/lib /opt/lief-pkg/ && \
+    cp -a $PKG_DIR/lib/cmake /opt/lief-pkg/ && \
+    cp -a $PKG_DIR/lib/pkgconfig /opt/lief-pkg/ || true
 
 # ------------------------------------------------------------------------------
 # Install libehp
@@ -151,9 +184,9 @@ RUN wget https://download.grammatech.com/gtirb/files/apt-repo/pool/unstable/libc
 
 COPY --from=souffle /usr/local/bin/souffle* /usr/local/bin/
 COPY --from=souffle /usr/local/include /usr/local/include
-COPY --from=LIEF /usr/lib/libLIEF.a /usr/lib/libLIEF.a
-COPY --from=LIEF /usr/include/LIEF /usr/include/LIEF
-COPY --from=LIEF /usr/share/LIEF /usr/share/LIEF
+COPY --from=lief /opt/lief-pkg/lib/libLIEF.a /usr/lib/libLIEF.a
+COPY --from=lief /opt/lief-pkg/lib/cmake/LIEF /usr/lib/cmake/LIEF
+COPY --from=lief /opt/lief-pkg/include/LIEF /usr/include/LIEF
 COPY --from=libehp /usr/local/lib /usr/local/lib
 COPY --from=libehp /usr/local/include /usr/local/include
 COPY --from=gtirb /usr/local/lib /usr/local/lib
