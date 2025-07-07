@@ -1,4 +1,4 @@
-# 1.9.1 (Unreleased)
+# 1.9.1
 
 * Fix a hang due to incorrect jump-table boundaries inferred from irrelevant register correlations to the index register
 * Requires gtirb >=2.2.0
