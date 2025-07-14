@@ -41,7 +41,6 @@ RUN apt-get -y update && \
       cmake \
       git \
       python3 \
-      python3-pip \
       wget
 
 # Install CMake 3.24.0 (needed by LIEF 0.16.6)
@@ -53,30 +52,23 @@ RUN wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cm
     ln -s /opt/cmake/bin/cmake /usr/bin/cmake && \
     rm cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz
 
-RUN pip install conan==1.59 && \
-    conan profile new default --detect && \
-    conan remote add rewriting_remote https://git.grammatech.com/api/v4/packages/conan
-
 ENV LIEF_VERSION="0.16.6"
 
-RUN echo "[requires]\n\
-lief/${LIEF_VERSION}@rewriting+extra-packages/stable\n\
-\n\
-[generators]\n\
-CMakeDeps\n\
-CMakeToolchain" > /tmp/conanfile.txt
+RUN git clone -b ${LIEF_VERSION} --depth 1 https://github.com/lief-project/LIEF.git /usr/local/src/LIEF
 
-RUN conan install /tmp/conanfile.txt \
-    --build=missing \
-    --remote=rewriting_remote \
-    -pr:b=default -pr:h=default
+WORKDIR /usr/local/src/LIEF
 
-RUN PKG_DIR=$(find /root/.conan/data/lief/${LIEF_VERSION}/rewriting+extra-packages/stable/package -mindepth 1 -maxdepth 1 -type d) && \
-    mkdir -p /opt/lief-pkg && \
-    cp -a $PKG_DIR/include /opt/lief-pkg/ && \
-    cp -a $PKG_DIR/lib /opt/lief-pkg/ && \
-    cp -a $PKG_DIR/lib/cmake /opt/lief-pkg/ && \
-    cp -a $PKG_DIR/lib/pkgconfig /opt/lief-pkg/ || true
+# Apply a fix from the main branch to resolve a build error related to `noexcept`.
+# The commit 6877ce7aba037074954bc63102c9d45b73d63b0b cherry-picked from upstream.
+# TODO: Remove this workaround once LIEF includes the fix in an official release.
+RUN git config --global user.email "build@example.com" && \
+    git config --global user.name "Automated Build" && \
+    git remote add upstream https://github.com/lief-project/LIEF.git && \
+    git fetch upstream 6877ce7aba037074954bc63102c9d45b73d63b0b && \
+    git cherry-pick 6877ce7aba037074954bc63102c9d45b73d63b0b
+
+RUN cmake -DLIEF_PYTHON_API=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF /usr/local/src/LIEF -B/usr/local/src/LIEF/build && \
+    cmake --build /usr/local/src/LIEF/build -j4 --target install
 
 # ------------------------------------------------------------------------------
 # Build libehp
@@ -176,9 +168,9 @@ RUN python3 -m pip install --no-cache-dir --upgrade pip && \
 
 COPY --from=souffle /usr/local/bin/souffle* /usr/local/bin/
 COPY --from=souffle /usr/local/include/souffle/ /usr/include/souffle
-COPY --from=lief /opt/lief-pkg/lib/libLIEF.a /usr/lib/libLIEF.a
-COPY --from=lief /opt/lief-pkg/lib/cmake/LIEF /usr/lib/cmake/LIEF
-COPY --from=lief /opt/lief-pkg/include/LIEF /usr/include/LIEF
+COPY --from=lief /usr/lib/libLIEF.a /usr/lib/libLIEF.a
+COPY --from=lief /usr/lib/cmake/LIEF /usr/lib/cmake/LIEF
+COPY --from=lief /usr/include/LIEF /usr/include/LIEF
 COPY --from=libehp /usr/local/lib /usr/local/lib
 COPY --from=libehp /usr/local/include /usr/local/include
 COPY --from=UASM /usr/local/bin/uasm /usr/local/bin/uasm
