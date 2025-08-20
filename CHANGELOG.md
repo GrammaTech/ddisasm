@@ -1,5 +1,7 @@
 # 1.9.2 (Unreleased)
 
+* Fix bug that could cause conditionial code to be missing in IT-block instructions.
+
 # 1.9.1
 
 * Fix a hang due to incorrect jump-table boundaries inferred from irrelevant register correlations to the index register
