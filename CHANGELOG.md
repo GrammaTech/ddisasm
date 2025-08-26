@@ -1,4 +1,4 @@
-# 1.9.2 (Unreleased)
+# 1.9.2
 
 * Fix bug that could cause conditionial code to be missing in IT-block instructions.
 
