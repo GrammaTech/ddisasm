@@ -761,6 +761,17 @@ negative_block_heuristic(Block,"code",Size,0,"arm: possibly invalid thumb block"
     code_in_block_candidate_refined(BlockAligned,_).
 
 /**
+Control flow must not jump into the middle of an IT block.
+*/
+negative_block_heuristic(Block,"code",Size,0,"arm: possibly jump to in the middle of IT block"):-
+    unresolved_block(Block,"code",Size),
+    arch.it_conditional(JmpTarget,IT_EA),
+    direct_jump(EA,JmpTarget),
+    code_in_block_candidate(EA,Block),
+    code_in_block_candidate_refined(JmpTarget,_),
+    code_in_block_candidate_refined(IT_EA,_).
+
+/**
 There can be false positives of literal pools.
 Give more points to the literal pool (data) and the ref block (code)
 when it is more likely to be an actual literal pool.

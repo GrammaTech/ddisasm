@@ -53,6 +53,7 @@ default_heuristic_weight("arm: plt call",SIMPLE_WEIGHT,1).
 default_heuristic_weight("arm: pointer to string adjacent to another strings in data",SIMPLE_WEIGHT,3).
 default_heuristic_weight("arm: pointer to string in data",SIMPLE_WEIGHT,2).
 default_heuristic_weight("arm: possibly invalid thumb block",SIMPLE_WEIGHT,-1).
+default_heuristic_weight("arm: possibly jump to in the middle of IT block",SIMPLE_WEIGHT,-30).
 default_heuristic_weight("arm: return followed by a function",SIMPLE_WEIGHT,2).
 default_heuristic_weight("litpool: litpool ref block: adr/ldm",SIMPLE_WEIGHT,4).
 default_heuristic_weight("litpool: litpool ref block: adr/ldm unresolved",SIMPLE_WEIGHT,2).
