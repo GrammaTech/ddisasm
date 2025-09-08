@@ -272,7 +272,12 @@ python-manylinux-2010-publish-internal:
         python3 delete_remote_packages.py $GL_PKG_API_TOKEN ddisasm-*.whl;
       fi
     - twine check ddisasm-*.whl
-    - twine upload --verbose --repository repypi ddisasm-*.whl --skip-existing
+    # twine --skip-existing only works on PyPI. Simulate it here.
+    - if pip3 download --no-deps --index-url=$EXTRA_INDEX_URL "ddisasm==$NEW_VERSION" >& /dev/null; then
+        echo "[INFO] Package already exists. Skipping upload.";
+      else
+        twine upload --verbose --repository repypi ddisasm-*.whl;
+      fi
 
 python-manylinux-2010-publish-external:
   stage: deploy
