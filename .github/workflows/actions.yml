@@ -34,16 +34,18 @@ jobs:
           echo "image_path=$IMAGE_PATH" >> $GITHUB_ENV
           echo "image_path=$IMAGE_PATH" >> $GITHUB_OUTPUT
       - uses: actions/checkout@v4
-      - name: Kaniko build
-        uses: aevea/action-kaniko@v0.12.0
-        with:
-          registry: ghcr.io
-          image: ${{ matrix.os }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          cache: true
-          cache_registry: ${{ matrix.os }}-cache
-          tag: ${{ env.image_tag }}
-          build_file: .ci/Dockerfile.${{ matrix.file_suffix }}
+      - name: Build image
+        env:
+          image_reference: ${{ env.image_path }}${{ matrix.os }}
+        run: |
+          buildah login -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
+          buildah build \
+              -f .ci/Dockerfile.${{ matrix.file_suffix }} \
+              --cache-from ${{ env.image_reference }}-cache \
+              --cache-to ${{ env.image_reference }}-cache \
+              --layers \
+              --tag ${{ env.image_reference }}:${{ env.image_tag }}
+          buildah push ${{ env.image_reference }}:${{ env.image_tag }}
 
   build:
     runs-on: ubuntu-latest
