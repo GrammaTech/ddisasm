@@ -4,7 +4,7 @@ EXEC=
 
 all: ex.c fun.c
 	$(CC) fun.c -fPIC -shared -lm $(CFLAGS) -o fun.so
-	$(CC) ex.c $(CFLAGS)  fun.so -o ex
+	$(CC) ex.c $(CFLAGS) fun.so -o ex
 	@LD_LIBRARY_PATH=$LD_LIBRARY_PATH:. $(EXEC) ./ex > out.txt
 clean:
 	rm -f ex out.txt
