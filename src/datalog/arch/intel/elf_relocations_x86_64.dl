@@ -1,0 +1,70 @@
+//===- relocations.dl ---------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019-2022 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+
+/**
+Table maps X64 ELF relocation types to a size in bits.
+*/
+
+elf_relocation_size("X64", "NONE",             0).
+elf_relocation_size("X64", "R64",             64).
+elf_relocation_size("X64", "PC32",            32).
+elf_relocation_size("X64", "GOT32",           32).
+elf_relocation_size("X64", "PLT32",           32).
+elf_relocation_size("X64", "COPY",            32).
+elf_relocation_size("X64", "GLOB_DAT",        64).
+elf_relocation_size("X64", "JUMP_SLOT",       64).
+elf_relocation_size("X64", "RELATIVE",        64).
+elf_relocation_size("X64", "GOTPCREL",        32).
+elf_relocation_size("X64", "R32",             32).
+elf_relocation_size("X64", "R32S",            32).
+elf_relocation_size("X64", "R16",             16).
+elf_relocation_size("X64", "PC16",            16).
+elf_relocation_size("X64", "R8",               8).
+elf_relocation_size("X64", "PC8",              8).
+elf_relocation_size("X64", "DTPMOD64",        64).
+elf_relocation_size("X64", "DTPOFF64",        64).
+elf_relocation_size("X64", "TPOFF64",         64).
+elf_relocation_size("X64", "TLSGD",           32).
+elf_relocation_size("X64", "TLSLD",           32).
+elf_relocation_size("X64", "DTPOFF32",        32).
+elf_relocation_size("X64", "GOTTPOFF",        32).
+elf_relocation_size("X64", "TPOFF32",         32).
+elf_relocation_size("X64", "PC64",            64).
+elf_relocation_size("X64", "GOTOFF64",        64).
+elf_relocation_size("X64", "GOTPC32",         32).
+elf_relocation_size("X64", "GOT64",           64).
+elf_relocation_size("X64", "GOTPCREL64",      64).
+elf_relocation_size("X64", "GOTPC64",         64).
+elf_relocation_size("X64", "GOTPLT64",        64).
+elf_relocation_size("X64", "PLTOFF64",        64).
+elf_relocation_size("X64", "SIZE32",          32).
+elf_relocation_size("X64", "SIZE64",          64).
+elf_relocation_size("X64", "GOTPC32_TLSDESC", 32).
+elf_relocation_size("X64", "TLSDESC_CALL",     0).
+elf_relocation_size("X64", "TLSDESC",         64).
+elf_relocation_size("X64", "IRELATIVE",       64).
+elf_relocation_size("X64", "RELATIVE64",      64).
+elf_relocation_size("X64", "PC32_BND",        32).
+elf_relocation_size("X64", "PLT32_BND",       32).
+elf_relocation_size("X64", "GOTPCRELX",       32).
+elf_relocation_size("X64", "REX_GOTPCRELX",   32).

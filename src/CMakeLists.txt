@@ -137,7 +137,6 @@ set(DATALOG_BASE_SOURCES
     datalog/arch/arch.dl
     datalog/binary/elf/elf_binaries.dl
     datalog/binary/elf/exceptions.dl
-    datalog/binary/elf/relocations.dl
     datalog/binary/elf/symbolization.dl
     datalog/binary/elf/tls.dl
     datalog/binary/pe/pe_binaries.dl
@@ -308,6 +307,7 @@ if(DDISASM_ARM_32)
       datalog/arch/arm32/jump_operations.dl
       datalog/arch/arm32/registers.dl
       datalog/arch/arm32/memory_access.dl
+      datalog/arch/arm32/elf_relocations.dl
       datalog/arch/arm_binaries.dl
       datalog/arch/arm32_binaries.dl
       datalog/arch/arm32_code_inference.dl
@@ -335,6 +335,7 @@ if(DDISASM_ARM_64)
       datalog/arch/arm64/jump_operations.dl
       datalog/arch/arm64/registers.dl
       datalog/arch/arm64/memory_access.dl
+      datalog/arch/arm64/elf_relocations.dl
       datalog/arch/arm_binaries.dl
       datalog/arch/arm64_symbolization.dl)
 
@@ -358,6 +359,7 @@ if(DDISASM_MIPS_32)
       datalog/arch/mips32/jump_operations.dl
       datalog/arch/mips32/memory_access.dl
       datalog/arch/mips32/registers.dl
+      datalog/arch/mips32/elf_relocations.dl
       datalog/arch/mips_symbolization.dl)
 
   generate_arch_static_lib(
@@ -382,6 +384,7 @@ if(DDISASM_X86_32)
       datalog/arch/intel/registers_x86_32.dl
       datalog/arch/intel/arch_x86.dl
       datalog/arch/intel/memory_access.dl
+      datalog/arch/intel/elf_relocations_x86_32.dl
       datalog/arch/x86_32_symbolization.dl)
 
   generate_arch_static_lib(
@@ -406,6 +409,7 @@ if(DDISASM_X86_64)
       datalog/arch/intel/registers_x86_64.dl
       datalog/arch/intel/arch_x86.dl
       datalog/arch/intel/memory_access.dl
+      datalog/arch/intel/elf_relocations_x86_64.dl
       datalog/arch/x86_64_symbolization.dl)
 
   generate_arch_static_lib(

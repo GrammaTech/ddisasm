@@ -1,0 +1,67 @@
+//===- relocations.dl ---------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019-2022 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+
+/**
+Table maps X86 ELF relocation types to a size in bits.
+*/
+
+elf_relocation_size("X86", "NONE",            0).
+elf_relocation_size("X86", "R32",            32).
+elf_relocation_size("X86", "PC32",           32).
+elf_relocation_size("X86", "GOT32",          32).
+elf_relocation_size("X86", "PLT32",          32).
+elf_relocation_size("X86", "COPY",           32).
+elf_relocation_size("X86", "GLOB_DAT",       32).
+elf_relocation_size("X86", "JUMP_SLOT",      32).
+elf_relocation_size("X86", "RELATIVE",       32).
+elf_relocation_size("X86", "GOTOFF",         32).
+elf_relocation_size("X86", "GOTPC",          32).
+elf_relocation_size("X86", "R32PLT",         32).
+elf_relocation_size("X86", "TLS_TPOFF",      32).
+elf_relocation_size("X86", "TLS_IE",         32).
+elf_relocation_size("X86", "TLS_GOTIE",      32).
+elf_relocation_size("X86", "TLS_LE",         32).
+elf_relocation_size("X86", "TLS_GD",         32).
+elf_relocation_size("X86", "TLS_LDM",        32).
+elf_relocation_size("X86", "R16",            16).
+elf_relocation_size("X86", "PC16",           16).
+elf_relocation_size("X86", "R8",              8).
+elf_relocation_size("X86", "PC8",             8).
+elf_relocation_size("X86", "TLS_GD_32",      32).
+elf_relocation_size("X86", "TLS_GD_PUSH",    32).
+elf_relocation_size("X86", "TLS_GD_CALL",    32).
+elf_relocation_size("X86", "TLS_GD_POP",     32).
+elf_relocation_size("X86", "TLS_LDM_32",     32).
+elf_relocation_size("X86", "TLS_LDM_PUSH",   32).
+elf_relocation_size("X86", "TLS_LDM_CALL",    0).
+elf_relocation_size("X86", "TLS_LDM_POP",    32).
+elf_relocation_size("X86", "TLS_LDO_32",     32).
+elf_relocation_size("X86", "TLS_IE_32",      32).
+elf_relocation_size("X86", "TLS_LE_32",      32).
+elf_relocation_size("X86", "TLS_DTPMOD32",   32).
+elf_relocation_size("X86", "TLS_DTPOFF32",   32).
+elf_relocation_size("X86", "TLS_TPOFF32",    32).
+elf_relocation_size("X86", "TLS_GOTDESC",    32).
+elf_relocation_size("X86", "TLS_DESC_CALL",  32).
+elf_relocation_size("X86", "TLS_DESC",       32).
+elf_relocation_size("X86", "IRELATIVE",      32).
