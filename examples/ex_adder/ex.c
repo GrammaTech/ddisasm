@@ -7,7 +7,7 @@ int add(int a, int b)
     return (a + b);
 }
 
-void main(void)
+int main(void)
 {
     int sum;
     int i;
@@ -21,5 +21,5 @@ void main(void)
         printf("sum = %d\n", sum);
         printf("i = %d\n", i);
     }
-    return;
+    return 0;
 }
