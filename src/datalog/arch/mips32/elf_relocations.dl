@@ -1,0 +1,85 @@
+//===- elf_relocations.dl ----------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019-2025 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===---------------------------------------------------------------------===//
+
+/**
+Table maps MIPS32 ELF relocation types to a size in bits.
+*/
+
+elf_relocation_size("MIPS", "NONE",                  0).
+elf_relocation_size("MIPS", "16",                   16).
+elf_relocation_size("MIPS", "32",                   32).
+elf_relocation_size("MIPS", "REL32",                32).
+elf_relocation_size("MIPS", "26",                   26).
+elf_relocation_size("MIPS", "HI16",                 16).
+elf_relocation_size("MIPS", "LO16",                 16).
+elf_relocation_size("MIPS", "GPREL16",              16).
+elf_relocation_size("MIPS", "LITERAL",              16).
+elf_relocation_size("MIPS", "GOT16",                16).
+elf_relocation_size("MIPS", "PC16",                 16).
+elf_relocation_size("MIPS", "CALL16",               16).
+elf_relocation_size("MIPS", "GPREL32",              32).
+elf_relocation_size("MIPS", "UNUSED1",               0).
+elf_relocation_size("MIPS", "UNUSED2",               0).
+elf_relocation_size("MIPS", "UNUSED3",               0).
+elf_relocation_size("MIPS", "SHIFT5",                5).
+elf_relocation_size("MIPS", "SHIFT6",                6).
+elf_relocation_size("MIPS", "64",                   64).
+elf_relocation_size("MIPS", "GOT_DISP",             16).
+elf_relocation_size("MIPS", "GOT_PAGE",             16).
+elf_relocation_size("MIPS", "GOT_OFST",             16).
+elf_relocation_size("MIPS", "GOT_HI16",             16).
+elf_relocation_size("MIPS", "GOT_LO16",             16).
+elf_relocation_size("MIPS", "SUB",                  32).
+elf_relocation_size("MIPS", "INSERT_A",             32).
+elf_relocation_size("MIPS", "INSERT_B",             32).
+elf_relocation_size("MIPS", "DELETE",               32).
+elf_relocation_size("MIPS", "HIGHER",               16).
+elf_relocation_size("MIPS", "HIGHEST",              16).
+elf_relocation_size("MIPS", "CALL_HI16",            16).
+elf_relocation_size("MIPS", "CALL_LO16",            16).
+elf_relocation_size("MIPS", "SCN_DISP",             16).
+elf_relocation_size("MIPS", "REL16",                16).
+elf_relocation_size("MIPS", "ADD_IMMEDIATE",        16).
+elf_relocation_size("MIPS", "PJUMP",                16).
+elf_relocation_size("MIPS", "RELGOT",               16).
+elf_relocation_size("MIPS", "JALR",                 32).
+elf_relocation_size("MIPS", "TLS_DTPMOD32",         32).
+elf_relocation_size("MIPS", "TLS_DTPREL32",         32).
+elf_relocation_size("MIPS", "TLS_DTPMOD64",         64).
+elf_relocation_size("MIPS", "TLS_DTPREL64",         64).
+elf_relocation_size("MIPS", "TLS_GD",               32).
+elf_relocation_size("MIPS", "TLS_LDM",              32).
+elf_relocation_size("MIPS", "TLS_DTPREL_HI16",      16).
+elf_relocation_size("MIPS", "TLS_DTPREL_LO16",      16).
+elf_relocation_size("MIPS", "TLS_GOTTPREL",         32).
+elf_relocation_size("MIPS", "TLS_TPREL32",          32).
+elf_relocation_size("MIPS", "TLS_TPREL64",          64).
+elf_relocation_size("MIPS", "TLS_TPREL_HI16",       16).
+elf_relocation_size("MIPS", "TLS_TPREL_LO16",       16).
+elf_relocation_size("MIPS", "GLOB_DAT",             32).
+elf_relocation_size("MIPS", "PC21_S2",              21).
+elf_relocation_size("MIPS", "PC26_S2",              26).
+elf_relocation_size("MIPS", "PC18_S3",              18).
+elf_relocation_size("MIPS", "PC19_S2",              19).
+elf_relocation_size("MIPS", "PCHI16",               16).
+elf_relocation_size("MIPS", "PCLO16",               16).
