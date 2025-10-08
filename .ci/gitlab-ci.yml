@@ -90,32 +90,28 @@ default:
 
 .build-ci-image: &build-ci-image
   stage: build-images
-  image:
-    name: gcr.io/kaniko-project/executor:debug
-    entrypoint: [""]
+  image: quay.io/buildah/stable
   script:
     # Configure authentication credentials for GitLab
+    - buildah login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - buildah login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_PASSWORD" https://index.docker.io/v1/
+    # Build our image (using a cache if available)
     - >-
-      echo "{\"auths\":{
-        \"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"},
-        \"https://index.docker.io/v1/\":{\"username\":\"$DOCKERHUB_USERNAME\",\"password\":\"$DOCKERHUB_PASSWORD\"}
-      }}" > /kaniko/.docker/config.json
-    # Run the kaniko executor, which will build our image (using a cache if available)
+      buildah build
+      -f "$CI_PROJECT_DIR/$DOCKERFILE_PATH"
+      --cache-from "$DOCKER_REGISTRY/$CI_PROJECT_PATH/$IMAGE_NAME/cache"
+      --cache-to "$DOCKER_REGISTRY/$CI_PROJECT_PATH/$IMAGE_NAME/cache"
+      --layers
+      --tag "$DOCKER_REGISTRY/$CI_PROJECT_PATH/$IMAGE_NAME:$IMAGE_TAG"
+      "$CI_PROJECT_DIR"
     # Push to our internal registry
+    - buildah push "$DOCKER_REGISTRY/$CI_PROJECT_PATH/$IMAGE_NAME:$IMAGE_TAG"
     # If we're on the main branch, also push the latest tag.
     - >-
       if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
-        export EXTRA_DEST="--destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}/${IMAGE_NAME}:latest"
+        buildah push "$DOCKER_REGISTRY/$CI_PROJECT_PATH/$IMAGE_NAME:$IMAGE_TAG" \
+            "$DOCKER_REGISTRY/$CI_PROJECT_PATH/$IMAGE_NAME:latest"
       fi
-    - >-
-      /kaniko/executor
-      --snapshot-mode=redo
-      --cache=true
-      --cache-repo=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}/${IMAGE_NAME}/cache
-      --context=$CI_PROJECT_DIR
-      --dockerfile=$CI_PROJECT_DIR/$DOCKERFILE_PATH
-      --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}/${IMAGE_NAME}:$IMAGE_TAG
-      $EXTRA_DEST
 
 build-ci-image-conan-ubuntu20:
   <<: *build-ci-image
@@ -820,69 +816,50 @@ debian-installer-ubuntu20:
     - 'build-ubuntu20-packages'
   <<: *debian-installer-ubuntu-template
 
-docker-image-vars:
-  stage: prebuild
-  image: $DOCKER_REGISTRY/rewriting/ddisasm/ubuntu20:$IMAGE_TAG
+docker-image:
+  stage: deploy
+  image: quay.io/buildah/stable
   rules:
     *run-only-main
   script:
     - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
     - GTIRB_PPRINTER_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_PPRINTER_VERSION" || echo "master")
     - VERSION=$(awk '{s=(NR==1?s:s".")$2}END{print s}' version.txt)
-    - echo "GTIRB_BRANCH=$GTIRB_BRANCH" >> .env
-    - echo "GTIRB_PPRINTER_BRANCH=$GTIRB_PPRINTER_BRANCH" >> .env
-    - echo "GTIRB_COMMIT=$(git ls-remote https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/rewriting/gtirb | grep "refs/heads/$GTIRB_BRANCH\$" | awk '{print $1}')" >> .env
-    - echo "GTIRB_PPRINTER_COMMIT=$(git ls-remote https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/rewriting/gtirb-pprinter | grep "refs/heads/$GTIRB_PPRINTER_BRANCH\$" | awk '{print $1}')" >> .env
-    - >-
-      if [[ $CI_COMMIT_REF_NAME =~ ^release-.* ]]; then
-        echo "DOCKER_LOCAL_VERSION_DEST=--destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:${VERSION} --destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:latest" >> .env
-        echo "DOCKER_HUB_VERSION_DEST=--destination=grammatech/ddisasm:${VERSION} --destination=grammatech/ddisasm:latest" >> .env
-      elif [[ $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH ]]; then
-        echo "DOCKER_LOCAL_VERSION_DEST=--destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:unstable" >> .env
-        echo "DOCKER_HUB_VERSION_DEST=--destination=grammatech/ddisasm:unstable" >> .env
-      else
-        echo "DOCKER_LOCAL_VERSION_DEST=--destination=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:${CI_COMMIT_REF_SLUG}" >> .env
-        echo "DOCKER_HUB_VERSION_DEST=" >> .env
-      fi
-    - cat .env
-  artifacts:
-    reports:
-      dotenv: .env
-
-docker-image:
-  stage: deploy
-  needs:
-    - job: docker-image-vars
-      artifacts: true
-  image:
-    name: gcr.io/kaniko-project/executor:debug
-    entrypoint: [""]  # Override the image's entrypoint so we can specify our own script
-  rules:
-    *run-only-main
-  script:
+    - GTIRB_COMMIT=$(git ls-remote https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/rewriting/gtirb | grep "refs/heads/$GTIRB_BRANCH\$" | awk '{print $1}')
+    - GTIRB_PPRINTER_COMMIT=$(git ls-remote https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/rewriting/gtirb-pprinter | grep "refs/heads/$GTIRB_PPRINTER_BRANCH\$" | awk '{print $1}')
     - echo "GTIRB_COMMIT=$GTIRB_COMMIT"
     - echo "GTIRB_PPRINTER_COMMIT=$GTIRB_PPRINTER_COMMIT"
     # Configure authentication credentials for Docker Hub and GitLab
+    - buildah login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - buildah login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_PASSWORD" https://index.docker.io/v1/
+    # Build our image (using a cache if available)
     - >-
-      echo "{\"auths\":{
-        \"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"},
-        \"https://index.docker.io/v1/\":{\"username\":\"$DOCKERHUB_USERNAME\",\"password\":\"$DOCKERHUB_PASSWORD\"}
-      }}" > /kaniko/.docker/config.json
-    # Run the kaniko executor, which will build our image (using a cache if available)
-    # Push to Docker Hub
-    - >-
-      /kaniko/executor
-      --snapshot-mode=redo
-      --cache=true
-      --cache-repo=${DOCKER_REGISTRY}/${CI_PROJECT_PATH}/ddisasm/cache
-      --context=$CI_PROJECT_DIR
+      buildah build
+      -f "$CI_PROJECT_DIR/Dockerfile"
+      --cache-from "$DOCKER_REGISTRY/$CI_PROJECT_PATH/ddisasm/cache"
+      --cache-to "$DOCKER_REGISTRY/$CI_PROJECT_PATH/ddisasm/cache"
+      --layers
       --build-arg GTIRB_BRANCH=$GTIRB_BRANCH
       --build-arg GTIRB_CACHE_KEY=$GTIRB_COMMIT
       --build-arg GTIRB_PPRINTER_BRANCH=$GTIRB_PPRINTER_BRANCH
       --build-arg GTIRB_PPRINTER_CACHE_KEY=$GTIRB_PPRINTER_COMMIT
-      --dockerfile=$CI_PROJECT_DIR/Dockerfile
-      $DOCKER_LOCAL_VERSION_DEST
-      $DOCKER_HUB_VERSION_DEST
+      --iidfile iidfile
+      "$CI_PROJECT_DIR"
+    # Push to Docker Hub
+    - |
+      iid=$(cat iidfile)
+      if [[ $CI_COMMIT_REF_NAME =~ ^release-.* ]]; then
+        buildah push $iid ${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:${VERSION}
+        buildah push $iid ${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:latest
+        buildah push $iid grammatech/ddisasm:${VERSION}
+        buildah push $iid grammatech/ddisasm:latest
+      elif [[ $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH ]]; then
+        buildah push $iid ${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:unstable
+        buildah push $iid grammatech/ddisasm:unstable
+      else
+        buildah push $iid ${DOCKER_REGISTRY}/${CI_PROJECT_PATH}:${CI_COMMIT_REF_SLUG}
+      fi
+
 
 .apt-upload: &apt-upload
   stage: deploy-to-apt
