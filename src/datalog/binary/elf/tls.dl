@@ -668,6 +668,10 @@ inferred_symbol(EA,"_TLS_MODULE_BASE_","LOCAL","DEFAULT","NONE","Beg"):-
 
 // Symbolize tls_index.ti_offset value in GOT (i.e. DTPOFF relocation).
 symbol_minus_symbol(EA+Size,Size,Start,Start+Offset,1,0):-
+    // NOTE: On MIPS, a GOT entry for a TLS relocation stores only an offset,
+    // and its size is 4 bytes, not 8 as assumed here.
+    // The mips_tls.dl defines its own symbol_minus_symbol.
+    !binary_isa("MIPS"),
     arch.pointer_size(Size),
     tls_segment(Start,_,_),
     tls_index(EA,Offset).

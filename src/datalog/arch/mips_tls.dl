@@ -1,0 +1,454 @@
+//===- mips_tls.dl -----------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019-2025 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===---------------------------------------------------------------------===//
+
+/**
+MIPS architecture-specific rules for TLS symbolization
+
+-------------------------------------------------------------------------------
+TLS Models
+
+____________________________
+1. Global Dynamic (GD) Model
+
+The most general and flexible TLS model, which can access any thread-local
+variable defined in any shared library, even when the variable's location is
+not known until runtime. This model performs a function call to __tls_get_addr
+through the GOT and TP offsets.
+
+E.g.,
+    lw $v0, %got(__tls_get_addr)($gp)
+    addiu $a0,$gp,%tlsgd(tls_var)
+    move $t9,$v0
+    jalr $t9
+    nop
+
+=> $v0 gets the address of tls_var.
+
+___________________________
+2. Local Dynamic (LD) Model
+
+Similar to Global Dynamic, but optimized when multiple TLS variables are known
+to be defined in the same module. The first access still calls __tls_get_addr,
+but subsequent accesses can reuse the base address, avoiding repeated calls.
+
+E.g.:
+    lw $v0,%got(__tls_get_addr)($gp)
+    addiu $a0, $gp, %tlsldm(TLS_BASE)
+    move $t9,$v0
+    jalr $t9
+    nop
+    move reg1,$v0
+    lui reg2,%dtprel_hi(tls_var)
+    addu reg3,reg2,reg1
+
+    lw/sw reg4,%dtprel_lo(tls_var)(reg3)
+=> reg4 gets the contents of tls_var.
+or
+    addiu reg4,reg3,%dtprel_lo(tls_var)
+=> reg4 gets the address of tls_var.
+
+___________________________
+3. Initial Exec (IE) Model
+
+This model assumes that the TLS variable is part of the main executable or of
+a shared object that was included in the initial program image.
+It uses the GOT to access the variable relative to the thread pointer, without
+calling __tls_get_addr().
+
+E.g.:
+    lw $v1,%gottprel(tls_var)($gp)
+    addiu $v0,$v1,$tp
+or
+    rdhwr $v1,$29
+    move $v0,$v1
+    lw $v1,%gottprel(i)($gp)
+    addu $v0,$v1,$v0
+
+___________________________
+4. Local Exec (LE) Model
+
+The fastest, but least flexible: This model assumes that the TLS variable is
+defined in the same module (usually the main executable) and that its offset
+from the thread pointer is known at link time. No GOT access or function call
+is needed.
+
+E.g.,
+    rdhwr reg1,$29 <- rdhwr (read hardware register), reg 29: thread pointer (TP)
+    move regtemp, reg1
+    lui reg2, %tprel_hi(tls_var)
+    addu reg3,reg2,regtemp
+
+    lw reg4, %tprel_lo(tls_var)(reg3)
+=> reg4 gets the contents of tls_var.
+or
+    addiu reg4, reg3, %tprel_lo(tls_var)
+=> reg4 gets the address of tls_var.
+-------------------------------------------------------------------------------
+*/
+
+/**
+A register gets GP-relative address.
+E.g.,
+0x04: addiu $v0, $gp, N
+=> add_reg_gp(0x04,V0,GP_VALUE+N)
+*/
+.decl add_reg_gp(AddEA:address,Reg:register,Dest:address)
+
+add_reg_gp(AddEA,Reg,Dest):-
+    arch.reg_arithmetic_operation(AddEA,Reg,"GP",1,Disp),
+    symbol(GpValue,_,_,_,_,_,_,_,"_gp"),
+    Dest = GpValue+as(Disp,address).
+
+// On MIPS, a GOT entry for a TLS relocation stores only an offset.
+tls_index(Got_entry,as(Offset,unsigned)):-
+    binary_format("ELF"),
+    relocation(Got_entry,"TLS_TPREL32",_,_,_,_,_),
+    arch.pointer_size(Size),
+    data_word(Got_entry,Size,Offset).
+
+/**
+E.g.,
+0x04:  lw $v0, %got(__tls_get_addr)($gp)
+0x08:  addiu $a0, $gp, N
+0x0C:  jalr $v0
+or
+0x04:  lw $v0, %got(__tls_get_addr)($gp)
+0x08:  addiu $a0, $gp, N
+0x0C:  move $t0,$v0
+0x10:  jalr $t0
+=> call_tls_get_addr(0x10,A0)
+*/
+.decl call_tls_get_addr_mips(Call:address,Reg:register)
+.output call_tls_get_addr_mips
+
+call_tls_get_addr_mips(Call,Reg):-
+    binary_format("ELF"),
+    got_reference_mips_global(GotEA,Sym),
+    Prefix = "__tls_get_addr",
+    substr(Sym,0,strlen(Prefix)) = Prefix,
+    gp_relative_operand(EA,1,GotEA),
+    (
+        reg_def_use.def_used(EA,Reg1,MoveEA,_),
+        arch.move_reg_reg(MoveEA,CallReg,Reg1),
+        reg_def_use.def_used(MoveEA,CallReg,Call,_)
+        ;
+        reg_def_use.def_used(EA,CallReg,Call,_)
+    ),
+    reg_call(Call,CallReg),
+    Reg = "A0".
+
+// E.g.,
+//         lw $v0, %got(__tls_get_addr)($gp)
+// AddEA:  addiu $a0, $gp, N
+// Call:   jalr $v0
+// => tls_get_addr(AddEA,Call,_TLS_MODULE_BASE_+N)
+tls_get_addr(AddEA,Call,Start+Offset):-
+    binary_format("ELF"),
+    call_tls_get_addr_mips(Call,Reg),
+    reg_def_use.block_last_def(Call,AddEA,Reg),
+    add_reg_gp(AddEA,Reg,GotEA),
+    // Load address of tls_index structure in GOT.
+    tls_index(GotEA,Offset),
+    tls_segment(Start,_,_).
+
+/**
+A wrapper of tls_relative_operand with additional info including
+GOT entry and symbol name
+*/
+.decl tls_relative_operand_mips(EA:address,Index:operand_index,Dest:address,Type:symbol,GotEntry:address,Sym:symbol)
+.output tls_relative_operand_mips
+
+// Global Dynamic (GD) TLS model
+// E.g.:
+//  lw $v0,%got(__tls_get_addr)($gp)
+//  addiu $a0, $gp, %tlsgd(tls_var)
+//  move $t9,$v0
+//  jalr $t9
+//  nop
+// => $v0 gets the address of tls_var.
+tls_relative_operand_mips(EA,Index,Dest,"TLSGD",GotEA,Sym),
+tls_relative_operand(EA,Index,Dest,"TLSGD"):-
+    add_reg_gp(EA,Reg,GotEA),
+    relocation(GotEA,"TLS_DTPMOD32",Sym,_,_,_,"REL"),
+    arch.reg_arithmetic_operation(EA,Reg,"GP",1,_),
+    instruction_immediate_offset(EA,Index,_,_),
+    defined_symbol(Dest,_,"TLS","GLOBAL",_,_,_,_,Sym).
+
+
+// Local Dynamic (LD) TLS model
+// E.g.:
+//     lw $v0,%got(__tls_get_addr)($gp)
+// EA: addiu $a0, $gp, %tlsldm(TLS_BASE)
+//     move $t9,$v0
+//     jalr $t9
+//     nop
+//     move reg1,$v0
+//     lui reg2,%dtprel_hi(tls_var)
+//     addu reg3,reg2,reg1
+//
+// EA_lo:lw/sw reg4,%dtprel_lo(tls_var)(reg3)
+// => reg4 gets the contents of tls_var.
+//
+// or
+//
+// EA_lo:addiu reg4,reg3,%dtprel_lo(tls_var)
+// => reg4 gets the address of tls_var.
+//
+tls_relative_operand_mips(EA,Index,Dest,"TLSLDM",GotEA,Sym),
+tls_relative_operand(EA,Index,Dest,"TLSLDM"):-
+    tls_get_addr(EA,_,Dest),
+    add_reg_gp(EA,Reg,GotEA),
+    relocation(GotEA,"TLS_DTPMOD32","",_,_,_,"REL"),
+    arch.reg_arithmetic_operation(EA,Reg,"GP",1,_),
+    instruction_immediate_offset(EA,Index,_,_),
+    defined_symbol(Dest,_,_,_,_,_,_,_,Sym).
+
+/**
+Candidates for Local Dynamic TLS model
+
+Use candidate/point system.
+*/
+.decl local_dynamic_tls_candidate(EA_lui:address,EA_lo:address,Index_lo:operand_index,Disp:number)
+.output local_dynamic_tls_candidate
+
+local_dynamic_tls_candidate(EA_lui,EA_lo,Index_lo,Disp):-
+    tls_relative_operand_mips(EA,_,_,"TLSLDM",_,_),
+    tls_get_addr(EA,Call,_),
+
+    next(Call,EA_delay_slot),
+    (
+        reg_def_use.def_used(EA_delay_slot,"V0",EA_addu,_),
+        Reg1 = "V0"
+        ;
+        reg_def_use.def_used(EA_delay_slot,"V0",EA_move,_),
+        arch.move_reg_reg(EA_move,Reg1,"V0"),
+        reg_def_use.def_used(EA_move,Reg1,EA_addu,_)
+    ),
+    reg_def_use.def_used(EA_lui,Reg2,EA_addu,_),
+    arch.reg_reg_arithmetic_operation(EA_addu,Reg3,Reg1,Reg2,1,0),
+
+    hi_load(EA_lui,Reg2,Upper),
+
+    // EA_lo: either lw/sw or addiu
+    reg_def_use.def_used(EA_addu,Reg3,EA_lo,_),
+    (
+        arch.memory_access(_,EA_lo,_,_,_,Reg3,"NONE",1,Offset),
+        Index_lo = 1
+        ;
+        arch.reg_arithmetic_operation(EA_lo,_,Reg3,1,Offset),
+        Index_lo = 2
+    ),
+    Disp = Upper*2^16+Offset.
+
+/**
+Heuristic to infer the base address for the Local Dynamic TLS model
+
+The base address is used to compute the addresses of TLS variables.
+There is no direct way of extracting the base address statically.
+
+This heuristic selects the smallest disp (see local_dynamic_tls_candidate) and
+the smallest TLS symbol address among available symbols, assuming they
+correspond, and infers the base address from that.
+
+NOTE: This approach may be inaccurate if the TLS variable with the smallest
+address does not appear in the binary.
+*/
+.decl local_dynamic_tls_base(EA:address)
+.output local_dynamic_tls_base
+
+local_dynamic_tls_base(BaseAddr):-
+    local_dynamic_tls_candidate(_,_,_,SmallestDisp),
+    0 = count : {local_dynamic_tls_candidate(_,_,_,Disp), Disp < SmallestDisp},
+    defined_symbol(SmallestSymAddr,_,"TLS","GLOBAL",_,_,_,_,_),
+    0 = count : {defined_symbol(SymAddr,_,"TLS","GLOBAL",_,_,_,_,_), SymAddr < SmallestSymAddr},
+    BaseAddr = SmallestSymAddr - as(SmallestDisp,address).
+
+// Local Dynamic TLS model
+symbolic_operand_attribute(EA_lui,1,"HI"),
+symbolic_operand_attribute(EA_lo,Index_lo,"LO"),
+tls_relative_operand(EA_lui,1,Dest,"DTPREL"),
+tls_relative_operand(EA_lo,Index_lo,Dest,"DTPREL"):-
+    local_dynamic_tls_candidate(EA_lui,EA_lo,Index_lo,Disp),
+    local_dynamic_tls_base(BaseAddr),
+    Dest = BaseAddr + as(Disp,address).
+
+
+/**
+At EA, the TLS pointer is stored in Reg.
+
+E.g,
+    rdhwr $v1,$29
+    move Reg,$v1
+    lw $v1,%got(tls_var)($gp)
+    move $a0,$v1
+EA: addu $v0,$a0,Reg
+*/
+.decl tls_pointer_reg_at(EA:address,Reg:register)
+
+tls_pointer_reg_at(EA_addu,Reg):-
+    instruction_get_operation(EA_rdhwr,"RDHWR"),
+    (
+        reg_def_use.def_used(EA_rdhwr,OrigReg,EA_move,_),
+        arch.move_reg_reg(EA_move,Reg,OrigReg),
+        reg_def_use.def_used(EA_move,Reg,EA_addu,_)
+        ;
+        reg_def_use.def_used(EA_rdhwr,Reg,EA_addu,_)
+    ).
+
+// Initial Exec (IE) TLS model
+// Relocation with non-empty symbol
+//  E.g.: lw $v1, %gottprel(tls_var)($gp)
+symbolic_operand_attribute(EA,Index,"GOT"),
+tls_relative_operand_mips(EA,Index,Dest,"TPREL",GotEA,Sym),
+tls_relative_operand(EA,Index,Dest,"TPREL"):-
+    gp_relative_operand(EA,Index,GotEA),
+//    (
+//        reg_def_use.def_used(EA,OrigReg,EA_move,_),
+//        arch.move_reg_reg(EA_move,Reg,OrigReg),
+//        reg_def_use.def_used(EA_move,Reg,EA_addu,_)
+//        ;
+//        reg_def_use.def_used(EA,_,EA_addu,_)
+//    ),
+//    tls_pointer_reg_at(EA_addu,_),
+    relocation(GotEA,"TLS_TPREL32",Sym,_,_,_,"REL"),
+    defined_symbol(Dest,_,"TLS",_,_,_,_,_,Sym).
+
+// Initial Exec (IE) TLS model
+// Relocation with empty symbol
+symbolic_operand_attribute(EA,Index,"GOT"),
+tls_relative_operand_mips(EA,Index,Dest,"TPREL",GotEA,Sym),
+tls_relative_operand(EA,Index,Dest,"TPREL"):-
+    gp_relative_operand(EA,Index,GotEA),
+//    (
+//        reg_def_use.def_used(EA,OrigReg,EA_move,_),
+//        arch.move_reg_reg(EA_move,Reg,OrigReg),
+//        reg_def_use.def_used(EA_move,Reg,EA_addu,_)
+//        ;
+//        reg_def_use.def_used(EA,_,EA_addu,_)
+//    ),
+//    tls_pointer_reg_at(EA_addu,_),
+    relocation(GotEA,"TLS_TPREL32","",_,_,_,"REL"),
+    tls_segment(Start,_,_),
+    tls_index(GotEA,Offset),
+    Dest = Start+as(Offset,address),
+    (
+        defined_symbol(Dest,_,"TLS",_,_,_,_,_,Sym)
+        ;
+        Dest = Start,
+        Sym = "_TLS_MODULE_BASE_"
+        ;
+        Dest != Start,
+        !defined_symbol(Dest,_,_,_,_,_,_,_,_),
+        Sym = cat(".L_",@to_string_hex(Dest))
+    ).
+
+// External TLS object
+symbolic_operand_attribute(EA,Index,"TPREL"):-
+    gp_relative_operand(EA,Index,GotEA),
+    relocation(GotEA,"TLS_TPREL32",Sym,_,_,_,"REL"),
+    symbol(0,_,"TLS",_,_,_,_,_,Sym).
+
+/**
+Candidates for Local Exec TLS model
+
+Use candidate/point system
+*/
+.decl local_exec_tls_candidate(EA_lui:address,EA_lo:address,Index_lo:operand_index,Disp:number)
+.output local_exec_tls_candidate
+
+// Local Exec (LE) TLS model
+// E.g.,
+//   rdhwr reg1,$29
+//   move regtemp, reg1
+//   lui reg2, %tprel_hi(tls_var)
+//   addu reg3,reg2,regtemp
+//   lw _, %tprel_lo(tls_var)(reg3)
+// or
+//   rdhwr reg1,$29
+//   move regtemp, reg1
+//   lui reg2, %tprel_hi(tls_var)
+//   addu reg3,reg2,regtemp
+//   addiu _, reg3, %tprel_lo(tls_var)
+local_exec_tls_candidate(EA_lui,EA_lo,Index_lo,Disp):-
+    tls_pointer_reg_at(EA_addu,_),
+    reg_def_use.def_used(EA_lui,Reg2,EA_addu,1),
+    op_immediate_and_reg(EA_lui,"LUI",Reg2,1,Upper),
+    reg_def_use.def_used(EA_addu,Reg3,EA_lo,_),
+    (
+        // lw/sw _, %tprel_lo(tls_var)(reg3)
+        arch.memory_access(_,EA_lo,_,_,_,Reg3,"NONE",1,Offset),
+        Index_lo = 1
+        ;
+        // addiu _, reg3, %tprel_lo(tls_var)
+        arch.reg_arithmetic_operation(EA_lo,_,Reg3,1,Offset),
+        instruction_get_operation(EA_lo,"ADDIU"),
+        Index_lo = 2
+    ),
+    Disp = Upper*(2^16)+Offset.
+
+/**
+Heuristic to infer the base address for the Local Exec TLS model
+
+The base address is used to compute the addresses of TLS variables.
+There is no direct way of extracting the base address statically.
+
+This heuristic selects the smallest disp (see local_exec_tls_candidate) and
+the smallest TLS symbol address among available symbols, assuming they
+correspond, and infers the base address from that.
+
+NOTE: This approach may be inaccurate if the TLS variable with the smallest
+address does not appear in the binary.
+*/
+.decl local_exec_tls_base(EA:address)
+.output local_exec_tls_base
+
+local_exec_tls_base(BaseAddr):-
+    local_exec_tls_candidate(_,_,_,SmallestDisp),
+    0 = count : {local_exec_tls_candidate(_,_,_,Disp), Disp < SmallestDisp},
+    defined_symbol(SmallestSymAddr,_,"TLS","GLOBAL",_,_,_,_,_),
+    0 = count : {defined_symbol(SymAddr,_,"TLS","GLOBAL",_,_,_,_,_), SymAddr < SmallestSymAddr},
+    BaseAddr = SmallestSymAddr - as(SmallestDisp,address).
+
+//Local Exec TLS model
+symbolic_operand_attribute(EA_lui,1,"HI"),
+symbolic_operand_attribute(EA_lo,Index_lo,"LO"),
+tls_relative_operand(EA_lui,1,Dest,"TPREL"),
+tls_relative_operand(EA_lo,Index_lo,Dest,"TPREL"):-
+    local_exec_tls_candidate(EA_lui,EA_lo,Index_lo,Disp),
+    local_exec_tls_base(BaseAddr),
+    Dest = BaseAddr + as(Disp,address).
+
+
+inferred_symbol_mips(EA,"_TLS_MODULE_BASE_","GLOBAL","HIDDEN","NONE","Beg"):-
+    tls_segment(EA,_,_),
+    !defined_symbol(EA,_,_,_,_,_,_,_,_).
+
+inferred_symbol_mips(EA,Sym,"GLOBAL","HIDDEN","NONE","Beg"):-
+    tls_relative_operand_mips(_,_,EA,_,_,Sym),
+    !tls_segment(EA,_,_),
+    !defined_symbol(EA,_,_,_,_,_,_,_,_).
+
+symbol_minus_symbol(EA,Size,Start,Start+Offset,1,0):-
+    arch.pointer_size(Size),
+    tls_segment(Start,_,_),
+    tls_index(EA,Offset).

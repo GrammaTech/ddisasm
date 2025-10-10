@@ -100,7 +100,7 @@ got_reference(Got_entry,Symbol):-
     Got_entry >= Beg,
     Got_entry < End,
     arch.pointer_size(Ptr),
-    symbolic_expr(Got_entry,Ptr,Symbol,_).
+    symbolic_expr(Got_entry,Ptr,Symbol,0).
 
 /**
 Operand instruction at 'EA' at index 'Index' is a GOT-relative reference to an
@@ -344,6 +344,8 @@ reloc_type_with_name("ABS64").
 reloc_type_with_name("JUMP26").
 reloc_type_with_name("CALL26").
 reloc_type_with_name("JUMP_SLOT").
+reloc_type_with_name("REL32").
+reloc_type_with_name("TLS_TPREL32").
 
 symbolic_expr_from_relocation(EA,Size/8,Symbol,Addend+Adjustment,TargetEA):-
     binary_format("ELF"),

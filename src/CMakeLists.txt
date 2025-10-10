@@ -360,7 +360,8 @@ if(DDISASM_MIPS_32)
       datalog/arch/mips32/memory_access.dl
       datalog/arch/mips32/registers.dl
       datalog/arch/mips32/elf_relocations.dl
-      datalog/arch/mips_symbolization.dl)
+      datalog/arch/mips_symbolization.dl
+      datalog/arch/mips_tls.dl)
 
   generate_arch_static_lib(
     ARCH

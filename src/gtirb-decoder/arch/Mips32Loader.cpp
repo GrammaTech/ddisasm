@@ -83,6 +83,19 @@ std::optional<relations::Instruction> Mips32Loader::build(BinaryFacts& Facts,
             uint64_t OpIndex = Facts.Operands.add(*Op);
             OpCodes.push_back(OpIndex);
         }
+        // NOTE: Capstone produces only two operands except $zero
+        // for DIV and DIVU (cstool and objdump prints out three operands).
+        // Add implicit $zero operand for DIV and DIVU.
+        if(Details.op_count == 2 && (Name == "DIV" || Name == "DIVU"))
+        {
+            cs_mips_op ZeroOp;
+            ZeroOp.type = MIPS_OP_REG;
+            ZeroOp.reg = MIPS_REG_ZERO;
+            std::optional<relations::Operand> Op = build(ZeroOp);
+            uint64_t OpIndex = Facts.Operands.add(*Op);
+            OpCodes.push_back(OpIndex);
+        }
+
         // Put the destination operand at the end of the operand list.
         if(OpCount > 0)
         {
@@ -99,9 +112,8 @@ std::optional<relations::Operand> Mips32Loader::build(const cs_mips_op& CsOp)
 {
     using namespace relations;
 
-    auto registerName = [this](unsigned int Reg) {
-        return (Reg == MIPS_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(*CsHandle, Reg));
-    };
+    auto registerName = [this](unsigned int Reg)
+    { return (Reg == MIPS_REG_INVALID) ? "NONE" : uppercase(cs_reg_name(*CsHandle, Reg)); };
 
     switch(CsOp.type)
     {

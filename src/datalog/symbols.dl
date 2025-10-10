@@ -235,6 +235,9 @@ best_func_symbol(EA,SymbolName):-
 // 3. or generate a new symbol if we have a labeled location without symbols.
 
 best_symexpr_symbol(EA,SymbolName,Pos):-
+    // NOTE: MIPS has its own logic to select the best_symexpr.
+    // See mips_symbolization.dl for details.
+    !binary_isa("MIPS"),
     symbol_score(EA,SymbolName,_,Pos,Score),
     Score = max S: {symbol_score(EA,_,_,Pos,S)}.
 

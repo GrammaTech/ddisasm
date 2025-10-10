@@ -22,9 +22,54 @@
 //===----------------------------------------------------------------------===//
 /**
 MIPS architecture-specific rules for symbolization
+
+-------------------------------------------------------------------------------
+MIPS Symbolic Operand Attributes
+
+1. %hi(symbol) / %lo(symbol)
+
+  - Used to form full 32-bit addresses in non-PIC code.
+  - Represents the high and low 16-bit parts of a symbol's address.
+  - Generates R_MIPS_HI16 and R_MIPS_LO16 relocations.
+
+  E.g.,
+    lui $t0, %hi(foo)       # $t0 gets the upper 16 bits of foo
+    lw  $t1, %lo(foo)($t0)  # Add the lower 16 bits of foo to $t0
+                            # and load from the address.
+
+2. %got(symbol)
+
+  - Used to access a symbol's address through GOT.
+  - The assembler emits an offset from $gp to the GOT entry for the symbol,
+    which the dynamic linker resolves at runtime.
+  - Generates an R_MIPS_GOT16 relocation.
+
+  E.g,
+    lw $t9, %got(foo)($gp)  # Load address of foo via GOT
+
+3. %pcrel_hi(symbol / %pcrel_lo(symbol)
+
+  - Used in PIC to compute PC-relative addresses.
+  - Generates R_MIPS_PCHI16 and R_MIPS_PCLO16 relocations.
+
+  E.g.,
+    lui $t0, %pcrel_hi(foo)
+    lw  $t1, %pcrel_lo(foo)($t0)
+
+4. %got_page(symbol) / %got_ofst(symbol)
+
+  - Used in PIC to compute GOT-relative addresses more efficiently.
+  - %got_page(symbol) gives the GOT entry page base and
+    %got_ofst(symbol) gives the offset within that page.
+  - Generates R_MIPS_GOT_PAGE and R_MIPS_GOT_OFST relocations.
+
+  E.g.,
+    lw $t0, %got_page(foo)($gp)      # $t0 gets the GOT page base for foo
+    addiu $t1, $t0, %got_ofst(foo)   # Add the offset to get the address of foo
+-------------------------------------------------------------------------------
 */
 
-// load word from got table: e.g., lw v0, -32696(gp)
+// load word from GOT: e.g., lw v0, -32696(gp)
 value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     instruction(EA,_,_,"LW",_,Op2,0,0,_,_),
     op_regdirect_contains_reg(Op2,Reg),
@@ -47,6 +92,9 @@ value_reg_edge(EA,Reg,PrevEA1,Reg,1,as(PrevEA0,number)):-
     op_regdirect_contains_reg(DestOp,Reg),
     track_register(Reg).
 
+/**
+Instructions with an indirect operand with GP(Global Pointer)-relative address
+*/
 .decl gp_relative_operand(src:address,index:operand_index, dest:address)
 
 // e.g., lw v0, -32696(gp)
@@ -73,17 +121,27 @@ gp_relative_operand(EA,Index,GpValue+as(Offset,address)):-
     op_indirect(Op1,"NONE","GP","NONE",_,Offset,_),
     symbol(GpValue,_,_,_,_,_,_,_,"_gp").
 
+/**
+MIPS-specific got_reference using MIPS_GOTSYM and MIPS_LOCAL_GOTNO
+
+The main reason for this is to avoid potential issues in stratification.
+Some generic versions of got_reference rely on symbolic_expr, which can
+lead to cyclic negation or cyclic aggregation.
+*/
+.decl got_reference_mips_global(Got_entry:address,Symbol:symbol)
+.output got_reference_mips_global
+
 // Global entries
-// These symbols point to stubs into the .MIPS.stubs section.
-// we use `abi_intrinsic` to rename them and let the compiler add new stubs.
-abi_intrinsic(SymbolEA,Symbol),
-got_reference(GotEntry,Symbol):-
-    symbol(SymbolEA,_,_,_,_,_, ".dynsym",Index,Symbol),
+got_reference_mips_global(GotEntry,Symbol):-
+    symbol(_,_,_,_,_,_,".dynsym",Index,Symbol),
     dynamic_entry("MIPS_GOTSYM",FirstIndex),
     dynamic_entry("MIPS_LOCAL_GOTNO",NumLocalEntries),
     Index >= FirstIndex,
     loaded_section(Beg,_,".got"),
     GotEntry = Beg + NumLocalEntries*4 + (Index-FirstIndex)*4.
+
+got_reference(GotEntry,Symbol):-
+    got_reference_mips_global(GotEntry,Symbol).
 
 // Local entries
 got_reference(Got_entry,SymbolName):-
@@ -96,6 +154,9 @@ got_reference(Got_entry,SymbolName):-
 .decl hi_load(ea:address, reg:register, upper:number)
 
 // LUI <Register> <Immediate>
+// E.g.,
+//    1c: lui $t0, 1
+// => hi_load(0x1c,T0,1)
 hi_load(EA,Reg,Upper):-
     instruction_get_operation(EA, "LUI"),
     instruction_get_op(EA, 1, BaseOp),
@@ -103,17 +164,22 @@ hi_load(EA,Reg,Upper):-
     op_immediate(BaseOp, Upper,_),
     op_regdirect_contains_reg(RegOp,Reg).
 
+/**
+HI load propagation to recover hi_load value from stack or simple data-flow
+*/
 .decl hi_load_prop(reg_restore_ea:address, ea:address, reg:register, upper:number, type:symbol)
 
 hi_load_prop(EA,EA,Reg,Upper,"direct"):-
     hi_load(EA,Reg,Upper).
 
+// Recover from stack
 hi_load_prop(RegLoadEA,EA,Reg2,Upper,"stack-restore"):-
     hi_load(EA,Reg,Upper),
     reg_def_use.def_used(EA,Reg,RegStoreEA,_),
     stack_def_use.def_used(RegStoreEA,_,RegLoadEA,_,_),
     arch.load(RegLoadEA,_,_,Reg2,_,_,_,_).
 
+// Simple data-flow (e.g., move reg1, reg2)
 hi_load_prop(MoveEA,EA,Reg2,Upper,"move"):-
     hi_load(EA,Reg,Upper),
     reg_def_use.def_used(EA,Reg,MoveEA,_),
@@ -153,7 +219,15 @@ split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset,address), "ADDIU") :-
     hi_load_prop(RegRestoreEA,EA_hi,Reg2,Upper,_),
     reg_def_use.def_used(RegRestoreEA,Reg2,EA_lo,_),
     instruction_get_operation(EA_lo, "ADDIU"),
-    arch.reg_arithmetic_operation(EA_lo,_,Reg2,_,Offset).
+    arch.reg_arithmetic_operation(EA_lo,_,Reg2,_,Offset),
+    // Skip in case of split_load_candidate(EA_hi, EA_log, _, "ADDU")
+    next(EA_lo,EA),
+    // Exclude the PIC case:
+    !(
+        instruction_get_operation(EA, "ADDU"),
+        arch.reg_reg_arithmetic_operation(EA,_,Reg2,"T9",1,0),
+        code_in_block(EA_hi, EA_hi)
+    ).
 
 // PIC
 // E.g., lui reg, hi(xxx)
@@ -293,89 +367,291 @@ discarded_split_load(EA_hi,EA_lo,Dest_addr,Type,Points):-
         Points = Points2
     ).
 
+.decl symbol_type(Addr:address,Type:symbol) inline
 
-.decl base_addr_offset_operand(ea:address, next_ea:address, dest:address)
+symbol_type(Addr,Type):-
+    (
+        code(Addr), Type="code"
+        ;
+        data_segment(Begin,End),
+        Addr >= Begin, Addr <= End,
+        Type = "data"
+        ;
+        symbol(Addr,_,"FUNC",_,_,_,_,_,_),
+        Type = "code"
+        ;
+        symbol(Addr,_,T,_,_,_,_,_,_),
+        T != "FUNC",
+        Type = "data"
+        ;
+        bss_section_limits(Begin,End),
+        Addr >= Begin, Addr <= End,
+        Type = "data"
+    ).
 
-// e.g., lw v0, -32696(gp)  <-- v0: MIPS_BASE_ADDRESS
-//       addiu a0, v0, 2560 <-- 2560: offset from MIPS_BASE_ADDRESS to target L
+/** ---------------------------------------------------------------------------
+got_page / got_fst instructions pairs
+
+EA: Instruction for got_page
+Index1: Operand index for got_page
+NextEA: Instruction for got_ofst
+Index2: Operand index for got_ofst
+Reg: Base register in NextEA
+Dest_addr: Target symbol address
+SymType: Type of target symbol (either "code" or "data")
+Got_entry: GOT entry containing page base
+Offset: Raw offset in NextEA Index2 operand
+Type: Type of got_ofst instruction (either ADDIU or LoadStore)
+
+Use candidate and point system.
+-------------------------------------------------------------------------------
+*/
+.decl base_addr_offset_operand_candidate(EA:address, Index1:operand_index, NextEA:address, Index2:operand_index, Reg:register, Dest_addr:address, SymType:symbol, Got_entry:address, Offset:number, Type:symbol)
+
+.decl base_addr_offset_operand(EA:address, Index1:operand_index, NextEA:address, Index2:operand_index, Dest_addr:address, SymType:symbol, Type:symbol)
+
+.decl base_addr_offset_operand_point(EA:address, Index1:operand_index, NextEA:address, Index2:operand_index, Points:number, Why:symbol)
+
+.decl base_addr_offset_operand_total_points(EA:address, Index1:operand_index, NextEA:address, Index2:operand_index, Points:number)
+
+// ADDIU case:
+// e.g., lw $v0, -32696($gp)  <-- v0: MIPS_BASE_ADDRESS
+//       addiu $a0, $v0, 2560 <-- 2560: offset from MIPS_BASE_ADDRESS to target L
 // ->
-//       lw v0, %got_page(L)(gp)
-//       addiu a0, v0, %got_ofst(L)
-base_addr_offset_operand(EA,NextEA,Dest_addr):-
-    gp_relative_operand(EA,1,_),
-    value_reg(EA,Reg,_,"NONE",_,Value,_),
+//       lw $v0, %got_page(L)($gp)
+//       addiu $a0, $v0, %got_ofst(L)
+base_addr_offset_operand_candidate(EA,1,NextEA,2,Reg,Dest_addr,SymType,Got_entry,Offset,"ADDIU"):-
+    gp_relative_operand(EA,1,Got_entry),
+
+    // Get the page base from GOT and check if it is valid.
+    loaded_section(GotBeg,GotEnd,".got"),
+    Got_entry >= GotBeg,
+    Got_entry < GotEnd,
+    value_reg(EA,Reg,_,"NONE",_,BaseAddr,_),
+    BaseAddr % 0x1000 = 0, // Page size is at least 0x1000
+    !relocation(as(Got_entry,address),_,_,_,_,_,_),
+    !got_reference_mips_global(Got_entry,_),
+    !(symbol(as(BaseAddr,address),_,_,_,_,_,_,_,_), BaseAddr != 0),
+
+    // E.g., lw $v0, %got_page(L)($gp)
     instruction_get_operation(EA, Operation),
     arch.load_operation(Operation),
     !split_loadstore(_,EA,_),
 
-    reg_def_use.def_used(EA,Reg,NextEA,_),
-    EA != NextEA,
-
-    // ADDIU <Register> <Register> <Offset>
-    // e.g. addiu reg2, reg, Offset
-    arch.reg_arithmetic_operation(NextEA,_,Reg,_,Offset),
-
-    // Ensure the loaded register is only used in the add. Some examples that
-    // should not match:
-    // * a loop index:
-    //       lw $v1, %got(array)($gp)
-    //   loop:
-    //       sw $v0, 0($v1)
-    //       addiu $v1, $v1, 4
-    //       bne $v0, $a0,.loop
-    // * a loop limit:
-    //       lw $s0, %got(array)($gp)
-    //       addiu $s2,$s0,40
-    //   loop:
-    //       lw $a2, 0($s0)
-    //       ...
-    //       addiu $s0, $s0, 4
-    //       bne $s0, $s2,.loop
-    // TODO: can we identify MIPS_BASE_ADDRESS and this is that .got entry? (is
-    // that some single location in a binary?)
-    0 = count : { reg_def_use.def_used(EA,Reg,OtherEA,_), OtherEA != NextEA },
-
-    Dest_addr = as(Value+Offset,address),
     (
-        code(Dest_addr)
+        reg_def_use.def_used(EA,Reg,NextEA,_),
+        EA != NextEA,
+        Reg2 = Reg
         ;
-        data_segment(Begin,End),
-        Dest_addr >= Begin, Dest_addr <= End
+        // Recover the page base address from stack:
+        // E.g.,
+        // lw $v0,%got_page(L)($gp)
+        // sw $v0,64($fp)
+        // ...
+        // lw $v1,64($fp)
+        // ...
+        // addiu $a3,$v1,%got_ofst(L)
+        reg_def_use.def_used(EA,Reg,StoreEA,_),
+        stack_def_use.def_used(StoreEA,_,LoadEA,_,_),
+        value_reg(LoadEA,Reg2,_,"NONE",_,BaseAddr,_),
+        reg_def_use.def_used(LoadEA,Reg2,NextEA,_)
+    ),
+
+    // E.g., addiu $a0, $v0, %got_ofst(L)
+    arch.reg_arithmetic_operation(NextEA,_,Reg2,_,Offset),
+    !split_load(_,NextEA,_,_),
+
+    Dest_addr = as(BaseAddr+Offset,address),
+    symbol_type(Dest_addr,SymType).
+
+// LoadStore case:
+// e.g., lw $v0, -32696($gp)  <-- v0: MIPS_BASE_ADDRESS
+//       lw/sw $a0, 2560($v0) <-- 2560: offset from MIPS_BASE_ADDRESS to target L
+// ->
+//       lw $v0, %got_page(L)($gp)
+//       lw/sw $a0, %got_ofst(L)($a0)
+base_addr_offset_operand_candidate(EA,1,NextEA,1,Reg,Dest_addr,SymType,Got_entry,Offset,"LoadStore"):-
+    // lw $v0, %got_page(L)($gp)
+    gp_relative_operand(EA,1,Got_entry),
+
+    // Get the page base from GOT and check if it is valid.
+    loaded_section(GotBeg,GotEnd,".got"),
+    Got_entry >= GotBeg,
+    Got_entry < GotEnd,
+    value_reg(EA,Reg,_,"NONE",_,BaseAddr,_),
+    BaseAddr % 0x1000 = 0, // Page size is at least 0x1000
+    !relocation(as(Got_entry,address),_,_,_,_,_,_),
+    !got_reference_mips_global(Got_entry,_),
+    !(symbol(as(BaseAddr,address),_,_,_,_,_,_,_,_), BaseAddr != 0),
+
+    // E.g., lw $v0, %got_page(L)($gp)
+    instruction_get_operation(EA, Operation),
+    arch.load_operation(Operation),
+    !split_loadstore(_,EA,_),
+
+    (
+        reg_def_use.def_used(EA,Reg,NextEA,_),
+        Reg2 = Reg
+        ;
+        // Recover the page base address from stack:
+        // E.g.,
+        // lw $v0,%got_page(L)($gp)
+        // sw $v0,64($fp)
+        // ...
+        // lw $v1,64($fp)
+        // ...
+        // lw $a3,%got_ofst(L)($v1)
+        reg_def_use.def_used(EA,Reg,StoreEA,_),
+        stack_def_use.def_used(StoreEA,_,LoadEA,_,_),
+        value_reg(LoadEA,Reg2,_,"NONE",_,BaseAddr,_),
+        reg_def_use.def_used(LoadEA,Reg2,NextEA,_)
+    ),
+
+    // lw/sw $a0, %got_ofst(L)($a0)
+    // TODO: In care of "STORE", check if Dest_addr is not read-only.
+    arch.memory_access(_,NextEA,_,_,_,Reg2,"NONE",1,Offset),
+
+    Dest_addr = as(BaseAddr+Offset,address),
+    symbol_type(Dest_addr,SymType).
+
+// Some examples that should not be got_base/got_ofst pair:
+//
+// * a loop index:
+//       lw $v1, %got(array)($gp)
+//   loop:
+//       sw $v0, 0($v1)
+//       addiu $v1, $v1, 4
+//       bne $v0, $a0,.loop
+//
+// * a loop limit:
+//       lw $s0, %got(array)($gp)
+//       addiu $s2,$s0,40
+//   loop:
+//       lw $a2, 0($s0)
+//       ...
+//       addiu $s0, $s0, 4
+//       bne $s0, $s2,.loop
+//
+base_addr_offset_operand_point(EA,Index1,NextEA,Index2,-3,"possibly loop"):-
+    base_addr_offset_operand_candidate(EA,Index1,NextEA,Index2,Reg,_,_,_,_,"ADDIU"),
+    reg_def_use.def_used(EA,Reg,OtherEA,_),
+    OtherEA != NextEA,
+    reg_def_use.def_used(AddEA,Reg,NextEA,_),
+    AddEA != EA,
+    arch.reg_arithmetic_operation(AddEA,Reg,Reg,_,_).
+
+// Reduce points when the GOT entry does not seem to be MIPS page base
+base_addr_offset_operand_point(EA,Index1,NextEA,Index2,-3,"highly likely not page base"):-
+    base_addr_offset_operand_candidate(EA,Index1,NextEA,Index2,_,_,_,Got_entry,_,_),
+    address_in_data_refined(Got_entry,SymAddr),
+    symbol(SymAddr,_,_,_,_,_,_,_,_).
+
+// Usually offset is non-zero for got_ofst operand
+base_addr_offset_operand_point(EA,Index1,NextEA,Index2,-5,"zero offset"):-
+    base_addr_offset_operand_candidate(EA,Index1,NextEA,Index2,_,_,_,_,Offset,_),
+    Offset = 0.
+
+// Give points when there are multiple got_ofst instructions that share the same Dest_addr
+base_addr_offset_operand_point(EA,Index1,NextEA,Index2,3,"multiple pairs with same dest"):-
+    base_addr_offset_operand_candidate(EA,Index1,NextEA,Index2,Reg,Dest_addr,_,Got_entry,Offset,_),
+    base_addr_offset_operand_candidate(EA,Index1,OtherEA,_,Reg,Dest_addr,_,Got_entry,Offset,_),
+    OtherEA != NextEA,
+    Offset != 0.
+
+// Give points when there are multiple got_base instructions that share
+// the same got_ofst instruction with the same Dest_addr
+base_addr_offset_operand_point(EA,Index1,NextEA,Index2,3,"multiple defs with same base"):-
+    base_addr_offset_operand_candidate(EA,Index1,NextEA,Index2,Reg,Dest_addr,_,Got_entry,Offset,_),
+    base_addr_offset_operand_candidate(OtherEA,Index1,NextEA,Index2,Reg,Dest_addr,_,Got_entry,Offset,_),
+    EA != OtherEA.
+
+// Reduce points when there are multiple defs of the base register and
+// some of them are not relevant to got_base/got_ofst
+base_addr_offset_operand_point(EA,Index1,NextEA,Index2,-3,"multiple defs with different base"):-
+    base_addr_offset_operand_candidate(EA,Index1,NextEA,Index2,Reg,Dest_addr,_,_,_,_),
+    reg_def_use.def_used(OtherEA,Reg,NextEA,_),
+    OtherEA != EA,
+    base_addr_offset_operand_candidate(OtherEA2,Index1,NextEA,Index2,Reg,Dest_addr2,_,_,_,_),
+    EA != OtherEA2,
+    Dest_addr2 != Dest_addr.
+
+// Give points when Dest_addr is a well-defined function entry
+base_addr_offset_operand_point(EA,Index1,NextEA,Index2,3,"possible function entry"):-
+    base_addr_offset_operand_candidate(EA,Index1,NextEA,Index2,_,Dest_addr,_,_,_,_),
+    function_inference.function_entry_initial(Dest_addr).
+
+// Reduce points when non-data Dest_addr is not aligned
+base_addr_offset_operand_point(EA,Index1,NextEA,Index2,-2,"possibly not aligned code"):-
+    base_addr_offset_operand_candidate(EA,Index1,NextEA,Index2,_,Dest_addr,_,_,_,_),
+    Dest_addr % 4 != 0,
+    0 = count : {data_segment(Beg,End), Dest_addr >= Beg, Dest_addr <= End}.
+
+base_addr_offset_operand_total_points(EA,Index1,NextEA,Index2,Points):-
+    base_addr_offset_operand_candidate(EA,Index1,NextEA,Index2,_,_,_,_,_,_),
+    (
+        Points = sum X:{base_addr_offset_operand_point(EA,Index1,NextEA,Index2,X,_)}
+        ;
+        !base_addr_offset_operand_point(EA,Index1,NextEA,Index2,_,_), Points = 0
+    ).
+
+.decl mips_page_base_in_got(Got_entry:address)
+.output mips_page_base_in_got
+
+mips_page_base_in_got(Got_entry),
+base_addr_offset_operand(EA,Index1,NextEA,Index2,Dest_addr,SymType,Type):-
+    base_addr_offset_operand_candidate(EA,Index1,NextEA,Index2,_,Dest_addr,SymType,Got_entry,_,Type),
+    base_addr_offset_operand_total_points(EA,Index1,NextEA,Index2,Points),
+    Points >= 0.
+
+symbolic_operand_attribute(EA_ofst,Index_ofst,"GOT"),
+symbolic_operand_attribute(EA_ofst,Index_ofst,"OFST"),
+symbolic_operand_attribute(EA,Index,"GOT"),
+symbolic_operand_attribute(EA,Index,"PAGE"):-
+    base_addr_offset_operand(EA,Index,EA_ofst,Index_ofst,Dest_addr,_,_),
+    (
+        symbolic_expr(EA,_,SymbolName,_),
+        symbol(0,_,_,_,_,_,_,_,SymbolName),
+        UNUSED(Dest_addr)
         ;
         symbol(Dest_addr,_,_,_,_,_,_,_,_)
         ;
-        bss_section_limits(Begin,End),
-        Dest_addr >= Begin, Dest_addr <= End
+        inferred_symbol(Dest_addr,_,_,_,_,"Beg")
+        ;
+        inferred_symbol(Moved_addr,_,_,_,_,"Beg"),
+        moved_label(EA,Index,Dest_addr,Moved_addr)
     ).
 
-symbolic_operand_attribute(EA,1,"GOT"),
-symbolic_operand_attribute(EA,1,"PAGE"):-
-    base_addr_offset_operand(EA,_,_).
+symbolic_operand_attribute(EA, 1, "PCREL"):-
+    binary_type("DYN"),
+    (
+        split_load(EA,_,_,_)
+        ;
+        split_loadstore(EA,_,_)
+    ),
+    0 = count : {
+        split_load(EA,_,Dest_addr,_),
+        symbol(Dest_addr,_,_,_,_,_,_,_,"_gp")
+    }.
 
-symbolic_operand_attribute(EA,2,"GOT"),
-symbolic_operand_attribute(EA,2,"OFST"):-
-    base_addr_offset_operand(_,EA,_).
+symbolic_operand_attribute(EA, Index, "PCREL"):-
+    binary_type("DYN"),
+    (
+        split_load(_,EA,_,_), Index = 2
+        ;
+        split_loadstore(_,EA,_), Index = 1
+    ),
+    0 = count : {
+        split_load(_,EA,Dest_addr,_),
+        symbol(Dest_addr,_,_,_,_,_,_,_,"_gp")
+    }.
 
-// Hi
 symbolic_operand_attribute(EA, 1, "HI"):-
     (
-        split_load(EA, _, Dest_addr, _)
-        ;
-        split_loadstore(EA, _, Dest_addr)
+        split_load(EA,_,Dest_addr,_);
+        split_loadstore(EA,_,Dest_addr)
     ),
-    (
-        function_inference.function_entry(Dest_addr)
-        ;
-        data_segment(Begin,End),
-        Dest_addr >= Begin,
-        Dest_addr <= End
-        ;
-        symbol(Dest_addr,_,_,_,_,_,_,_,_)
-        ;
-        got_reference(Dest_addr,_)
-    ).
+    match_symbol_dest_addr(Dest_addr).
 
-// Lo
 symbolic_operand_attribute(EA, Index, "LO"):-
     (
         split_load(_,EA,Dest_addr,_),
@@ -384,19 +660,44 @@ symbolic_operand_attribute(EA, Index, "LO"):-
         split_loadstore(_,EA,Dest_addr),
         Index = 1
     ),
+    match_symbol_dest_addr(Dest_addr).
+
+// E.g., lw t9, %got(puts)(gp)
+symbolic_operand_attribute(EA,Index,"GOT"):-
+    symbolic_operand_mips_candidate(EA,Index,Got_entry),
+    got_reference(Got_entry,SymName),
+    !mips_page_base_in_got(Got_entry),
     (
+        symbol(_,_,_,_,_,_,_,_,SymName)
+        ;
+        inferred_symbol(_,_,Scope,_,_,_)
+    ).
+
+// Special handling of _IO_stdin_used
+symbolic_operand_attribute(EA,Index,"GOT"),
+symbolic_expr(EA,Size,Symbol,0):-
+    gp_relative_operand(EA,Index,Got_entry),
+    Symbol = "_IO_stdin_used",
+    got_reference_mips_global(Got_entry,Symbol),
+    arch.pointer_size(Size).
+
+.decl match_symbol_dest_addr(Dest_addr:address) inline
+
+match_symbol_dest_addr(Dest_addr):-
+    (
+        code(Dest_addr)
+        ;
         function_inference.function_entry(Dest_addr)
         ;
         data_segment(Begin,End),
-        Dest_addr >= Begin,
-        Dest_addr <= End
+        Dest_addr >= Begin, Dest_addr <= End
         ;
         symbol(Dest_addr,_,_,_,_,_,_,_,_)
         ;
         got_reference(Dest_addr,_)
     ).
 
-.decl symbolic_operand_mips_candidate(ea:address,index:operand_index, dest:address)
+.decl symbolic_operand_mips_candidate(ea:address,index:operand_index,dest:address)
 
 symbolic_operand_mips_candidate(EA,Index,Dest):-
     gp_relative_operand(EA,Index,Dest).
@@ -413,17 +714,6 @@ symbolic_operand_mips_candidate(EA,1,Dest):-
 symbolic_operand_mips_candidate(EA,1,Dest):-
     split_loadstore(_,EA,Dest).
 
-// E.g., lw t9, %got(puts)(gp)
-symbolic_operand_attribute(EA,Index,"GOT"):-
-    symbolic_operand_mips_candidate(EA,Index,Got_entry),
-    got_reference(Got_entry,_).
-
-symbolic_operand(EA,1,Dest_addr,"data"):-
-    base_addr_offset_operand(EA,_,Dest_addr).
-
-symbolic_operand(EA,2,Dest_addr,"data"):-
-    base_addr_offset_operand(_,EA,Dest_addr).
-
 symbol_minus_symbol(EA,4,EA,GP_addr,1,0):-
     split_load(EA,_,_,"ADDU"),
     symbol(GP_addr,_,_,_,_,_,_,_,"_gp").
@@ -432,42 +722,141 @@ symbol_minus_symbol(EA,4,PrevEA,GP_addr,1,0):-
     split_load(PrevEA,EA,_,"ADDU"),
     symbol(GP_addr,_,_,_,_,_,_,_,"_gp").
 
+symbolic_operand_candidate(EA,Index,Dest_addr,SymType):-
+    base_addr_offset_operand(EA,Index,_,_,Dest_addr,SymType,_).
+
+symbolic_operand_candidate(EA,Index,Dest_addr,SymType):-
+    base_addr_offset_operand(_,_,EA,Index,Dest_addr,SymType,_).
+
 symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
-    binary_type("EXEC"),
     code(EA),
     symbolic_operand_mips_candidate(EA,Op_index,Dest_addr),
-    !base_addr_offset_operand(EA,_,_),
-    (
-        code(Dest_addr), Type="code"
-        ;
-        data_segment(Begin,End),
-        Dest_addr >= Begin, Dest_addr <= End,
-        Type = "data"
-        ;
-        symbol(Dest_addr,_,_,_,_,_,_,_,_),
-        Type = "data"
-    ).
-
-// Deal with pie and relocatable code
-symbolic_operand_candidate(EA,Op_index,Dest,Type):-
-    !binary_type("EXEC"),
-    code(EA),
-    symbolic_operand_mips_candidate(EA,Op_index,Dest),
-    !base_addr_offset_operand(EA,_,_),
-    (
-        code(Dest), Type = "code"
-        ;
-        data_segment(Begin,End),
-        Dest >= Begin,
-        Dest <= End,
-        Type = "data"
-    ).
+    !tls_relative_operand_mips(EA,_,_,_,Dest_addr,_),
+    !base_addr_offset_operand(EA,_,_,_,_,_,_),
+    symbol_type(Dest_addr,Type).
 
 symbolic_operand_point(EA,Op_index,1,"lookup-got"):-
     symbolic_operand_candidate(EA,Op_index,_,_),
     instruction_get_op(EA,Op_index,Op),
     op_indirect(Op,"NONE","GP","NONE",1,_,_),
     def_used_for_address(EA,_,_).
+
+data_object_point(EA,Pt_size,"symbol",-5,"mips_base_address"):-
+    mips_page_base_in_got(EA),
+    arch.pointer_size(Pt_size).
+
+/** ---------------------------------------------------------------------------
+MIPS-specific inferred_symbol:
+
+The MIPS assembler requires any symbol referenced by a GOT-related relocation
+to be global; otherwise, assembly fails (e.g., with an error that local symbols
+cannot use %got).
+
+However, in a fully linked shared object, symbols originally accessed via
+%got(sym) may appear as *local* in the ELF symbol table. This happens because
+the linker performs symbol binding reduction -- localizing symbols that are not
+exported -- even if they were originally global during assembly and relocation
+processing.
+
+As a result, some GOT entries correspond to symbols that now appear local, and
+reassembling such code would fail because the assembler rejects %got references
+to local symbols.
+
+This discrepancy arises from the difference between what the assembler allows
+and what the linker produces.
+
+To resolve this issue, we create a new inferred symbol with GLOBAL binding and
+HIDDEN visibility for such cases.
+-------------------------------------------------------------------------------
+*/
+.decl inferred_symbol_mips(EA:address,SymbolName:symbol,Scope:symbol,Visibility:symbol,Type:symbol,Pos:symbol_position)
+.output inferred_symbol_mips
+
+// Symbols accessed via GOT need to be defined as GLOBAL.
+inferred_symbol_mips(EA,SymbolName,"GLOBAL","HIDDEN","NONE","Beg"):-
+    labeled_ea(EA),
+    SymbolName = cat(".L_",@to_string_hex(EA)),
+    (
+        // lw $a0,%got_page(.L_xxxx)($gp)
+        symbolic_operand(_,_,EA,_),
+        base_addr_offset_operand(_,_,_,_,EA,_,_)
+        ;
+        // GOT entry targets
+        loaded_section(GotBeg,GotEnd,".got"),
+        Got_entry >= GotBeg, Got_entry < GotEnd,
+        aligned_address_in_data(Got_entry,EA),
+        !mips_page_base_in_got(EA),
+        (
+            symbol(EA,_,_,"LOCAL",_,_,_,_,_)
+            ;
+            symbol(EA,_,_,"GLOBAL",_,_,_,_,AmbiguousSym),
+            ambiguous_symbol(AmbiguousSym)
+            ;
+            !symbol(EA,_,_,_,_,_,_,_,_)
+        )
+    ),
+    !inferred_special_symbol(EA,_,_,_,_,_).
+
+inferred_symbol_mips(EA,SymbolName,"LOCAL","DEFAULT","NONE","Beg"):-
+    labeled_ea(EA),
+    !symbol_score(EA,_,_,"Beg",_),
+    !best_func_symbol(EA,_),
+    !inferred_special_symbol(EA,_,_,_,_,_),
+    SymbolName = cat(".L_",@to_string_hex(EA)).
+
+// GLOBAL is preferred over LOCAL or WEAK
+inferred_symbol(EA,SymbolName,"GLOBAL",Visibility,Type,"Beg"):-
+    inferred_symbol_mips(EA,SymbolName,"GLOBAL",Visibility,Type,"Beg").
+
+inferred_symbol(EA,SymbolName,Scope,Visibility,Type,"Beg"):-
+    inferred_symbol_mips(EA,SymbolName,Scope,Visibility,Type,"Beg"),
+    0 = count : {
+        inferred_symbol_mips(EA,SymbolName,"GLOBAL",_,Type,"Beg")
+    }.
+
+// GLOBAL/HIDDEN symbols, for the reason described above, take precedence over
+// those provided by the symbol-core system.
+best_symexpr_symbol(EA,SymName,Pos):-
+    symbol_score(EA,SymbolName,_,Pos,Score),
+    Score = max S: {symbol_score(EA,_,_,Pos,S)},
+    (
+        // If the original symbol is either GLOBAL or WEAK, choose it.
+        symbol(EA,_,_,"GLOBAL",_,_,_,_,SymbolName),
+        SymbolName != "",
+        SymName = SymbolName
+        ;
+        symbol(EA,_,_,"WEAK",_,_,_,_,SymbolName),
+        SymbolName != "",
+        SymName = SymbolName
+        ;
+        // If the original symbol is _gp, choose it.
+        symbol(EA,_,_,_,_,_,_,_,SymbolName),
+        SymbolName = "_gp",
+        SymName = SymbolName
+        ;
+        // If the original symbol is LOCAL and there is an inferred symbol,
+        // choose it.
+        symbol(EA,_,_,"LOCAL",_,_,_,_,SymbolName),
+        inferred_symbol_mips(EA,SymbolName2,_,_,_,Pos),
+        SymName = SymbolName2
+        ;
+        // If there was not symbol at the address, choose the inferred symbol.
+        !symbol(EA,_,_,_,_,_,_,_,_),
+        inferred_symbol_mips(EA,SymbolName2,_,_,_,Pos),
+        SymName = SymbolName2
+        ;
+        // If there is not inferred symbol, choose the original symbol.
+        symbol(EA,_,_,"LOCAL",_,_,_,_,SymName),
+        SymName != "",
+        !inferred_symbol_mips(EA,_,_,_,_,Pos)
+    ).
+
+// If there is no symbol produced by the symbol-score system,
+// choose the inferred symbol.
+best_symexpr_symbol(EA,SymbolName,"Beg"):-
+    inferred_symbol_mips(EA,SymbolName,_,_,_,"Beg"),
+    !symbol_score(EA,_,_,"Beg",_).
+
 
 .decl mips_stubs_section(name:symbol)
 
@@ -591,10 +980,34 @@ resolved_transfer(EA,DestAddr,"branch"):-
     DestAddr = as(Dest,address),
     code(DestAddr).
 
-abi_intrinsic(Address,Sym):-
-    symbol(Address,_,_,_,_,_,_,_,Sym),
+// These symbols point to stubs into the .MIPS.stubs section.
+// we use `abi_intrinsic` to rename them and let the compiler add new stubs.
+abi_intrinsic(SymAddr,Symbol):-
+    mips_stubs_entry(_,Symbol),
+    symbol(SymAddr,_,_,_,_,_,".dynsym",_,Symbol).
+
+abi_intrinsic(SymAddr,Sym):-
+    symbol(SymAddr,_,_,_,_,_,_,_,Sym),
     (
-        Sym = "_gp"
-    ;
-        Sym = "__RLD_MAP"
+        Sym = "_gp";
+        Sym = "__RLD_MAP";
+        Sym = "_IO_stdin_used"
     ).
+
+abi_intrinsic(SymAddr,Sym):-
+    plt_entry(_,Sym),
+    symbol(SymAddr,_,_,_,_,_,_,_,Sym).
+
+/**
+Some relocations may reference labels inside the body of a function,
+not just function entry points.
+Log any symbolic operands with attribute whose target lies in the middle of function.
+*/
+.decl mips_attribute_target_to_mid_function(EA:address, Dest_addr:address, Attribute:symbol)
+.output mips_attribute_target_to_mid_function
+
+mips_attribute_target_to_mid_function(EA,Dest_addr,Attribute):-
+    symbolic_operand_attribute(EA,_,Attribute),
+    symbolic_operand(EA,_,Dest_addr,_),
+    code(Dest_addr),
+    !function_inference.function_entry(Dest_addr).
