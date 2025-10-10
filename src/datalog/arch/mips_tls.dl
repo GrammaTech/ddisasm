@@ -238,7 +238,7 @@ local_dynamic_tls_candidate(EA_lui,EA_lo,Index_lo,Disp):-
     next(Call,EA_delay_slot),
     (
         reg_def_use.def_used(EA_delay_slot,"V0",EA_addu,_),
-        Reg1 = "V0"
+        Reg1 = "V0" // V0: MIPS return-value register
         ;
         reg_def_use.def_used(EA_delay_slot,"V0",EA_move,_),
         arch.move_reg_reg(EA_move,Reg1,"V0"),
@@ -247,14 +247,17 @@ local_dynamic_tls_candidate(EA_lui,EA_lo,Index_lo,Disp):-
     reg_def_use.def_used(EA_lui,Reg2,EA_addu,_),
     arch.reg_reg_arithmetic_operation(EA_addu,Reg3,Reg1,Reg2,1,0),
 
+    // E.g., lui Reg2, %dtprel_hi(symbol)
     hi_load(EA_lui,Reg2,Upper),
 
     // EA_lo: either lw/sw or addiu
     reg_def_use.def_used(EA_addu,Reg3,EA_lo,_),
     (
+        // E.g., lw/sw _, %dtprel_lo(symbol)(Reg3)
         arch.memory_access(_,EA_lo,_,_,_,Reg3,"NONE",1,Offset),
         Index_lo = 1
         ;
+        // E.g., addiu _,Reg3,%dprel_lo(symbol)
         arch.reg_arithmetic_operation(EA_lo,_,Reg3,1,Offset),
         Index_lo = 2
     ),

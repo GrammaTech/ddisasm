@@ -222,7 +222,10 @@ split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset,address), "ADDIU") :-
     arch.reg_arithmetic_operation(EA_lo,_,Reg2,_,Offset),
     // Skip in case of split_load_candidate(EA_hi, EA_log, _, "ADDU")
     next(EA_lo,EA),
-    // Exclude the PIC case:
+    // Exclude the PIC case: e.g.,
+    //   lui reg, hi(xxx)
+    //   addiu reg2, reg, lo(xxx)
+    //   addu reg3, reg2, t9
     !(
         instruction_get_operation(EA, "ADDU"),
         arch.reg_reg_arithmetic_operation(EA,_,Reg2,"T9",1,0),
@@ -741,6 +744,7 @@ symbolic_operand_point(EA,Op_index,1,"lookup-got"):-
     op_indirect(Op,"NONE","GP","NONE",1,_,_),
     def_used_for_address(EA,_,_).
 
+// GOT entry with MIPS page base address is not likely data object.
 data_object_point(EA,Pt_size,"symbol",-5,"mips_base_address"):-
     mips_page_base_in_got(EA),
     arch.pointer_size(Pt_size).
@@ -815,7 +819,7 @@ inferred_symbol(EA,SymbolName,Scope,Visibility,Type,"Beg"):-
     }.
 
 // GLOBAL/HIDDEN symbols, for the reason described above, take precedence over
-// those provided by the symbol-core system.
+// LOCAL symbols provided by the symbol-core system.
 best_symexpr_symbol(EA,SymName,Pos):-
     symbol_score(EA,SymbolName,_,Pos,Score),
     Score = max S: {symbol_score(EA,_,_,Pos,S)},
