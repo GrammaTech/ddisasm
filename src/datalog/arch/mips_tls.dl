@@ -293,28 +293,6 @@ tls_relative_operand(EA_lo,Index_lo,Dest,"DTPREL"):-
     Dest = BaseAddr + as(Disp,address).
 
 
-/**
-At EA, the TLS pointer is stored in Reg.
-
-E.g,
-    rdhwr $v1,$29
-    move Reg,$v1
-    lw $v1,%got(tls_var)($gp)
-    move $a0,$v1
-EA: addu $v0,$a0,Reg
-*/
-.decl tls_pointer_reg_at(EA:address,Reg:register)
-
-tls_pointer_reg_at(EA_addu,Reg):-
-    instruction_get_operation(EA_rdhwr,"RDHWR"),
-    (
-        reg_def_use.def_used(EA_rdhwr,OrigReg,EA_move,_),
-        arch.move_reg_reg(EA_move,Reg,OrigReg),
-        reg_def_use.def_used(EA_move,Reg,EA_addu,_)
-        ;
-        reg_def_use.def_used(EA_rdhwr,Reg,EA_addu,_)
-    ).
-
 // Initial Exec (IE) TLS model
 // Relocation with non-empty symbol
 //  E.g.: lw $v1, %gottprel(tls_var)($gp)
@@ -322,14 +300,6 @@ symbolic_operand_attribute(EA,Index,"GOT"),
 tls_relative_operand_mips(EA,Index,Dest,"TPREL",GotEA,Sym),
 tls_relative_operand(EA,Index,Dest,"TPREL"):-
     gp_relative_operand(EA,Index,GotEA),
-//    (
-//        reg_def_use.def_used(EA,OrigReg,EA_move,_),
-//        arch.move_reg_reg(EA_move,Reg,OrigReg),
-//        reg_def_use.def_used(EA_move,Reg,EA_addu,_)
-//        ;
-//        reg_def_use.def_used(EA,_,EA_addu,_)
-//    ),
-//    tls_pointer_reg_at(EA_addu,_),
     relocation(GotEA,"TLS_TPREL32",Sym,_,_,_,"REL"),
     defined_symbol(Dest,_,"TLS",_,_,_,_,_,Sym).
 
@@ -339,14 +309,6 @@ symbolic_operand_attribute(EA,Index,"GOT"),
 tls_relative_operand_mips(EA,Index,Dest,"TPREL",GotEA,Sym),
 tls_relative_operand(EA,Index,Dest,"TPREL"):-
     gp_relative_operand(EA,Index,GotEA),
-//    (
-//        reg_def_use.def_used(EA,OrigReg,EA_move,_),
-//        arch.move_reg_reg(EA_move,Reg,OrigReg),
-//        reg_def_use.def_used(EA_move,Reg,EA_addu,_)
-//        ;
-//        reg_def_use.def_used(EA,_,EA_addu,_)
-//    ),
-//    tls_pointer_reg_at(EA_addu,_),
     relocation(GotEA,"TLS_TPREL32","",_,_,_,"REL"),
     tls_segment(Start,_,_),
     tls_index(GotEA,Offset),

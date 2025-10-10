@@ -523,8 +523,7 @@ static bool buildArm32ArchInfo(gtirb::Section *S, std::map<std::string, std::str
         {'S', "System"},
     };
 
-    auto readUleb128 = [](const unsigned char *Ptr, unsigned int *len_out)
-    {
+    auto readUleb128 = [](const unsigned char *Ptr, unsigned int *len_out) {
         uint64_t Ans = 0;
         unsigned int NRead = 0;
         int Shift = 0;
@@ -985,8 +984,7 @@ void ElfReader::buildSymbols()
         }
     }
 
-    auto LoadSymbols = [&](auto SymbolIt, std::string TableName)
-    {
+    auto LoadSymbols = [&](auto SymbolIt, std::string TableName) {
         uint64_t TableIndex = 0;
         for(auto &Symbol : SymbolIt)
         {
@@ -1091,13 +1089,12 @@ const LIEF::ELF::Section *ElfReader::findRelocationSection(const LIEF::ELF::Relo
     }
     else
     {
-        auto Section = std::find_if(Elf->sections().begin(), Elf->sections().end(),
-                                    [Address](auto &S)
-                                    {
-                                        return (Address >= S.virtual_address()
-                                                && Address < (S.virtual_address() + S.size()))
-                                               && (S.type() != LIEF::ELF::Section::TYPE::NOBITS);
-                                    });
+        auto Section =
+            std::find_if(Elf->sections().begin(), Elf->sections().end(), [Address](auto &S) {
+                return (Address >= S.virtual_address()
+                        && Address < (S.virtual_address() + S.size()))
+                       && (S.type() != LIEF::ELF::Section::TYPE::NOBITS);
+            });
         if(Section != Elf->sections().end())
             return &(*Section);
         else
@@ -1145,9 +1142,9 @@ std::string ElfReader::inferDynMode()
 
     // Executables should include a `INTERP` segment.
     // If there is no `INTERP` segment, it should be Shared.
-    auto InterpSegment =
-        std::find_if(Elf->segments().begin(), Elf->segments().end(),
-                     [](auto &S) { return S.type() == LIEF::ELF::Segment::TYPE::INTERP; });
+    auto InterpSegment = std::find_if(Elf->segments().begin(), Elf->segments().end(), [](auto &S) {
+        return S.type() == LIEF::ELF::Segment::TYPE::INTERP;
+    });
     if(InterpSegment == Elf->segments().end())
     {
         return DYN_MODE_SHARED;
