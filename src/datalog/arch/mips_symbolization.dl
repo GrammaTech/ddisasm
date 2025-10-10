@@ -1015,3 +1015,6 @@ mips_attribute_target_to_mid_function(EA,Dest_addr,Attribute):-
     symbolic_operand(EA,_,Dest_addr,_),
     code(Dest_addr),
     !function_inference.function_entry(Dest_addr).
+
+reloc_type_with_name("REL32").
+reloc_type_with_name("TLS_TPREL32").

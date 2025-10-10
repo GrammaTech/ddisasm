@@ -1106,9 +1106,3 @@ symbolic_expr_attribute(EA+InstrOffset,Attr):-
         instruction_immediate_offset(EA,Index,InstrOffset,_);
         instruction_displacement_offset(EA,Index,InstrOffset,_)
     ).
-
-block_needs_splitting_at(Dest):-
-    symbolic_operand(_,_,Dest,_),
-    code(Dest),
-    code_in_block(Dest,Block),
-    Dest != Block.

@@ -344,8 +344,6 @@ reloc_type_with_name("ABS64").
 reloc_type_with_name("JUMP26").
 reloc_type_with_name("CALL26").
 reloc_type_with_name("JUMP_SLOT").
-reloc_type_with_name("REL32").
-reloc_type_with_name("TLS_TPREL32").
 
 symbolic_expr_from_relocation(EA,Size/8,Symbol,Addend+Adjustment,TargetEA):-
     binary_format("ELF"),
