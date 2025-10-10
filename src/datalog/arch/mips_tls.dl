@@ -331,6 +331,25 @@ symbolic_operand_attribute(EA,Index,"TPREL"):-
     symbol(0,_,"TLS",_,_,_,_,_,Sym).
 
 /**
+At EA, the TLS pointer is stored in Reg.
+*/
+.decl tls_pointer_reg_at(EA:address,Reg:register)
+
+// E.g.,
+//         rdhwr Reg,$29
+//         ...
+// EA_addu:addu reg3,reg2,Reg
+tls_pointer_reg_at(EA_addu,Reg):-
+    instruction_get_operation(EA_rdhwr,"RDHWR"),
+    (
+        reg_def_use.def_used(EA_rdhwr,OrigReg,EA_move,_),
+        arch.move_reg_reg(EA_move,Reg,OrigReg),
+        reg_def_use.def_used(EA_move,Reg,EA_addu,_)
+        ;
+        reg_def_use.def_used(EA_rdhwr,Reg,EA_addu,_)
+    ).
+
+/**
 Candidates for Local Exec TLS model
 
 Use candidate/point system
