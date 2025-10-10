@@ -47,7 +47,7 @@ MIPS Symbolic Operand Attributes
   E.g,
     lw $t9, %got(foo)($gp)  # Load address of foo via GOT
 
-3. %pcrel_hi(symbol / %pcrel_lo(symbol)
+3. %pcrel_hi(symbol) / %pcrel_lo(symbol)
 
   - Used in PIC to compute PC-relative addresses.
   - Generates R_MIPS_PCHI16 and R_MIPS_PCLO16 relocations.
@@ -668,13 +668,8 @@ symbolic_operand_attribute(EA, Index, "LO"):-
 // E.g., lw t9, %got(puts)(gp)
 symbolic_operand_attribute(EA,Index,"GOT"):-
     symbolic_operand_mips_candidate(EA,Index,Got_entry),
-    got_reference(Got_entry,SymName),
-    !mips_page_base_in_got(Got_entry),
-    (
-        symbol(_,_,_,_,_,_,_,_,SymName)
-        ;
-        inferred_symbol(_,_,Scope,_,_,_)
-    ).
+    got_reference(Got_entry,_),
+    !mips_page_base_in_got(Got_entry).
 
 // Special handling of _IO_stdin_used
 symbolic_operand_attribute(EA,Index,"GOT"),
