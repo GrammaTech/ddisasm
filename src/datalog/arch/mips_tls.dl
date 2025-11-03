@@ -346,8 +346,6 @@ tls_pointer_reg_at(EA_addu,Reg):-
 
 /**
 Candidates for Local Exec TLS model
-
-Use candidate/point system
 */
 .decl local_exec_tls_candidate(EA_lui:address,EA_lo:address,Index_lo:operand_index,Disp:number)
 .output local_exec_tls_candidate
