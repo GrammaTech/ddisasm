@@ -127,6 +127,21 @@ tls_index(Got_entry,as(Offset,unsigned)):-
     data_word(Got_entry,Size,Offset).
 
 /**
+Register data flow in limited step
+*/
+.decl reg_flow(SrcEA:address, Reg:register, DestEA:address, RegTemp:register) inline
+
+// Register defined at SrcEA and directly used by DestEA
+reg_flow(SrcEA,Reg,DestEA,Reg):-
+    reg_def_use.def_used(SrcEA,Reg,DestEA,_).
+
+// Register defined at SrcEA, moved to a register and used by DestEA
+reg_flow(SrcEA,Reg,DestEA,RegTemp):-
+    reg_def_use.def_used(SrcEA,RegTemp,MoveEA,_),
+    arch.move_reg_reg(MoveEA,Reg,RegTemp),
+    reg_def_use.def_used(MoveEA,Reg,DestEA,_).
+
+/**
 E.g.,
 0x04:  lw $v0, %got(__tls_get_addr)($gp)
 0x08:  addiu $a0, $gp, N
@@ -141,21 +156,14 @@ or
 .decl call_tls_get_addr_mips(Call:address,Reg:register)
 .output call_tls_get_addr_mips
 
-call_tls_get_addr_mips(Call,Reg):-
+call_tls_get_addr_mips(Call,"A0"):-
     binary_format("ELF"),
     got_reference_mips_global(GotEA,Sym),
     Prefix = "__tls_get_addr",
     substr(Sym,0,strlen(Prefix)) = Prefix,
     gp_relative_operand(EA,1,GotEA),
-    (
-        reg_def_use.def_used(EA,Reg1,MoveEA,_),
-        arch.move_reg_reg(MoveEA,CallReg,Reg1),
-        reg_def_use.def_used(MoveEA,CallReg,Call,_)
-        ;
-        reg_def_use.def_used(EA,CallReg,Call,_)
-    ),
-    reg_call(Call,CallReg),
-    Reg = "A0".
+    reg_flow(EA,CallReg,Call,_),
+    reg_call(Call,CallReg).
 
 // E.g.,
 //         lw $v0, %got(__tls_get_addr)($gp)
@@ -225,8 +233,6 @@ tls_relative_operand(EA,Index,Dest,"TLSLDM"):-
 
 /**
 Candidates for Local Dynamic TLS model
-
-Use candidate/point system.
 */
 .decl local_dynamic_tls_candidate(EA_lui:address,EA_lo:address,Index_lo:operand_index,Disp:number)
 .output local_dynamic_tls_candidate
@@ -236,14 +242,7 @@ local_dynamic_tls_candidate(EA_lui,EA_lo,Index_lo,Disp):-
     tls_get_addr(EA,Call,_),
 
     next(Call,EA_delay_slot),
-    (
-        reg_def_use.def_used(EA_delay_slot,"V0",EA_addu,_),
-        Reg1 = "V0" // V0: MIPS return-value register
-        ;
-        reg_def_use.def_used(EA_delay_slot,"V0",EA_move,_),
-        arch.move_reg_reg(EA_move,Reg1,"V0"),
-        reg_def_use.def_used(EA_move,Reg1,EA_addu,_)
-    ),
+    reg_flow(EA_delay_slot,Reg1,EA_addu,"V0"),
     reg_def_use.def_used(EA_lui,Reg2,EA_addu,_),
     arch.reg_reg_arithmetic_operation(EA_addu,Reg3,Reg1,Reg2,1,0),
 
@@ -280,10 +279,9 @@ address does not appear in the binary.
 .output local_dynamic_tls_base
 
 local_dynamic_tls_base(BaseAddr):-
-    local_dynamic_tls_candidate(_,_,_,SmallestDisp),
-    0 = count : {local_dynamic_tls_candidate(_,_,_,Disp), Disp < SmallestDisp},
+    SmallestDisp = min Disp : {local_dynamic_tls_candidate(_,_,_,Disp)},
     defined_symbol(SmallestSymAddr,_,"TLS","GLOBAL",_,_,_,_,_),
-    0 = count : {defined_symbol(SymAddr,_,"TLS","GLOBAL",_,_,_,_,_), SymAddr < SmallestSymAddr},
+    SmallestSymAddr = min SymAddr : {defined_symbol(SymAddr,_,"TLS","GLOBAL",_,_,_,_,_)},
     BaseAddr = SmallestSymAddr - as(SmallestDisp,address).
 
 // Local Dynamic TLS model
@@ -328,7 +326,8 @@ tls_relative_operand(EA,Index,Dest,"TPREL"):-
     ).
 
 // External TLS object
-symbolic_operand_attribute(EA,Index,"TPREL"):-
+tls_relative_operand(EA,Index,0,"TPREL"):-
+//symbolic_operand_attribute(EA,Index,"TPREL"):-
     gp_relative_operand(EA,Index,GotEA),
     relocation(GotEA,"TLS_TPREL32",Sym,_,_,_,"REL"),
     symbol(0,_,"TLS",_,_,_,_,_,Sym).
@@ -338,19 +337,12 @@ At EA, the TLS pointer is stored in Reg.
 */
 .decl tls_pointer_reg_at(EA:address,Reg:register)
 
-// E.g.,
-//         rdhwr Reg,$29
-//         ...
-// EA_addu:addu reg3,reg2,Reg
+// EA_rdhwr: rdhwr Reg,$29
+//           ...
+// EA_addu:  addu reg3,reg2,Reg
 tls_pointer_reg_at(EA_addu,Reg):-
     instruction_get_operation(EA_rdhwr,"RDHWR"),
-    (
-        reg_def_use.def_used(EA_rdhwr,OrigReg,EA_move,_),
-        arch.move_reg_reg(EA_move,Reg,OrigReg),
-        reg_def_use.def_used(EA_move,Reg,EA_addu,_)
-        ;
-        reg_def_use.def_used(EA_rdhwr,Reg,EA_addu,_)
-    ).
+    reg_flow(EA_rdhwr,Reg,EA_addu,_).
 
 /**
 Candidates for Local Exec TLS model
@@ -407,10 +399,9 @@ address does not appear in the binary.
 .output local_exec_tls_base
 
 local_exec_tls_base(BaseAddr):-
-    local_exec_tls_candidate(_,_,_,SmallestDisp),
-    0 = count : {local_exec_tls_candidate(_,_,_,Disp), Disp < SmallestDisp},
+    SmallestDisp = min Disp : local_exec_tls_candidate(_,_,_,Disp),
     defined_symbol(SmallestSymAddr,_,"TLS","GLOBAL",_,_,_,_,_),
-    0 = count : {defined_symbol(SymAddr,_,"TLS","GLOBAL",_,_,_,_,_), SymAddr < SmallestSymAddr},
+    SmallestSymAddr = min SymAddr : defined_symbol(SymAddr,_,"TLS","GLOBAL",_,_,_,_,_),
     BaseAddr = SmallestSymAddr - as(SmallestDisp,address).
 
 //Local Exec TLS model

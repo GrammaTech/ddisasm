@@ -202,6 +202,18 @@ hi_load_prop(MoveEA,EA,Reg2,Upper,"move"):-
 // Compute an immediate load/store performed across two separate instructions
 .decl split_loadstore(ea:address, nextea:address, dest:address)
 
+.decl valid_address(EA:address) inline
+
+valid_address(EA):-
+    (
+        code(EA)
+        ;
+        data_segment(Begin,End),
+        EA >= Begin,
+        EA <= End
+        ;
+        symbol(EA,_,_,_,_,_,_,_,_), EA != 0
+    ).
 
 // E.g., lui reg, hi(xxx)
 //       addiu reg2, reg, lo(xxx)
@@ -215,27 +227,38 @@ hi_load_prop(MoveEA,EA,Reg2,Upper,"move"):-
 // E.g., lui reg, hi(xxx)
 //       move reg2, reg
 //       addiu reg3, reg2, lo(xxx)
-split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset,address), "ADDIU") :-
+split_load_candidate(EA_hi, EA_lo, Dest_addr, "ADDIU") :-
     hi_load_prop(RegRestoreEA,EA_hi,Reg2,Upper,_),
     reg_def_use.def_used(RegRestoreEA,Reg2,EA_lo,_),
     instruction_get_operation(EA_lo, "ADDIU"),
-    arch.reg_arithmetic_operation(EA_lo,_,Reg2,_,Offset),
-    // Skip in case of split_load_candidate(EA_hi, EA_log, _, "ADDU")
-    next(EA_lo,EA),
-    // Exclude the PIC case: e.g.,
-    //   lui reg, hi(xxx)
-    //   addiu reg2, reg, lo(xxx)
-    //   addu reg3, reg2, t9
-    !(
-        instruction_get_operation(EA, "ADDU"),
-        arch.reg_reg_arithmetic_operation(EA,_,Reg2,"T9",1,0),
-        code_in_block(EA_hi, EA_hi)
-    ).
+    arch.reg_arithmetic_operation(EA_lo,Reg3,Reg2,_,Offset),
+    (
+        !straight_line_def_used(EA_lo,Reg3,_,_)
+        ;
+        // Skip in case of split_load_candidate(EA_hi, EA_log, _, "ADDU"):
+        // Exclude the PIC case: e.g.,
+        //   lui reg, hi(xxx)
+        //   addiu reg2, reg, lo(xxx)
+        //   addu $gp, reg2, $t9
+        straight_line_def_used(EA_lo,Reg3,EA,_),
+        instruction_get_operation(EA,Operation),
+        !(
+            Operation = "ADDU",
+            arch.reg_reg_arithmetic_operation(EA,"GP",Reg2,"T9",1,0),
+            code_in_block(EA_hi, EA_hi)
+        ),
+        // No arithmetic operation on address
+        !arch.logic_operation(Operation),
+        !arch.shift_rotate_operation(Operation),
+        !arch.multiplication_operation(Operation)
+    ),
+    Dest_addr = as(Upper*2^16+Offset,address),
+    valid_address(Dest_addr).
 
 // PIC
 // E.g., lui reg, hi(xxx)
 //       addiu reg2, reg, lo(xxx)
-//       addu reg3, reg2, t9
+//       addu $gp, reg2, $t9
 split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset+T9Value,address), "ADDU") :-
     // lui reg, hi(xxx)
     hi_load(EA_hi,Reg,Upper),
@@ -255,10 +278,13 @@ split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset+T9Value,address), "ADDU"
     reg_def_use.def_used(EA_lo,Reg2,EA_addu,_),
     EA_lo != EA_addu,
 
-    // addu reg3, reg2, t9
+    // addu $gp, reg2, t9
     instruction_get_operation(EA_addu, "ADDU"),
-    arch.reg_reg_arithmetic_operation(EA_addu,_,Reg2,"T9",1,0), // RA too?
-    T9Value = as(EA_hi, number).
+    arch.reg_reg_arithmetic_operation(EA_addu,"GP",Reg2,"T9",1,0),
+    T9Value = as(EA_hi, number),
+
+    Dest_addr = as(Upper*2^16+Offset+T9Value,address),
+    valid_address(Dest_addr).
 
 // E.g., lui reg, hi(xxx)
 //       lw/sw reg2, lo(xxx)(reg)
@@ -277,7 +303,10 @@ split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset,address), "LoadStore") :
     reg_def_use.def_used(RegRestoreEA,Reg,EA_lo,_),
 
     // lw/sw reg3, lo(xxx)(reg2)
-    arch.memory_access(_,EA_lo,_,_,_,Reg,"NONE",1,Offset).
+    arch.memory_access(_,EA_lo,_,_,_,Reg,"NONE",1,Offset),
+
+    Dest_addr = as(Upper*2^16+Offset,address),
+    valid_address(Dest_addr).
 
 split_load_point(EA_hi,EA_lo,Dest_addr,Type,0,"base"):-
     split_load_candidate(EA_hi,EA_lo,Dest_addr,Type).
@@ -396,7 +425,6 @@ symbol_type(Addr,Type):-
 got_page / got_fst instructions pairs
 
 EA: Instruction for got_page
-Index1: Operand index for got_page
 NextEA: Instruction for got_ofst
 Index2: Operand index for got_ofst
 Reg: Base register in NextEA
@@ -409,21 +437,19 @@ Type: Type of got_ofst instruction (either ADDIU or LoadStore)
 Use candidate and point system.
 -------------------------------------------------------------------------------
 */
-.decl base_addr_offset_operand_candidate(EA:address, Index1:operand_index, NextEA:address, Index2:operand_index, Reg:register, Dest_addr:address, SymType:symbol, Got_entry:address, Offset:number, Type:symbol)
 
-.decl base_addr_offset_operand(EA:address, Index1:operand_index, NextEA:address, Index2:operand_index, Dest_addr:address, SymType:symbol, Type:symbol)
+.decl base_addr_offset_operand_candidate(EA:address, NextEA:address, Index2:operand_index, Reg:register, Dest_addr:address, SymType:symbol, Got_entry:address, Offset:number, Type:symbol)
 
-.decl base_addr_offset_operand_point(EA:address, Index1:operand_index, NextEA:address, Index2:operand_index, Points:number, Why:symbol)
+.decl base_addr_offset_operand(EA:address, NextEA:address, Index2:operand_index, Dest_addr:address, SymType:symbol, Type:symbol)
 
-.decl base_addr_offset_operand_total_points(EA:address, Index1:operand_index, NextEA:address, Index2:operand_index, Points:number)
+.decl base_addr_offset_operand_point(EA:address, NextEA:address, Index2:operand_index, Points:number, Why:symbol)
 
-// ADDIU case:
-// e.g., lw $v0, -32696($gp)  <-- v0: MIPS_BASE_ADDRESS
-//       addiu $a0, $v0, 2560 <-- 2560: offset from MIPS_BASE_ADDRESS to target L
-// ->
-//       lw $v0, %got_page(L)($gp)
-//       addiu $a0, $v0, %got_ofst(L)
-base_addr_offset_operand_candidate(EA,1,NextEA,2,Reg,Dest_addr,SymType,Got_entry,Offset,"ADDIU"):-
+.decl base_addr_offset_operand_total_points(EA:address, NextEA:address, Index2:operand_index, Points:number)
+
+.decl base_addr_load(EA:address, NextEA:address, Reg:register, Reg2:register, Got_entry:address, BaseAddr:address)
+
+base_addr_load(EA,NextEA,Reg,Reg2,Got_entry,as(BaseAddr,address)):-
+    // lw $v0, %got_page(L)($gp)
     gp_relative_operand(EA,1,Got_entry),
 
     // Get the page base from GOT and check if it is valid.
@@ -458,13 +484,22 @@ base_addr_offset_operand_candidate(EA,1,NextEA,2,Reg,Dest_addr,SymType,Got_entry
         stack_def_use.def_used(StoreEA,_,LoadEA,_,_),
         value_reg(LoadEA,Reg2,_,"NONE",_,BaseAddr,_),
         reg_def_use.def_used(LoadEA,Reg2,NextEA,_)
-    ),
+    ).
+
+// ADDIU case:
+// e.g., lw $v0, -32696($gp)  <-- v0: MIPS_BASE_ADDRESS
+//       addiu $a0, $v0, 2560 <-- 2560: offset from MIPS_BASE_ADDRESS to target L
+// ->
+//       lw $v0, %got_page(L)($gp)
+//       addiu $a0, $v0, %got_ofst(L)
+base_addr_offset_operand_candidate(EA,NextEA,2,Reg,Dest_addr,SymType,Got_entry,Offset,"ADDIU"):-
+    base_addr_load(EA,NextEA,Reg,Reg2,Got_entry,BaseAddr),
 
     // E.g., addiu $a0, $v0, %got_ofst(L)
     arch.reg_arithmetic_operation(NextEA,_,Reg2,_,Offset),
     !split_load(_,NextEA,_,_),
 
-    Dest_addr = as(BaseAddr+Offset,address),
+    Dest_addr = BaseAddr+as(Offset,address),
     symbol_type(Dest_addr,SymType).
 
 // LoadStore case:
@@ -473,48 +508,14 @@ base_addr_offset_operand_candidate(EA,1,NextEA,2,Reg,Dest_addr,SymType,Got_entry
 // ->
 //       lw $v0, %got_page(L)($gp)
 //       lw/sw $a0, %got_ofst(L)($a0)
-base_addr_offset_operand_candidate(EA,1,NextEA,1,Reg,Dest_addr,SymType,Got_entry,Offset,"LoadStore"):-
-    // lw $v0, %got_page(L)($gp)
-    gp_relative_operand(EA,1,Got_entry),
-
-    // Get the page base from GOT and check if it is valid.
-    loaded_section(GotBeg,GotEnd,".got"),
-    Got_entry >= GotBeg,
-    Got_entry < GotEnd,
-    value_reg(EA,Reg,_,"NONE",_,BaseAddr,_),
-    BaseAddr % 0x1000 = 0, // Page size is at least 0x1000
-    !relocation(as(Got_entry,address),_,_,_,_,_,_),
-    !got_reference_mips_global(Got_entry,_),
-    !(symbol(as(BaseAddr,address),_,_,_,_,_,_,_,_), BaseAddr != 0),
-
-    // E.g., lw $v0, %got_page(L)($gp)
-    instruction_get_operation(EA, Operation),
-    arch.load_operation(Operation),
-    !split_loadstore(_,EA,_),
-
-    (
-        reg_def_use.def_used(EA,Reg,NextEA,_),
-        Reg2 = Reg
-        ;
-        // Recover the page base address from stack:
-        // E.g.,
-        // lw $v0,%got_page(L)($gp)
-        // sw $v0,64($fp)
-        // ...
-        // lw $v1,64($fp)
-        // ...
-        // lw $a3,%got_ofst(L)($v1)
-        reg_def_use.def_used(EA,Reg,StoreEA,_),
-        stack_def_use.def_used(StoreEA,_,LoadEA,_,_),
-        value_reg(LoadEA,Reg2,_,"NONE",_,BaseAddr,_),
-        reg_def_use.def_used(LoadEA,Reg2,NextEA,_)
-    ),
+base_addr_offset_operand_candidate(EA,NextEA,1,Reg,Dest_addr,SymType,Got_entry,Offset,"LoadStore"):-
+    base_addr_load(EA,NextEA,Reg,Reg2,Got_entry,BaseAddr),
 
     // lw/sw $a0, %got_ofst(L)($a0)
     // TODO: In care of "STORE", check if Dest_addr is not read-only.
     arch.memory_access(_,NextEA,_,_,_,Reg2,"NONE",1,Offset),
 
-    Dest_addr = as(BaseAddr+Offset,address),
+    Dest_addr = BaseAddr+as(Offset,address),
     symbol_type(Dest_addr,SymType).
 
 // Some examples that should not be got_base/got_ofst pair:
@@ -535,8 +536,8 @@ base_addr_offset_operand_candidate(EA,1,NextEA,1,Reg,Dest_addr,SymType,Got_entry
 //       addiu $s0, $s0, 4
 //       bne $s0, $s2,.loop
 //
-base_addr_offset_operand_point(EA,Index1,NextEA,Index2,-3,"possibly loop"):-
-    base_addr_offset_operand_candidate(EA,Index1,NextEA,Index2,Reg,_,_,_,_,"ADDIU"),
+base_addr_offset_operand_point(EA,NextEA,Index2,-3,"possibly loop"):-
+    base_addr_offset_operand_candidate(EA,NextEA,Index2,Reg,_,_,_,_,"ADDIU"),
     reg_def_use.def_used(EA,Reg,OtherEA,_),
     OtherEA != NextEA,
     reg_def_use.def_used(AddEA,Reg,NextEA,_),
@@ -544,73 +545,80 @@ base_addr_offset_operand_point(EA,Index1,NextEA,Index2,-3,"possibly loop"):-
     arch.reg_arithmetic_operation(AddEA,Reg,Reg,_,_).
 
 // Reduce points when the GOT entry does not seem to be MIPS page base
-base_addr_offset_operand_point(EA,Index1,NextEA,Index2,-3,"highly likely not page base"):-
-    base_addr_offset_operand_candidate(EA,Index1,NextEA,Index2,_,_,_,Got_entry,_,_),
+base_addr_offset_operand_point(EA,NextEA,Index2,-3,"highly likely not page base"):-
+    base_addr_offset_operand_candidate(EA,NextEA,Index2,_,_,_,Got_entry,_,_),
     address_in_data_refined(Got_entry,SymAddr),
     symbol(SymAddr,_,_,_,_,_,_,_,_).
 
 // Usually offset is non-zero for got_ofst operand
-base_addr_offset_operand_point(EA,Index1,NextEA,Index2,-5,"zero offset"):-
-    base_addr_offset_operand_candidate(EA,Index1,NextEA,Index2,_,_,_,_,Offset,_),
+base_addr_offset_operand_point(EA,NextEA,Index2,-5,"zero offset"):-
+    base_addr_offset_operand_candidate(EA,NextEA,Index2,_,_,_,_,Offset,_),
     Offset = 0.
 
 // Give points when there are multiple got_ofst instructions that share the same Dest_addr
-base_addr_offset_operand_point(EA,Index1,NextEA,Index2,3,"multiple pairs with same dest"):-
-    base_addr_offset_operand_candidate(EA,Index1,NextEA,Index2,Reg,Dest_addr,_,Got_entry,Offset,_),
-    base_addr_offset_operand_candidate(EA,Index1,OtherEA,_,Reg,Dest_addr,_,Got_entry,Offset,_),
+base_addr_offset_operand_point(EA,NextEA,Index2,3,"multiple pairs with same dest"):-
+    base_addr_offset_operand_candidate(EA,NextEA,Index2,Reg,Dest_addr,_,Got_entry,Offset,_),
+    base_addr_offset_operand_candidate(EA,OtherEA,_,Reg,Dest_addr,_,Got_entry,Offset,_),
     OtherEA != NextEA,
     Offset != 0.
 
 // Give points when there are multiple got_base instructions that share
 // the same got_ofst instruction with the same Dest_addr
-base_addr_offset_operand_point(EA,Index1,NextEA,Index2,3,"multiple defs with same base"):-
-    base_addr_offset_operand_candidate(EA,Index1,NextEA,Index2,Reg,Dest_addr,_,Got_entry,Offset,_),
-    base_addr_offset_operand_candidate(OtherEA,Index1,NextEA,Index2,Reg,Dest_addr,_,Got_entry,Offset,_),
+base_addr_offset_operand_point(EA,NextEA,Index2,3,"multiple defs with same base"):-
+    base_addr_offset_operand_candidate(EA,NextEA,Index2,Reg,Dest_addr,_,Got_entry,Offset,_),
+    base_addr_offset_operand_candidate(OtherEA,NextEA,Index2,Reg,Dest_addr,_,Got_entry,Offset,_),
     EA != OtherEA.
 
 // Reduce points when there are multiple defs of the base register and
 // some of them are not relevant to got_base/got_ofst
-base_addr_offset_operand_point(EA,Index1,NextEA,Index2,-3,"multiple defs with different base"):-
-    base_addr_offset_operand_candidate(EA,Index1,NextEA,Index2,Reg,Dest_addr,_,_,_,_),
+base_addr_offset_operand_point(EA,NextEA,Index2,-3,"multiple defs with different base"):-
+    base_addr_offset_operand_candidate(EA,NextEA,Index2,Reg,Dest_addr,_,_,_,_),
     reg_def_use.def_used(OtherEA,Reg,NextEA,_),
     OtherEA != EA,
-    base_addr_offset_operand_candidate(OtherEA2,Index1,NextEA,Index2,Reg,Dest_addr2,_,_,_,_),
+    base_addr_offset_operand_candidate(OtherEA2,NextEA,Index2,Reg,Dest_addr2,_,_,_,_),
     EA != OtherEA2,
     Dest_addr2 != Dest_addr.
 
 // Give points when Dest_addr is a well-defined function entry
-base_addr_offset_operand_point(EA,Index1,NextEA,Index2,3,"possible function entry"):-
-    base_addr_offset_operand_candidate(EA,Index1,NextEA,Index2,_,Dest_addr,_,_,_,_),
+base_addr_offset_operand_point(EA,NextEA,Index2,3,"possible function entry"):-
+    base_addr_offset_operand_candidate(EA,NextEA,Index2,_,Dest_addr,_,_,_,_),
     function_inference.function_entry_initial(Dest_addr).
 
 // Reduce points when non-data Dest_addr is not aligned
-base_addr_offset_operand_point(EA,Index1,NextEA,Index2,-2,"possibly not aligned code"):-
-    base_addr_offset_operand_candidate(EA,Index1,NextEA,Index2,_,Dest_addr,_,_,_,_),
+base_addr_offset_operand_point(EA,NextEA,Index2,-2,"possibly not aligned code"):-
+    base_addr_offset_operand_candidate(EA,NextEA,Index2,_,Dest_addr,_,_,_,_),
     Dest_addr % 4 != 0,
     0 = count : {data_segment(Beg,End), Dest_addr >= Beg, Dest_addr <= End}.
 
-base_addr_offset_operand_total_points(EA,Index1,NextEA,Index2,Points):-
-    base_addr_offset_operand_candidate(EA,Index1,NextEA,Index2,_,_,_,_,_,_),
+base_addr_offset_operand_total_points(EA,NextEA,Index2,Points):-
+    base_addr_offset_operand_candidate(EA,NextEA,Index2,_,_,_,_,_,_),
     (
-        Points = sum X:{base_addr_offset_operand_point(EA,Index1,NextEA,Index2,X,_)}
+        Points = sum X:{base_addr_offset_operand_point(EA,NextEA,Index2,X,_)}
         ;
-        !base_addr_offset_operand_point(EA,Index1,NextEA,Index2,_,_), Points = 0
+        !base_addr_offset_operand_point(EA,NextEA,Index2,_,_), Points = 0
     ).
 
 .decl mips_page_base_in_got(Got_entry:address)
 .output mips_page_base_in_got
 
 mips_page_base_in_got(Got_entry),
-base_addr_offset_operand(EA,Index1,NextEA,Index2,Dest_addr,SymType,Type):-
-    base_addr_offset_operand_candidate(EA,Index1,NextEA,Index2,_,Dest_addr,SymType,Got_entry,_,Type),
-    base_addr_offset_operand_total_points(EA,Index1,NextEA,Index2,Points),
+base_addr_offset_operand(EA,NextEA,Index2,Dest_addr,SymType,Type):-
+    base_addr_offset_operand_candidate(EA,NextEA,Index2,_,Dest_addr,SymType,Got_entry,_,Type),
+    base_addr_offset_operand_total_points(EA,NextEA,Index2,Points),
     Points >= 0.
+
+// If the reference target lies within a block,
+// split the block to create a label.
+block_needs_splitting_at(Dest_addr):-
+    base_addr_offset_operand(_,_,_,Dest_addr,_,_),
+    code_in_block_candidate(Dest_addr,Block),
+    Dest_addr != Block.
 
 symbolic_operand_attribute(EA_ofst,Index_ofst,"GOT"),
 symbolic_operand_attribute(EA_ofst,Index_ofst,"OFST"),
 symbolic_operand_attribute(EA,Index,"GOT"),
 symbolic_operand_attribute(EA,Index,"PAGE"):-
-    base_addr_offset_operand(EA,Index,EA_ofst,Index_ofst,Dest_addr,_,_),
+    base_addr_offset_operand(EA,EA_ofst,Index_ofst,Dest_addr,_,_),
     (
         symbolic_expr(EA,_,SymbolName,_),
         symbol(0,_,_,_,_,_,_,_,SymbolName),
@@ -622,7 +630,9 @@ symbolic_operand_attribute(EA,Index,"PAGE"):-
         ;
         inferred_symbol(Moved_addr,_,_,_,_,"Beg"),
         moved_label(EA,Index,Dest_addr,Moved_addr)
-    ).
+    ),
+    // 1: Memory operand index of load instruction
+    Index = 1.
 
 symbolic_operand_attribute(EA, 1, "PCREL"):-
     binary_type("DYN"),
@@ -631,6 +641,7 @@ symbolic_operand_attribute(EA, 1, "PCREL"):-
         ;
         split_loadstore(EA,_,_)
     ),
+    symbolic_operand(EA,_,_,_),
     0 = count : {
         split_load(EA,_,Dest_addr,_),
         symbol(Dest_addr,_,_,_,_,_,_,_,"_gp")
@@ -643,6 +654,7 @@ symbolic_operand_attribute(EA, Index, "PCREL"):-
         ;
         split_loadstore(_,EA,_), Index = 1
     ),
+    symbolic_operand(EA,_,_,_),
     0 = count : {
         split_load(_,EA,Dest_addr,_),
         symbol(Dest_addr,_,_,_,_,_,_,_,"_gp")
@@ -685,8 +697,6 @@ match_symbol_dest_addr(Dest_addr):-
     (
         code(Dest_addr)
         ;
-        function_inference.function_entry(Dest_addr)
-        ;
         data_segment(Begin,End),
         Dest_addr >= Begin, Dest_addr <= End
         ;
@@ -721,16 +731,18 @@ symbol_minus_symbol(EA,4,PrevEA,GP_addr,1,0):-
     symbol(GP_addr,_,_,_,_,_,_,_,"_gp").
 
 symbolic_operand_candidate(EA,Index,Dest_addr,SymType):-
-    base_addr_offset_operand(EA,Index,_,_,Dest_addr,SymType,_).
+    base_addr_offset_operand(EA,_,_,Dest_addr,SymType,_),
+    // 1: Memory operand index of load instruction
+    Index = 1.
 
 symbolic_operand_candidate(EA,Index,Dest_addr,SymType):-
-    base_addr_offset_operand(_,_,EA,Index,Dest_addr,SymType,_).
+    base_addr_offset_operand(_,EA,Index,Dest_addr,SymType,_).
 
 symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
     code(EA),
     symbolic_operand_mips_candidate(EA,Op_index,Dest_addr),
     !tls_relative_operand_mips(EA,_,_,_,Dest_addr,_),
-    !base_addr_offset_operand(EA,_,_,_,_,_,_),
+    !base_addr_offset_operand(EA,_,_,_,_,_),
     symbol_type(Dest_addr,Type).
 
 symbolic_operand_point(EA,Op_index,1,"lookup-got"):-
@@ -778,7 +790,7 @@ inferred_symbol_mips(EA,SymbolName,"GLOBAL","HIDDEN","NONE","Beg"):-
     (
         // lw $a0,%got_page(.L_xxxx)($gp)
         symbolic_operand(_,_,EA,_),
-        base_addr_offset_operand(_,_,_,_,EA,_,_)
+        base_addr_offset_operand(_,_,_,EA,_,_)
         ;
         // GOT entry targets
         loaded_section(GotBeg,GotEnd,".got"),
@@ -814,7 +826,7 @@ inferred_symbol(EA,SymbolName,Scope,Visibility,Type,"Beg"):-
     }.
 
 // GLOBAL/HIDDEN symbols, for the reason described above, take precedence over
-// LOCAL symbols provided by the symbol-core system.
+// LOCAL symbols provided by the symbol-score system.
 best_symexpr_symbol(EA,SymName,Pos):-
     symbol_score(EA,SymbolName,_,Pos,Score),
     Score = max S: {symbol_score(EA,_,_,Pos,S)},
@@ -1013,3 +1025,7 @@ mips_attribute_target_to_mid_function(EA,Dest_addr,Attribute):-
 
 reloc_type_with_name("REL32").
 reloc_type_with_name("TLS_TPREL32").
+
+start_function(EA):-
+    binary_format("ELF"),
+    function_symbol(EA,"__start").

@@ -375,6 +375,7 @@ logic_operation("EXTS32").
 logic_operation("DEXT").
 logic_operation("DEXTM").
 logic_operation("DEXTU").
+logic_operation("NEGU").
 
 pointer_size(4).
 
@@ -517,6 +518,15 @@ op_access_override(EA,Index,"W",1):-
         Op4 != 0,
         Index = 4,
         UNUSED(Op2), UNUSED(Op3)
+    ).
+
+op_access_override(EA,1,"W",1):-
+    instruction_get_operation(EA,Operation),
+    (
+        // Move the result of a multiplication into the first operand (register)
+        // Capstone marks reg as used incorrectly.
+        Operation = "MFHI"; // mfhi reg # reg <- Hi register
+        Operation = "MFLO"  // mflo reg # reg <- Lo register
     ).
 
 // Generate register access information from the operand information

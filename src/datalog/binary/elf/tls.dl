@@ -727,7 +727,8 @@ symbolic_operand_attribute(EA,Index,"INDNTPOFF"):-
     !got_relative_operand(EA,_,_).
 
 symbolic_operand_candidate(EA,Index,Dest,"data"):-
-    tls_relative_operand(EA,Index,Dest,_).
+    tls_relative_operand(EA,Index,Dest,_),
+    Dest != 0.
 
 symbolic_operand_attribute(EA,Index,Type):-
     tls_relative_operand(EA,Index,_,Type).

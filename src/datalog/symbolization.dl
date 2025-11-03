@@ -471,7 +471,7 @@ address_in_data_refined(EA,Val):-
 address_in_data_refined(EA,Val):-
     (
         // Even in DYN case,
-        // unlike x86, etc., MIPS does not use a traditinoal PLT.
+        // unlike x86, etc., MIPS does not use a traditional PLT.
         // All dynamic function calls are made through the GOT.
         // For symbols defined within the same DSO, GOT entries are fully
         // resolved at link time, while external symbols retain relocations
@@ -492,7 +492,7 @@ address_in_data_refined(EA,Val):-
 address_in_data_refined(EA,Val):-
     (
         // Even in DYN case,
-        // unlike x86, etc., MIPS does not use a traditinoal PLT.
+        // unlike x86, etc., MIPS does not use a traditional PLT.
         // All dynamic function calls are made through the GOT.
         // For symbols defined within the same DSO, GOT entries are fully
         // resolved at link time, while external symbols retain relocations
