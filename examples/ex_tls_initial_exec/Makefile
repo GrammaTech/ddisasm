@@ -2,15 +2,15 @@ CC="gcc"
 CFLAGS=
 EXEC=
 
-all: ex.c tls_def.c test.c
-	$(CC) -fPIC -c ex.c "-ftls-model=initial-exec" $(CFLAGS) -o ex.o
+all: ex.c tls_def.c tls.c
+	$(CC) -fPIC -c tls.c "-ftls-model=initial-exec" $(CFLAGS) -o tls.o
 	$(CC) -fPIC -c tls_def.c "-ftls-model=initial-exec" $(CFLAGS) -o tls_def.o
-	$(CC) -shared -o libtls.so ex.o tls_def.o
-	$(CC) test.c -fPIC $(CFLAGS) -ltls -L./ -o test
-	@LD_LIBRARY_PATH=$LD_LIBRARY_PATH:. $(EXEC) ./test > out.txt
+	$(CC) -shared -o libtls.so tls.o tls_def.o
+	$(CC) ex.c -fPIC $(CFLAGS) -ltls -L./ -o ex
+	@LD_LIBRARY_PATH=$LD_LIBRARY_PATH:. $(EXEC) ./ex > out.txt
 clean:
-	rm -f test out.txt
-	rm -fr test.unstripped *.old* *.s dl_files *.gtirb *.o *.so
+	rm -f ex out.txt
+	rm -fr ex.unstripped *.old* *.s dl_files *.gtirb *.o *.so
 check:
-	@LD_LIBRARY_PATH=$LD_LIBRARY_PATH:. $(EXEC) ./test > /tmp/res.txt
+	@LD_LIBRARY_PATH=$LD_LIBRARY_PATH:. $(EXEC) ./ex > /tmp/res.txt
 	@ diff out.txt /tmp/res.txt && echo TEST OK

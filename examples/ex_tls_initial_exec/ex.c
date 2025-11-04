@@ -1,23 +1,9 @@
 #include <stdio.h>
 
-extern __thread int i;
+extern int foo(void);
 
-extern __thread int j;
-
-extern __thread long k;
-
-extern __thread int l;
-
-int foo()
+int main(void)
 {
-    i++;
-    printf("%d\n", i);
-    j++;
-    printf("%d\n", j);
-    k++;
-    printf("%ld\n", k);
-    l++;
-    printf("%d\n", l);
-
-    return i + j + k + l;
+    printf("foo() = %d\n", foo());
+    return 0;
 }

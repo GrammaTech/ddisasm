@@ -1,23 +1,23 @@
 #include <stdio.h>
 
-extern __thread int i;
+extern __thread int initialized1;
 
-extern __thread int j;
+extern __thread int uninitialized1;
 
-extern __thread long k;
+extern __thread long initialized2;
 
-extern __thread int l;
+extern __thread int uninitialized2;
 
 int foo()
 {
-    i++;
-    printf("%d\n", i);
-    j++;
-    printf("%d\n", j);
-    k++;
-    printf("%ld\n", k);
-    l++;
-    printf("%d\n", l);
+    initialized1++;
+    printf("%d\n", initialized1);
+    uninitialized1++;
+    printf("%d\n", uninitialized1);
+    initialized2++;
+    printf("%ld\n", initialized2);
+    uninitialized2++;
+    printf("%d\n", uninitialized2);
 
-    return i + j + k + l;
+    return initialized1 + uninitialized1 + initialized2 + uninitialized2;
 }

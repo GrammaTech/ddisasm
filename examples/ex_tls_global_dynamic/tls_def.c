@@ -1,9 +1,9 @@
 // Initialized thread-local object (.tdata):
-__thread int i = 4;
+__thread int initialized1 = 4;
 
 // Uninitialized thread-local object (.tbss):
-__thread int j;
+__thread int uninitialized1;
 
-__thread long k = 10;
+__thread long initialized2 = 10;
 
-__thread int l;
+__thread int uninitialized2;
