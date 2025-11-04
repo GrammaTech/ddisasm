@@ -631,6 +631,8 @@ symbolic_operand_attribute(EA,Index,"PAGE"):-
         inferred_symbol(Moved_addr,_,_,_,_,"Beg"),
         moved_label(EA,Index,Dest_addr,Moved_addr)
     ),
+    symbolic_operand(EA,_,_,_),
+    symbolic_operand(EA_ofst,_,_,_),
     // 1: Memory operand index of load instruction
     Index = 1.
 
@@ -665,6 +667,7 @@ symbolic_operand_attribute(EA, 1, "HI"):-
         split_load(EA,_,Dest_addr,_);
         split_loadstore(EA,_,Dest_addr)
     ),
+    symbolic_operand(EA,_,_,_),
     match_symbol_dest_addr(Dest_addr).
 
 symbolic_operand_attribute(EA, Index, "LO"):-
@@ -675,12 +678,14 @@ symbolic_operand_attribute(EA, Index, "LO"):-
         split_loadstore(_,EA,Dest_addr),
         Index = 1
     ),
+    symbolic_operand(EA,_,_,_),
     match_symbol_dest_addr(Dest_addr).
 
 // E.g., lw t9, %got(puts)(gp)
 symbolic_operand_attribute(EA,Index,"GOT"):-
     symbolic_operand_mips_candidate(EA,Index,Got_entry),
     got_reference(Got_entry,_),
+    symbolic_operand(EA,_,_,_),
     !mips_page_base_in_got(Got_entry).
 
 // Special handling of _IO_stdin_used

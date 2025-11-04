@@ -327,7 +327,6 @@ tls_relative_operand(EA,Index,Dest,"TPREL"):-
 
 // External TLS object
 tls_relative_operand(EA,Index,0,"TPREL"):-
-//symbolic_operand_attribute(EA,Index,"TPREL"):-
     gp_relative_operand(EA,Index,GotEA),
     relocation(GotEA,"TLS_TPREL32",Sym,_,_,_,"REL"),
     symbol(0,_,"TLS",_,_,_,_,_,Sym).

@@ -308,7 +308,7 @@ void ElfReader::createGPforMIPS(
             }
             else
             {
-                std::cerr << "MIPS_RLD_MAP not found and no GOT section";
+                std::cerr << "MIPS_RLD_MAP not found and no GOT section\n";
             }
         }
         else
@@ -332,7 +332,7 @@ void ElfReader::createGPforMIPS(
     }
     else
     {
-        std::cerr << "Could not create _gp symbol";
+        std::cerr << "Could not create _gp symbol\n";
     }
 }
 
