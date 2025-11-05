@@ -291,19 +291,49 @@ void ElfReader::createGPforMIPS(
     }
     else
     {
-        assert(false); // TODO: MIPS_RLD_MAP_REL? Skip _gp creation?
+        if(Elf->header().file_type() == LIEF::ELF::Header::FILE_TYPE::DYN)
+        {
+            // System V MIPS ELF:
+            // Gp is initialized to point 0x7ff0 bytes after the start of .got
+            // section.
+            const auto *GotSection = Elf->get_section(".got");
+            if(!GotSection)
+            {
+                GotSection = Elf->get_section(".got.plt");
+            }
+            if(GotSection)
+            {
+                uint64_t GotBaseAddr = GotSection->virtual_address();
+                GpAddr = GotBaseAddr + 0x7ff0;
+            }
+            else
+            {
+                std::cerr << "MIPS_RLD_MAP not found and no GOT section\n";
+            }
+        }
+        else
+        {
+            std::cerr << "MIPS_RLD_MAP not found\n";
+        }
     }
 
-    gtirb::Symbol *S = Module->addSymbol(*Context, gtirb::Addr(GpAddr), "_gp");
-    uint64_t Size = 0;
-    std::string Type = LIEF::ELF::to_string(LIEF::ELF::Symbol::TYPE::NOTYPE);
-    std::string Scope = LIEF::ELF::to_string(LIEF::ELF::Symbol::BINDING::LOCAL);
-    std::string Visibility = LIEF::ELF::to_string(LIEF::ELF::Symbol::VISIBILITY::DEFAULT);
-    std::vector<std::tuple<std::string, uint64_t>> Indexes;
-    Indexes.push_back({".symtab", 0});
+    if(GpAddr != 0)
+    {
+        gtirb::Symbol *S = Module->addSymbol(*Context, gtirb::Addr(GpAddr), "_gp");
+        uint64_t Size = 0;
+        std::string Type = LIEF::ELF::to_string(LIEF::ELF::Symbol::TYPE::NOTYPE);
+        std::string Scope = LIEF::ELF::to_string(LIEF::ELF::Symbol::BINDING::LOCAL);
+        std::string Visibility = LIEF::ELF::to_string(LIEF::ELF::Symbol::VISIBILITY::DEFAULT);
+        std::vector<std::tuple<std::string, uint64_t>> Indexes;
+        Indexes.push_back({".symtab", 0});
 
-    SymbolInfo[S->getUUID()] = {Size, Type, Scope, Visibility, SecIndex};
-    SymbolTabIdxInfo[S->getUUID()] = Indexes;
+        SymbolInfo[S->getUUID()] = {Size, Type, Scope, Visibility, SecIndex};
+        SymbolTabIdxInfo[S->getUUID()] = Indexes;
+    }
+    else
+    {
+        std::cerr << "Could not create _gp symbol\n";
+    }
 }
 
 // Extract STRTAB bytes

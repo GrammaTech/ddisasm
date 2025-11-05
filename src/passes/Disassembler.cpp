@@ -525,6 +525,8 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(
         {"PCREL", gtirb::SymAttribute::PCREL},
         {"PLT", gtirb::SymAttribute::PLT},
         {"TPOFF", gtirb::SymAttribute::TPOFF},
+        {"TPREL", gtirb::SymAttribute::TPREL},
+        {"DTPREL", gtirb::SymAttribute::DTPREL},
         {"DTPOFF", gtirb::SymAttribute::DTPOFF},
         {"NTPOFF", gtirb::SymAttribute::NTPOFF},
         {"PAGE", gtirb::SymAttribute::PAGE},
@@ -1157,7 +1159,7 @@ void buildCFG(gtirb::Context &Context, gtirb::Module &Module, souffle::SoufflePr
             {
                 std::cerr
                     << "WARNING: symbol " << Name
-                    << " expected to be undefined, but it is attached to code block at address"
+                    << " expected to be undefined, but it is attached to code block at address "
                     << TgtCodeBlock->getAddress() << std::endl;
                 ExternalBlock = TgtCodeBlock;
             }

@@ -65,13 +65,37 @@ tests:
   - name: ex_2modulesPIC
     <<: *default
 
+  - name: ex_adder
+    <<: *default
+
   - name: ex_confusing_data
     <<: *default
 
   - name: ex_copy_relo
     <<: *default
 
-  - name: ex_memberPointer
+  - name: ex_data_limit
+    <<: *default
+    binary: ex
+    reassemble:
+      compiler: "mips-linux-gnu-gcc"
+      # 0x500000 is to make the addresses of .text and .data changed from the
+      # original.
+      flags: ["fun.so", "-Wl,-Ttext=0x500000"]
+
+  - name: ex_dyn_library
+    <<: *default
+    binary: fun.so
+
+  # Capstone v5 does not support:
+  #   cd4:       460c0137        c.ule.s $fcc1,$f0,$f12
+  #   This affects tests other than -O0.
+  #   TODO: Enable other optimization levels with capstone v6.
+  - name: ex_dyn_library2
+    <<: *zero-optimize
+    binary: fun.so
+
+  - name: ex_emit_relocs
     <<: *default
 
   - name: ex_false_pointer_array
@@ -86,8 +110,16 @@ tests:
   - name: ex_getoptlong
     <<: *default
 
+  - name: ex_imported_tls_syms
+    <<: *default
+    reassemble:
+      compiler: "mips-linux-gnu-g++"
+
   - name: ex_init_array
-    <<: *zero-optimize
+    <<: *default
+
+  - name: ex_memberPointer
+    <<: *default
 
   - name: ex_noreturn
     <<: *default
@@ -98,10 +130,11 @@ tests:
   - name: ex_pointerReattribution2
     <<: *default
 
-  # Currently, ddisasm fails to find symbolic operands in split-load
-  # in the optimized binaries built in ubuntu16 and ubuntu18.
   - name: ex_pointerReattribution3
-    <<: *zero-optimize
+    <<: *default
+
+  - name: ex_stat
+    <<: *default
 
   - name: ex_struct
     <<: *default
@@ -109,10 +142,32 @@ tests:
   - name: ex_switch
     <<: *default
 
-  - name: ex_uninitialized_data
+  - name: ex_symbol_selection
+    <<: *default
+    binary: fun.so
+
+  - name: ex_synchronous_access
     <<: *default
 
-  - name: ex_stat
+  - name: ex_thread_local
+    <<: *default
+
+  - name: ex_tls_global_dynamic
+    <<: *default
+    binary: libtls.so
+
+  - name: ex_tls_initial_exec
+    <<: *default
+    binary: libtls.so
+
+  - name: ex_tls_local_dynamic
+    <<: *default
+    binary: libtls.so
+
+  - name: ex_tls_local_exec
+    <<: *default
+
+  - name: ex_uninitialized_data
     <<: *default
 
   - name: ex_virtualDispatch
@@ -131,6 +186,10 @@ tests:
     <<: *default
     <<: *test-strip-default
 
+  - name: ex_adder
+    <<: *default
+    <<: *test-strip-default
+
   - name: ex_confusing_data
     <<: *default
     <<: *test-strip-default
@@ -139,7 +198,31 @@ tests:
     <<: *default
     <<: *test-strip-default
 
-  - name: ex_memberPointer
+  - name: ex_data_limit
+    <<: *default
+    <<: *test-strip-default
+    binary: ex
+    reassemble:
+      compiler: "mips-linux-gnu-gcc"
+      # 0x500000 is to make the addresses of .text and .data changed from the
+      # original.
+      flags: ["fun.so", "-Wl,-Ttext=0x500000"]
+
+  - name: ex_dyn_library
+    <<: *default
+    <<: *test-strip-default
+    binary: fun.so
+
+  # Capstone v5 does not support:
+  #   cd4:       460c0137        c.ule.s $fcc1,$f0,$f12
+  #   This affects tests other than -O0.
+  #   TODO: Enable other optimization levels with capstone v6.
+  - name: ex_dyn_library2
+    <<: *zero-optimize
+    <<: *test-strip-default
+    binary: fun.so
+
+  - name: ex_emit_relocs
     <<: *default
     <<: *test-strip-default
 
@@ -159,6 +242,20 @@ tests:
     <<: *default
     <<: *test-strip-default
 
+  - name: ex_imported_tls_syms
+    <<: *default
+    <<: *test-strip-default
+    reassemble:
+      compiler: "mips-linux-gnu-g++"
+
+  - name: ex_init_array
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_memberPointer
+    <<: *default
+    <<: *test-strip-default
+
   - name: ex_noreturn
     <<: *default
     <<: *test-strip-default
@@ -171,10 +268,12 @@ tests:
     <<: *default
     <<: *test-strip-default
 
-  # Currently, ddisasm fails to find symbolic operands in split-load
-  # in the optimized binaries built in ubuntu16 and ubuntu18.
   - name: ex_pointerReattribution3
-    <<: *zero-optimize
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_stat
+    <<: *default
     <<: *test-strip-default
 
   - name: ex_struct
@@ -185,11 +284,39 @@ tests:
     <<: *default
     <<: *test-strip-default
 
-  - name: ex_uninitialized_data
+  - name: ex_symbol_selection
+    <<: *default
+    <<: *test-strip-default
+    binary: fun.so
+
+  - name: ex_synchronous_access
     <<: *default
     <<: *test-strip-default
 
-  - name: ex_stat
+  - name: ex_thread_local
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_tls_global_dynamic
+    <<: *default
+    <<: *test-strip-default
+    binary: libtls.so
+
+  - name: ex_tls_initial_exec
+    <<: *default
+    <<: *test-strip-default
+    binary: libtls.so
+
+  - name: ex_tls_local_dynamic
+    <<: *default
+    <<: *test-strip-default
+    binary: libtls.so
+
+  - name: ex_tls_local_exec
+    <<: *default
+    <<: *test-strip-default
+
+  - name: ex_uninitialized_data
     <<: *default
     <<: *test-strip-default
 
@@ -208,6 +335,10 @@ tests:
     <<: *default
     <<: *test-sstrip-default
 
+  - name: ex_adder
+    <<: *default
+    <<: *test-sstrip-default
+
   - name: ex_confusing_data
     <<: *default
     <<: *test-sstrip-default
@@ -216,7 +347,34 @@ tests:
     <<: *default
     <<: *test-sstrip-default
 
-  - name: ex_memberPointer
+  - name: ex_data_limit
+    <<: *default
+    <<: *test-sstrip-default
+    binary: ex
+    reassemble:
+      compiler: "mips-linux-gnu-gcc"
+      # 0x500000 is to make the addresses of .text and .data changed from the
+      # original.
+      flags: ["fun.so", "-Wl,-Ttext=0x500000"]
+
+  # Failed with -Os
+  #- name: ex_dyn_library
+  #  <<: *default
+  #  <<: *test-sstrip-default
+  #  binary: fun.so
+
+  # Problem1:
+  #   Capstone v5 does not support:
+  #     cd4:       460c0137        c.ule.s $fcc1,$f0,$f12
+  #     This affects tests other than -O0.
+  # Problem2:
+  #     ERROR: version node not found for symbol sqrtl@GLIBC_2.0
+  #- name: ex_dyn_library2
+  #  <<: *default
+  #  <<: *test-sstrip-default
+  #  binary: fun.so
+
+  - name: ex_emit_relocs
     <<: *default
     <<: *test-sstrip-default
 
@@ -236,6 +394,20 @@ tests:
     <<: *default
     <<: *test-sstrip-default
 
+  #- name: ex_imported_tls_syms
+  #  <<: *default
+  #  <<: *test-sstrip-default
+  #  reassemble:
+  #    compiler: "mips-linux-gnu-g++"
+
+  #- name: ex_init_array
+  #  <<: *default
+  #  <<: *test-sstrip-default
+
+  - name: ex_memberPointer
+    <<: *default
+    <<: *test-sstrip-default
+
   - name: ex_noreturn
     <<: *default
     <<: *test-sstrip-default
@@ -248,10 +420,12 @@ tests:
     <<: *default
     <<: *test-sstrip-default
 
-  # Currently, ddisasm fails to find symbolic operands in split-load
-  # in the optimized binaries built in ubuntu16 and ubuntu18.
   - name: ex_pointerReattribution3
-    <<: *zero-optimize
+    <<: *default
+    <<: *test-sstrip-default
+
+  - name: ex_stat
+    <<: *default
     <<: *test-sstrip-default
 
   - name: ex_struct
@@ -262,11 +436,41 @@ tests:
     <<: *default
     <<: *test-sstrip-default
 
-  - name: ex_uninitialized_data
+  # Problem2:
+  #   ERROR: version node not found for symbol printf@GLIBC_2.0
+  #- name: ex_symbol_selection
+  #  <<: *default
+  #  <<: *test-sstrip-default
+  #  binary: fun.so
+
+  - name: ex_synchronous_access
     <<: *default
     <<: *test-sstrip-default
 
-  - name: ex_stat
+  #- name: ex_thread_local
+  #  <<: *default
+  #  <<: *test-sstrip-default
+
+  #- name: ex_tls_global_dynamic
+  #  <<: *default
+  #  <<: *test-sstrip-default
+  #  binary: libtls.so
+
+  #- name: ex_tls_local_dynamic
+  #  <<: *default
+  #  <<: *test-sstrip-default
+  #  binary: libtls.so
+
+  #- name: ex_tls_initial_exec
+  #  <<: *default
+  #  <<: *test-sstrip-default
+  #  binary: libtls.so
+
+  #- name: ex_tls_local_exec
+  #  <<: *default
+  #  <<: *test-sstrip-default
+
+  - name: ex_uninitialized_data
     <<: *default
     <<: *test-sstrip-default
 
@@ -274,5 +478,12 @@ tests:
     <<: *default
     <<: *test-sstrip-default
 
+  # ----------------------------------------------------------------------------
+  # Assembly examples.
+  # ----------------------------------------------------------------------------
+
   - name: ex_got_ofst
+    <<: *assembly
+
+  - name: ex_nop_block
     <<: *assembly

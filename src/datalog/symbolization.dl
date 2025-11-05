@@ -469,7 +469,17 @@ address_in_data_refined(EA,Val):-
     block(Val).
 
 address_in_data_refined(EA,Val):-
-    binary_type("EXEC"),
+    (
+        // Even in DYN case,
+        // unlike x86, etc., MIPS does not use a traditional PLT.
+        // All dynamic function calls are made through the GOT.
+        // For symbols defined within the same DSO, GOT entries are fully
+        // resolved at link time, while external symbols retain relocations
+        // for runtime binding.
+        binary_isa("MIPS")
+        ;
+        binary_type("EXEC")
+    ),
     address_in_data(EA,Val),
     data_segment(Beg,End),
     Val >= Beg,
@@ -480,7 +490,17 @@ address_in_data_refined(EA,Val):-
     EA + PtSize <= End0.
 
 address_in_data_refined(EA,Val):-
-    binary_type("EXEC"),
+    (
+        // Even in DYN case,
+        // unlike x86, etc., MIPS does not use a traditional PLT.
+        // All dynamic function calls are made through the GOT.
+        // For symbols defined within the same DSO, GOT entries are fully
+        // resolved at link time, while external symbols retain relocations
+        // for runtime binding.
+        binary_isa("MIPS")
+        ;
+        binary_type("EXEC")
+    ),
     address_in_data(EA,Val),
     block(Val),
     data_segment(Beg0,End0),
@@ -804,6 +824,11 @@ data_object_point(EA,Pt_size,"symbol",10,"has relocation"):-
 
 data_object_point(EA,Pt_size,"symbol",-10,"has no relocation"):-
     !binary_type("EXEC"),
+    // On MIPS, not every GOT entry is associated with a relocation.
+    // All dynamic function calls are performed through the GOT.
+    // For symbols defined within the same DSO, the GOT entries are
+    // resolved at link time.
+    !binary_isa("MIPS"),
     data_object_candidate(EA,Pt_size,"symbol"),
     !relocation(EA,_,_,_,_,_,_).
 

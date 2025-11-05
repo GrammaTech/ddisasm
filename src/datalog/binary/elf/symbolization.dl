@@ -100,7 +100,7 @@ got_reference(Got_entry,Symbol):-
     Got_entry >= Beg,
     Got_entry < End,
     arch.pointer_size(Ptr),
-    symbolic_expr(Got_entry,Ptr,Symbol,_).
+    symbolic_expr(Got_entry,Ptr,Symbol,0).
 
 /**
 Operand instruction at 'EA' at index 'Index' is a GOT-relative reference to an

@@ -1,16 +1,14 @@
 #include <stdio.h>
 
-// Initialized thread-local object (.tdata):
-__thread int initialized1 = 4;
+extern __thread int initialized1;
 
-// Uninitialized thread-local object (.tbss):
-__thread int uninitialized1;
+extern __thread int uninitialized1;
 
-__thread long initialized2 = 10;
+extern __thread long initialized2;
 
-__thread int uninitialized2;
+extern __thread int uninitialized2;
 
-int main()
+int foo()
 {
     initialized1++;
     printf("%d\n", initialized1);
@@ -20,4 +18,6 @@ int main()
     printf("%ld\n", initialized2);
     uninitialized2++;
     printf("%d\n", uninitialized2);
+
+    return initialized1 + uninitialized1 + initialized2 + uninitialized2;
 }
