@@ -787,7 +787,6 @@ symbolic_operand_candidate(EA_lo,2,Dest_addr,Type):-
 
     reg_def_use.def_used(EA_lo,Reg,EA_condb,_),
     compare_and_jump_register(EA_condb,EA_condb,_,Reg,Reg2),
-    reg_def_use.def_used(EA2_lo,Reg2,EA_condb,_),
     reg_def_use.def_used(EA_arith,Reg2,EA_condb,_),
     arch.reg_arithmetic_operation(EA_arith,Reg2,Reg3,1,N),
     reg_def_use.def_used(EA2_lo,Reg3,EA_arith,_),
