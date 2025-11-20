@@ -545,7 +545,7 @@ build-static:
     - git clone https://git.grammatech.com/rewriting/gtirb.git -b $GTIRB_BRANCH
     - mkdir gtirb/build
     - cd gtirb/build
-    - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_BUILD_SHARED_LIBS=OFF
+    - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_BUILD_SHARED_LIBS=OFF -DGTIRB_ENABLE_TESTS=OFF
     - make
     - cd python; python3 -m pip install .; cd ..
     - cd ../..
@@ -631,7 +631,7 @@ static-drivers:
     - git clone https://git.grammatech.com/rewriting/gtirb.git -b $GTIRB_BRANCH
     - cd gtirb
     - mkdir build && cd build
-    - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Debug -DGTIRB_BUILD_SHARED_LIBS=OFF
+    - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Debug -DGTIRB_BUILD_SHARED_LIBS=OFF -DGTIRB_ENABLE_TESTS=OFF
     - make
     - cd python; python3 -m pip install .; cd ..
     - cd ../..
