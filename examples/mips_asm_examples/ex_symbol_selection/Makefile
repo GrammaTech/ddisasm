@@ -1,8 +1,7 @@
-CC=mips-linux-gnu-gcc
-
+.PHONY: clean check
 all: ex.c fun.so.stripped.s
-	$(CC) -o fun.so fun.so.stripped.s -Wl,--no-as-needed -l:libc.so.6 --shared
-	$(CC) ex.c -O0 fun.so -o ex
+	mips-linux-gnu-gcc -o fun.so fun.so.stripped.s -Wl,--no-as-needed -l:libc.so.6 --shared
+	mips-linux-gnu-gcc ex.c -O0 fun.so -o ex
 	@LD_LIBRARY_PATH=$LD_LIBRARY_PATH:. qemu-mips -L /usr/mips-linux-gnu ./ex > out.txt
 clean:
 	rm -f ex fun.so out.txt
