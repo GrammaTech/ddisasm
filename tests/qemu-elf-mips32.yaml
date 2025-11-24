@@ -487,3 +487,10 @@ tests:
 
   - name: ex_nop_block
     <<: *assembly
+
+  - name: ex_pointerReattribution3
+    <<: *assembly
+
+  - name: ex_symbol_selection
+    <<: *assembly
+    binary: fun.so

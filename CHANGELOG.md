@@ -1,5 +1,9 @@
 # 1.9.3 (Unreleased)
 
+* Enhance MIPS32 support:
+    - Fix several issues that could result in missing symbolic expressions
+    - Improve resolution of TLS-related symbolic expression
+
 # 1.9.2
 
 * Fix bug that could cause conditionial code to be missing in IT-block instructions.
