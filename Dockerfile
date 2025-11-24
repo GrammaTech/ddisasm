@@ -105,7 +105,7 @@ RUN apt-get -y update \
 ARG GTIRB_BRANCH=master
 ARG GTIRB_CACHE_KEY
 RUN git clone --depth=1 -b $GTIRB_BRANCH https://github.com/GrammaTech/gtirb /usr/local/src/gtirb
-RUN cmake -DGTIRB_JAVA_API=OFF -DGTIRB_CL_API=OFF /usr/local/src/gtirb -B/usr/local/src/gtirb/build
+RUN cmake -DGTIRB_JAVA_API=OFF -DGTIRB_CL_API=OFF -DGTIRB_ENABLE_TESTS=OFF /usr/local/src/gtirb -B/usr/local/src/gtirb/build
 RUN cmake --build /usr/local/src/gtirb/build -j4 --target all install
 
 # ------------------------------------------------------------------------------
