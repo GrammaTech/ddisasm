@@ -451,6 +451,17 @@ address_in_data_is_printable(EA):-
     address_in_data(EA,_),
     EAString <= EA, EA <= End - Pt_size.
 
+/**
+The address appearing at 'EA' overlaps with a potential
+`ascii_string` and therefore more likely to be spurious.
+*/
+.decl address_in_data_overlaps_string(EA:address, EAString:address)
+
+address_in_data_overlaps_string(EA, EAString):-
+    ascii_string(EAString,End),
+    address_in_data(EA,_),
+    EAString <= EA, EA < End.
+
 // address_in_data considers anything that points to the code region
 // this refinement restricts that to the beginning of the final blocks
 .decl address_in_data_refined(EA:address,Val:address)
@@ -543,6 +554,23 @@ string_candidate(EA,End,"ascii"):-
     data_segment(DataBeg,DataEnd),
     EA >= DataBeg,
     End <= DataEnd.
+
+/**
+String at EA is followed by another string at Next.
+*/
+.decl subsequent_string_candidate(EA:address,Next:address)
+
+subsequent_string_candidate(EA,Next):-
+    string_candidate(EA,End,_),
+    string_candidate(Next,_,_),
+    End <= Next,
+    (
+        End = Next
+        ;
+        0 = count : {string_candidate(Begin,_,_), Begin >= End, Begin < Next},
+        Next - End < 8,
+        padding_block_limit(Next)
+    ).
 
 /**
 String candidate refinement projects candidate string references onto a compound
@@ -798,6 +826,29 @@ data_object_point(EA,Pt_size,"symbol",2,"aligned"):-
     data_object_candidate(EA,Pt_size,"symbol"),
     EA % Pt_size = 0.
 
+data_object_point(EA,Pt_size,"symbol",-2,"potentially bitmask"):-
+    data_object_candidate(EA,Pt_size,"symbol"),
+    EA % Pt_size = 0,
+    address_in_data_refined(EA,Dest),
+    !defined_symbol(Dest,_,_,_,_,_,_,_,_),
+    0 = (Dest band 0xFFFFF).
+
+data_object_point(EA,Pt_size,"symbol",-2,"printerable address: likely spurious"):-
+    data_object_candidate(EA,Pt_size,"symbol"),
+    EA % Pt_size = 0,
+    address_in_data_is_printable(EA),
+    address_in_data_refined(EA,Dest),
+    !defined_symbol(Dest,_,_,_,_,_,_,_,_).
+
+data_object_point(EA,Pt_size,"symbol",-1,"overlaps string: likely spurious"):-
+    data_object_candidate(EA,Pt_size,"symbol"),
+    EA % Pt_size = 0,
+    address_in_data_overlaps_string(EA,EAString),
+    ascii_string(EAString,End),
+    End - EAString > 4,
+    address_in_data_refined(EA,Dest),
+    !defined_symbol(Dest,_,_,_,_,_,_,_,_).
+
 data_object_point(EA,Pt_size,"symbol",4,"point-to-boundary-sym"):-
     data_object_candidate(EA,Pt_size,"symbol"),
     address_in_data_refined(EA,Dest),
@@ -851,6 +902,14 @@ data_object_point(EA,Size,"string",1,"string that has reference"):-
     may_have_symbolic_immediate(Code,EA),
     code(Code),
     data_limit(EA).
+
+data_object_point(EA,Size,"string",1,"string has string neighbor"):-
+    data_object_candidate(EA,Size,"string"),
+    address_in_data_overlaps_string(EA,EAString),
+    (
+        subsequent_string_candidate(EAString,_);
+        subsequent_string_candidate(_,EAString)
+    ).
 
 // data access negative heuristic
 data_object_point(EA,Size,"other",4,"data access"):-

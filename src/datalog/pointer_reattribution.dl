@@ -89,6 +89,7 @@ point to an 'at-end' symbol.
 
 ////////////////////////////////////////////////////////////////////////////////////
 
+moved_label_class(EA,0,"overlapping label"),
 moved_data_label(EA,Size,Dest,NewDest):-
     symbolic_data(EA,Size,Dest),
     arch.pointer_size(Pt_size),
@@ -97,6 +98,7 @@ moved_data_label(EA,Size,Dest,NewDest):-
 
 //if something points to the middle of a known symbol we express it as symbol+constant
 //as long as it is not code
+moved_label_class(EA,0,"middle of symbol"),
 moved_data_label(EA,SizePointer,Dest,Address):-
     symbolic_data(EA,SizePointer,Dest),
     !code(Dest),
@@ -106,6 +108,7 @@ moved_data_label(EA,SizePointer,Dest,Address):-
     Dest < Address+Size.
 
 // create a symbol+constant for overlapping instructions
+moved_label_class(EA,0,"overlapping instruction"),
 moved_data_label(EA,SizePointer,Dest,Address):-
     symbolic_data(EA,SizePointer,Dest),
     overlapping_instruction(Dest,Address).

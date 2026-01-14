@@ -1,7 +1,7 @@
-.decl false_negative(EA:address)
-.decl false_positive(EA:address)
-.output false_negative
-.output false_positive
+.decl false_negative_symexpr(EA:address, Location:address, Type:symbol)
+.decl false_positive_symexpr(EA:address, Location:address, Type:symbol)
+.output false_negative_symexpr
+.output false_positive_symexpr
 .decl relocation_in_operand(EA:address,Index:operand_index,Rel:address,InsnOffset:unsigned)
 
 
@@ -84,7 +84,7 @@ bad_symbol_constant(EA,Cnt):-
     Orig_minus_cnt2 != End.
 
 
-false_negative(Location):-
+false_negative_symexpr(EA,Location,"code"):-
     relocation_in_operand(EA,Index,Rel,_),
     !trivial_relocation(Rel),
     !symbolic_operand(EA,Index,_,_),
@@ -95,7 +95,7 @@ false_negative(Location):-
     ),
     Location = EA+Offset.
 
-false_positive(Location):-
+false_positive_symexpr(EA,Location,"code"):-
     code(EA),
     (
         symbolic_operand(EA,Index,_,_);
@@ -117,7 +117,7 @@ zero_relocation(EA):-
     relocation(EA,_,_,_,_,_,_),
     data_word(EA,8,0).
 
-false_negative(EA):-
+false_negative_symexpr(EA,EA,"data"):-
     data_byte(EA,_),
     relocation(EA,_,_,_,_,_,_),
     !zero_relocation(EA),
@@ -128,7 +128,7 @@ false_negative(EA):-
     EA >= BegSect,
     EA < EndSect.
 
-false_positive(EA):-
+false_positive_symexpr(EA,EA,"data"):-
     (
         symbolic_data(EA,_,_);
         // it looks like jump tables where each entry 4 or less bytes do not have
@@ -141,3 +141,35 @@ false_positive(EA):-
     loaded_section(BegSect,EndSect,Sect),
     EA >= BegSect,
     EA < EndSect.
+
+.decl abs_val(Input:number,Output:number) inline
+
+abs_val(X,X):-
+    X >= 0.
+
+abs_val(X,Y):-
+    X < 0,
+    Y = 0 - X.
+
+/**
+Moved labels with too large offset, which are likely false positives.
+*/
+.decl moved_label_with_large_offset(EA:address,Offset:number,Reason:symbol)
+.output moved_label_with_large_offset
+.decl moved_data_label_with_large_offset(EA:address,Offset:number,Reason:symbol)
+.output moved_data_label_with_large_offset
+
+moved_label_with_large_offset(EA,Offset,Reason):-
+    moved_label(EA,Index,Dest,NewDest),
+    !pc_relative_operand(EA,Index,Dest),
+    Offset = as(Dest - NewDest,number),
+    abs_val(Offset,AbsOffset),
+    AbsOffset > 64,
+    moved_label_class(EA,Index,Reason).
+
+moved_data_label_with_large_offset(EA,Offset,Reason):-
+    moved_data_label(EA,_,Dest,NewDest),
+    Offset = as(Dest - NewDest,number),
+    abs_val(Offset,AbsOffset),
+    AbsOffset > 64,
+    moved_label_class(EA,_,Reason).
