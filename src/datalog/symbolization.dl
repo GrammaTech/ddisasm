@@ -910,13 +910,11 @@ data_object_point(EA,Size,"string",1,"string that has reference"):-
     code(Code),
     data_limit(EA).
 
-data_object_point(EA,Size,"string",1,"string has string neighbor"):-
+data_object_point(EA,Size,"string",1,"string has string neighbors"):-
     data_object_candidate(EA,Size,"string"),
     address_in_data_overlaps_string(EA,EAString),
-    (
-        subsequent_string_candidate(EAString,_);
-        subsequent_string_candidate(_,EAString)
-    ).
+    subsequent_string_candidate(EAString,_),
+    subsequent_string_candidate(_,EAString).
 
 // data access negative heuristic
 data_object_point(EA,Size,"other",4,"data access"):-
