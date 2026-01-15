@@ -303,6 +303,13 @@ symbolic_operand_point(EA,Imm_index,-1,"immediate is bitmask"):-
     instruction_get_operation(EA,Operation),
     arch.logic_operation(Operation).
 
+symbolic_operand_point(EA,Imm_index,-1,"immediate may be bitmask"):-
+    symbolic_operand_candidate(EA,Imm_index,_,_),
+    instruction_get_op(EA,Imm_index,Op),
+    op_immediate(Op,Imm,_),
+    !defined_symbol(as(Imm,address),_,_,_,_,_,_,_,_),
+    0 = (Imm band 0xFFFFF).
+
 symbolic_operand_point(EA,Imm_index,-2,"point to exception section"):-
     symbolic_operand_candidate(EA,Imm_index,Dest,_),
     exception_section(Name),

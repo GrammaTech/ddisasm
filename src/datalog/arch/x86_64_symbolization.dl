@@ -60,12 +60,3 @@ symbolic_operand_candidate(EA,Index,Dest,Type):-
     Dest = as(Imm,address),
     code(Dest),
     Type="code".
-
-// 32-bit immediate is unlikely to be an address.
-symbolic_operand_point(EA,Imm_index,-1,"32-bit address"):-
-    symbolic_operand_candidate(EA,Imm_index,_,_),
-    instruction_get_op(EA,Imm_index,ImmOp),
-    op_immediate(ImmOp,Imm,Size),
-    !defined_symbol(as(Imm,address),_,_,_,_,_,_,_,_),
-    arch.pointer_size(Pt_size),
-    Size != Pt_size.
