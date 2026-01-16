@@ -1,9 +1,30 @@
-.decl false_negative_symexpr(EA:address, Location:address, Type:symbol)
-.decl false_positive_symexpr(EA:address, Location:address, Type:symbol)
-.output false_negative_symexpr
-.output false_positive_symexpr
-.decl relocation_in_operand(EA:address,Index:operand_index,Rel:address,InsnOffset:unsigned)
+//===- self_diagnose.dl ------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019-2026 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===---------------------------------------------------------------------===//
 
+// Predicates for self diagnosis
+
+
+.decl relocation_in_operand(EA:address,Index:operand_index,Rel:address,InsnOffset:unsigned)
 
 relocation_in_operand(EA,Index,Location,Offset):-
     code(EA),
@@ -84,6 +105,19 @@ bad_symbol_constant(EA,Cnt):-
     Orig_minus_cnt2 != End.
 
 
+/**
+Potentially false-positive / false-negative symbolic operand or data
+
+EA: The address of instruction or data object containing FP/FN symbolic expression
+Location: The exact address of FP/FN symbolic expression within instruction or data
+Type: code or data
+*/
+.decl false_negative_symexpr(EA:address, Location:address, Type:symbol)
+.output false_negative_symexpr
+
+.decl false_positive_symexpr(EA:address, Location:address, Type:symbol)
+.output false_positive_symexpr
+
 false_negative_symexpr(EA,Location,"code"):-
     relocation_in_operand(EA,Index,Rel,_),
     !trivial_relocation(Rel),
@@ -111,12 +145,6 @@ false_positive_symexpr(EA,Location,"code"):-
     ),
     Location=EA+Offset.
 
-.decl zero_relocation(EA:address)
-
-zero_relocation(EA):-
-    relocation(EA,_,_,_,_,_,_),
-    data_word(EA,8,0).
-
 false_negative_symexpr(EA,EA,"data"):-
     data_byte(EA,_),
     relocation(EA,_,_,_,_,_,_),
@@ -142,20 +170,32 @@ false_positive_symexpr(EA,EA,"data"):-
     EA >= BegSect,
     EA < EndSect.
 
-.decl abs_val(Input:number,Output:number) inline
 
-abs_val(X,X):-
-    X >= 0.
+.decl zero_relocation(EA:address)
 
-abs_val(X,Y):-
-    X < 0,
-    Y = 0 - X.
+zero_relocation(EA):-
+    relocation(EA,_,_,_,_,_,_),
+    data_word(EA,8,0).
+
 
 /**
-Moved labels with too large offset, which are likely false positives.
+Output is the absolute value of Input.
+*/
+.decl abs_val(Input:number,Output:number) inline
+
+abs_val(X,X):- X >= 0.
+abs_val(X,Y):- X < 0, Y = 0 - X.
+
+
+/**
+Moved labels with large offset (> 64), which are likely false positives.
+
+moved_label_with_large_offset: symbolic operand in instruction
+moved_data_label_with_large_offset: symbolic expression in data
 */
 .decl moved_label_with_large_offset(EA:address,Offset:number,Reason:symbol)
 .output moved_label_with_large_offset
+
 .decl moved_data_label_with_large_offset(EA:address,Offset:number,Reason:symbol)
 .output moved_data_label_with_large_offset
 
