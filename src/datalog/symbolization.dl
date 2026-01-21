@@ -917,8 +917,8 @@ data_object_point(EA,Size,"string",1,"string that has reference"):-
 
 data_object_point(EA,Size,"string",1,"string has string neighbors"):-
     data_object_candidate(EA,Size,"string"),
-    subsequent_string_candidate(EAString,_),
-    subsequent_string_candidate(_,EAString).
+    subsequent_string_candidate(EA,_),
+    subsequent_string_candidate(_,EA).
 
 // data access negative heuristic
 data_object_point(EA,Size,"other",4,"data access"):-
