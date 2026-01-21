@@ -308,6 +308,7 @@ symbolic_operand_point(EA,Imm_index,-1,"immediate may be bitmask"):-
     instruction_get_op(EA,Imm_index,Op),
     op_immediate(Op,Imm,_),
     !defined_symbol(as(Imm,address),_,_,_,_,_,_,_,_),
+    !loaded_section(as(Imm,address),_,_),
     0 = (Imm band 0xFFFFF).
 
 symbolic_operand_point(EA,Imm_index,-2,"point to exception section"):-
@@ -467,7 +468,11 @@ The address appearing at 'EA' overlaps with a potential
 address_in_data_overlaps_string(EA, EAString):-
     ascii_string(EAString,End),
     address_in_data(EA,_),
-    EAString <= EA, EA < End.
+    (
+        EAString <= EA, EA < End;
+        arch.pointer_size(Pt_size),
+        EAString < EA+Pt_size, EA+Pt_size <= End
+    ).
 
 // address_in_data considers anything that points to the code region
 // this refinement restricts that to the beginning of the final blocks
@@ -912,7 +917,6 @@ data_object_point(EA,Size,"string",1,"string that has reference"):-
 
 data_object_point(EA,Size,"string",1,"string has string neighbors"):-
     data_object_candidate(EA,Size,"string"),
-    address_in_data_overlaps_string(EA,EAString),
     subsequent_string_candidate(EAString,_),
     subsequent_string_candidate(_,EAString).
 

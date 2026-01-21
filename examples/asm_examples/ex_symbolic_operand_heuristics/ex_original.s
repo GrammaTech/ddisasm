@@ -26,7 +26,10 @@ rip_lea_misleading_call_rdx:
 # We use "message" in the original to ensure it looks like an address
 
 mov_immediate:
-    mov rdi, OFFSET message+974064 # 0x712300 + 0x10 + 974064 = 0x800000
+    # 0x712300 + 0x10 + 974064 = 0x800000
+    # NOTE: 0x10 accounts for two extra 8-byte variables inserted at the
+    #       beginning of the .data section by the linker.
+    mov rdi, OFFSET message+974064
     call aux_fun_print_imm
     imul rdi, 3
 print_peer:
