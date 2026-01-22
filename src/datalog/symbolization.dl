@@ -303,6 +303,15 @@ symbolic_operand_point(EA,Imm_index,-1,"immediate is bitmask"):-
     instruction_get_operation(EA,Operation),
     arch.logic_operation(Operation).
 
+// Heuristic: treat values with >=20 trailing zero bits (0xFFFFF) as bitmasks.
+//
+// This threshold is empirical, not architectural. It was chosen to avoid
+// misclassifying large immediates observed in bgpd (e.g., 0x800000)
+// as addresses, while remaining more conservative than a 16-bit cutoff.
+// Using 24 trailing zeros would miss this case; using 16 would increase
+// false positives. If new binaries show misclassification in either direction,
+// this threshold should be revisited.
+//
 symbolic_operand_point(EA,Imm_index,-1,"immediate may be bitmask"):-
     symbolic_operand_candidate(EA,Imm_index,_,_),
     instruction_get_op(EA,Imm_index,Op),
