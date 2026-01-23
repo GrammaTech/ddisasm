@@ -3,6 +3,7 @@
 * Enhance MIPS32 support:
     - Fix several issues that could result in missing symbolic expressions
     - Improve resolution of TLS-related symbolic expression
+* Fix bug that could lead to functional errors due to false-positive symbolic operands or data.
 
 # 1.9.2
 
