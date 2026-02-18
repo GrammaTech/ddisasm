@@ -78,6 +78,17 @@ bool Arm64Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction)
             uint64_t OpIndex = Facts.Operands.add(*Op);
             OpCodes.push_back(OpIndex);
 
+            // Populate shift metadata for immediate operands (e.g., MOVZ/MOVK
+            // with lsl #16/#32/#48). This is needed for MOVZ+MOVK address
+            // reconstruction in the Datalog symbolization rules.
+            if(CsOp.type == ARM64_OP_IMM && CsOp.shift.type == ARM64_SFT_LSL
+               && CsOp.shift.value != 0)
+            {
+                Facts.Instructions.shiftedOp(
+                    relations::ShiftedOp{Addr, rotated_op_index(i + 1, OpCount),
+                                         static_cast<uint8_t>(CsOp.shift.value), "LSL"});
+            }
+
             // Populate shift metadata if present.
             if(CsOp.type == ARM64_OP_REG && CsOp.shift.value != 0)
             {

@@ -538,6 +538,8 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(
         // ARM
         {"G0", gtirb::SymAttribute::G0},
         {"G1", gtirb::SymAttribute::G1},
+        {"G2", gtirb::SymAttribute::G2},
+        {"G3", gtirb::SymAttribute::G3},
         {"LO12", gtirb::SymAttribute::LO12},
         // MIPS
         {"HI", gtirb::SymAttribute::HI},
