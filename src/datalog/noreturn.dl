@@ -90,7 +90,7 @@ segment_target_range(Beg,End,MaxTgt):-
         // propagate if it is a jump to a no-return proc.
         direct_or_pcrel_jump(BlockEnd,InterTarget),
         inter_procedural_edge(BlockEnd,_),
-        no_return_block(InterTarget),
+        no_return_block(InterTarget,_),
         MaxTgt = PrevMaxTgt
     ),
     MaxTgt >= Beg.
@@ -112,30 +112,35 @@ that are not known to be no-return.
 The only situation where it would generate false-positive noreturns is if a
 "known noreturn" library function does, in fact, return.
 */
-.decl no_return_block(EA:address)
+.decl no_return_block(EA:address,Reason:symbol)
 
 // If we have a self-contained segment and the
 // last block does not fallthrough, all the blocks
 // in the segment cannot return
 // If the fallthrough in the last block turns
 // out to be a no-return call, the same applies
-no_return_block(Block):-
+no_return_block(Block,"no-fallthrough"):-
     self_contained_segment(Beg,End),
     block_boundaries(LastBlock,_,End),
     block_last_instruction(LastBlock,BlockEnd),
     (
         !may_fallthrough(BlockEnd,_);
-        no_return_call_propagated(BlockEnd)
+        no_return_call_propagated(BlockEnd,_)
     ),
     block_boundaries(Block,Beg,EndBlock),
-    EndBlock <= End.
+    EndBlock <= End,
+    !plt_block(Block,_).
 
-// A function is called, and the call falls through interprocedurally.
-// The function is likely noreturn.
-// The edge after this call site should already be eliminated because it's
-// interprocedural, but this rule ensures other calls to the same function
-// don't introduce problematic edges.
-no_return_block(Func):-
+
+/**
+A function `Func` is called at `Call`, and the call falls through
+interprocedurally.
+There may be NOP paddings after the function call.
+*/
+.decl call_may_fallthrough_inter(Call:address,Func:address,From:address)
+.output call_may_fallthrough_inter
+
+call_may_fallthrough_inter(Call,Func,From):-
     direct_call(Call,Func),
     may_fallthrough(Call,Fallthrough),
     (
@@ -164,19 +169,57 @@ no_return_call_refined(EA):-
     no_return_function(Pattern),
     match(Pattern,Function).
 
-no_return_block(Block):-
+no_return_block(Block,"no_return_call_refined"):-
     no_return_call_refined(BlockEnd),
     block_last_instruction(Block,BlockEnd).
 
 /**
 Calls to noreturn blocks.
 */
-.decl no_return_call_propagated(EA:address)
+.decl no_return_call_propagated(EA:address,Reason:symbol)
 
-no_return_call_propagated(EA):-
+no_return_call_propagated(EA,"no_return_call_refined"):-
     no_return_call_refined(EA).
 
-no_return_call_propagated(EA):-
+no_return_call_propagated(EA,"direct_call to no_return_block"):-
     direct_call(EA,Block),
-    no_return_block(Block),
+    no_return_block(Block,_),
     !pc_load_call(EA,Block).
+
+// A function is called, and the call falls through interprocedurally.
+// The function is likely noreturn.
+// The edge after this call site should already be eliminated because
+// it's interprocedural.
+no_return_call_propagated(Call,"interprocedural fallthrough"):-
+    direct_call(Call,CallTarget),
+    call_may_fallthrough_inter(Call,CallTarget,_),
+    !no_return_call_refined(Call),
+    !pc_load_call(Call,CallTarget).
+
+// Any function target that has call-site falling through interprocedurally
+// is likely noreturn. This rule ensures other calls to the same function
+// don't introduce problematic edges.
+// However, a function can be conditionally noreturn (i.e., it may return along
+// some paths but not others).
+// To avoid incorrectly removing legitimate fallthrough CFG edges, this rule
+// conservatively checks whether `Next` is a `possible_target`, and if not,
+// we do not classify the function call as noreturn function call.
+no_return_call_propagated(Call,"call possiblly_no_return_func and fallthrough-next is a possible target"):-
+    direct_call(Call,CallTarget),
+    !call_may_fallthrough_inter(Call,CallTarget,_),
+    !pc_load_call(Call,CallTarget),
+    !no_return_call_refined(Call),
+    0 != count : {
+        call_may_fallthrough_inter(OtherCall,CallTarget,_),
+        OtherCall != Call
+    },
+    may_fallthrough(Call,Fallthrough),
+    (
+        !candidate_block_is_padding(Fallthrough),
+        Next = Fallthrough
+        ;
+        candidate_block_is_padding(Fallthrough),
+        block_last_instruction(Fallthrough,From),
+        may_fallthrough(From,Next)
+    ),
+    possible_target(Next).

@@ -76,6 +76,34 @@ class CfgTests(unittest.TestCase):
     @unittest.skipUnless(
         platform.system() == "Linux", "This test is linux only."
     )
+    def test_noreturn_conditional(self):
+        """
+        Test fallthrough edges from calls to conditionally non-returning
+        function are added.
+        """
+
+        binary = Path("ex")
+        with cd(ex_asm_dir / "ex_noreturn_conditional"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            ir_library = disassemble(binary).ir()
+            m = ir_library.modules[0]
+
+            # check that the call blocks has fallthrough edges.
+            for call_symbol_str in ["call_1", "call_2"]:
+                call_symbol = next(m.symbols_named(call_symbol_str))
+                assert isinstance(call_symbol.referent, gtirb.CodeBlock)
+                call_block = call_symbol.referent
+
+                outedges = [
+                    edge
+                    for edge in call_block.outgoing_edges
+                    if edge.label.type == EdgeType.Fallthrough
+                ]
+                self.assertEqual(1, len(outedges))
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
     def test_switch_limited_by_cmp(self):
         """
         Ensure jump table propagation is limited by comparsions.
