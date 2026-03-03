@@ -1099,6 +1099,33 @@ gtirb::EdgeType getEdgeType(const std::string &type)
     return gtirb::EdgeType::Fallthrough;
 }
 
+std::map<gtirb::Addr, std::string> getPltBlocks(gtirb::Module &Module,
+                                                souffle::SouffleProgram &Program)
+{
+    std::map<gtirb::Addr, std::string> Res;
+    for(auto &Output : *Program.getRelation("plt_block"))
+    {
+        gtirb::Addr Ea;
+        std::string Name;
+        Output >> Ea >> Name;
+        // The inference of plt_block guarantees that there is at most one
+        // destination symbol for each source.
+        auto FoundSrc = Module.findSymbols(Ea);
+        auto FoundDest = Module.findSymbols(Name);
+        for(gtirb::Symbol &Src : FoundSrc)
+        {
+            for(gtirb::Symbol &Dest : FoundDest)
+            {
+                if(Src.getAddress().has_value())
+                {
+                    Res[Src.getAddress().value()] = Name;
+                }
+            }
+        }
+    }
+    return Res;
+}
+
 void buildCFG(gtirb::Context &Context, gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
     auto &Cfg = Module.getIR()->getCFG();
@@ -1134,6 +1161,7 @@ void buildCFG(gtirb::Context &Context, gtirb::Module &Module, souffle::SoufflePr
         auto E = addEdge(Src, TopBlock, Cfg);
         Cfg[*E] = std::make_tuple(isConditional, gtirb::DirectEdge::IsIndirect, EdgeType);
     }
+    auto PltBlocks = getPltBlocks(Module, Program);
     for(auto &T : *Program.getRelation("cfg_edge_to_symbol"))
     {
         gtirb::Addr EA;
@@ -1155,7 +1183,44 @@ void buildCFG(gtirb::Context &Context, gtirb::Module &Module, souffle::SoufflePr
         if(!ExternalBlock)
         {
             gtirb::CodeBlock *TgtCodeBlock = Symbol.getReferent<gtirb::CodeBlock>();
+            bool TargetToPLT = false;
             if(TgtCodeBlock)
+            {
+                auto TgtAddr = TgtCodeBlock->getAddress();
+                if(TgtAddr.has_value())
+                {
+                    auto PltBlockIt = PltBlocks.find(TgtAddr.value());
+                    if(PltBlockIt != PltBlocks.end())
+                    {
+                        assert(Symbol.getName() == PltBlockIt->second);
+                        TargetToPLT = true;
+                    }
+                }
+            }
+            // If the Symbol's referent is a PLT block and
+            // the target is the same as the Symbol,
+            // add a ProxyBlock and create a proper CFG edge: E.g.,
+            // #===================================
+            // .section .plt.sec ,"ax",@progbits
+            // #===================================
+            // #-----------------------------------
+            // .globl fun
+            // .type fun, @function
+            // #-----------------------------------
+            // fun:
+            //     401070:   endbr64
+            //     401074:   bnd jmp QWORD PTR [RIP+.L_404020]
+            // .size fun, . - fun
+            //
+            // #===================================
+            // .section .got.plt ,"wa",@progbits
+            // #===================================
+            // .L_404020:
+            //     404020: .quad fun
+            //
+            // (See the comment in examples/asm_examples/ex_plt_cfg_edge/ex.c)
+            //
+            if(TgtCodeBlock && !TargetToPLT)
             {
                 std::cerr
                     << "WARNING: symbol " << Name
