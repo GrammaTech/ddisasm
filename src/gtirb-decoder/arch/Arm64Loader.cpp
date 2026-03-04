@@ -59,13 +59,51 @@ bool Arm64Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction)
     gtirb::Addr Addr(CsInstruction.address);
     std::vector<uint64_t> OpCodes;
 
+    // Capstone aliases MOVZ as MOV when imm16 != 0 (ARM preferred disassembly),
+    // folding the shift into the immediate (e.g., "MOVZ X0, #0x40, LSL #16"
+    // becomes "MOV X0, #0x400000") and using ARM64_INS_MOV as the instruction
+    // id. Detect the MOVZ encoding from raw instruction bytes and recover the
+    // canonical form so the Datalog MOVZ+MOVK symbolization rules can match.
+    bool IsAliasedMovz = false;
+    unsigned AliasedShift = 0;
+    int64_t AliasedImm16 = 0;
+    if(Name == "MOV" && CsInstruction.size == 4)
+    {
+        uint32_t Enc = static_cast<uint32_t>(CsInstruction.bytes[0])
+                       | (static_cast<uint32_t>(CsInstruction.bytes[1]) << 8)
+                       | (static_cast<uint32_t>(CsInstruction.bytes[2]) << 16)
+                       | (static_cast<uint32_t>(CsInstruction.bytes[3]) << 24);
+        // MOVZ encoding: sf[31] opc[30:29]=10 100101[28:23] hw[22:21] imm16[20:5] rd[4:0]
+        bool IsMovzEncoding = ((Enc >> 23) & 0x3F) == 0x25   // bits [28:23] = 100101
+                              && ((Enc >> 29) & 0x3) == 0x2;  // opc = 10 (MOVZ)
+        if(IsMovzEncoding)
+        {
+            unsigned Hw = (Enc >> 21) & 0x3;
+            AliasedShift = Hw * 16;
+            AliasedImm16 = static_cast<int64_t>((Enc >> 5) & 0xFFFF);
+            IsAliasedMovz = true;
+            Name = "MOVZ";
+        }
+    }
+
     if(Name != "NOP")
     {
         uint8_t OpCount = Details.op_count;
         for(uint8_t i = 0; i < OpCount; i++)
         {
             // Load capstone operand.
-            const cs_arm64_op& CsOp = Details.operands[i];
+            // For aliased MOVZ, we fix up the immediate operand to recover the
+            // original 16-bit value and shift that capstone folded away.
+            cs_arm64_op CsOp = Details.operands[i];
+            if(IsAliasedMovz && CsOp.type == ARM64_OP_IMM)
+            {
+                CsOp.imm = AliasedImm16;
+                if(AliasedShift > 0)
+                {
+                    CsOp.shift.type = ARM64_SFT_LSL;
+                    CsOp.shift.value = AliasedShift;
+                }
+            }
 
             // Build operand for datalog fact.
             std::optional<relations::Operand> Op = build(CsInstruction, i, CsOp);
