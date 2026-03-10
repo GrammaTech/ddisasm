@@ -1,11 +1,11 @@
 // Test: MOVZ+MOVK address construction in non-PIE ARM64 binaries.
 //
-// This exercises the movz_movk_pair Datalog rules.  In a non-PIE executable
+// This exercises the movz_movk_chain Datalog rules.  In a non-PIE executable
 // the linker fills absolute addresses into the MOVZ/MOVK immediates, so
-// ddisasm must recognise the pair as constructing an address and emit
+// ddisasm must recognize the pair as constructing an address and emit
 // symbolic operand candidates with G0/G1 attributes.
 //
-// Expected behaviour after the fix:
+// Expected behavior:
 //   - ddisasm produces SymAddrConst for both the MOVZ and the MOVK
 //   - gtirb-pprinter emits:
 //       movz  x0, #:abs_g1:msg

@@ -92,17 +92,14 @@ bool Arm64Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction)
         for(uint8_t i = 0; i < OpCount; i++)
         {
             // Load capstone operand.
+            cs_arm64_op CsOp = Details.operands[i];
             // For aliased MOVZ, we fix up the immediate operand to recover the
             // original 16-bit value and shift that capstone folded away.
-            cs_arm64_op CsOp = Details.operands[i];
-            if(IsAliasedMovz && CsOp.type == ARM64_OP_IMM)
+            if(IsAliasedMovz && CsOp.type == ARM64_OP_IMM && AliasedShift > 0)
             {
                 CsOp.imm = AliasedImm16;
-                if(AliasedShift > 0)
-                {
-                    CsOp.shift.type = ARM64_SFT_LSL;
-                    CsOp.shift.value = AliasedShift;
-                }
+                CsOp.shift.type = ARM64_SFT_LSL;
+                CsOp.shift.value = AliasedShift;
             }
 
             // Build operand for datalog fact.

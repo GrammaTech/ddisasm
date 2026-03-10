@@ -7,7 +7,7 @@ TARGETS=ex out.txt
 all: out.txt
 check: out.txt
 ex: src.s
-	$(CC) -no-pie $^ -o $@ -static
+	$(CC) -no-pie $^ -o $@
 out.txt: ex
 	$(EXEC) $^ > $@
 clean:
