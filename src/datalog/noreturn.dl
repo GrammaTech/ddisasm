@@ -128,31 +128,47 @@ no_return_block(Block,"no-fallthrough"):-
         no_return_call_propagated(BlockEnd,_)
     ),
     block_boundaries(Block,Beg,EndBlock),
-    EndBlock <= End,
-    !plt_block(Block,_).
-
+    EndBlock <= End.
 
 /**
-A function `Func` is called at `Call`, and the call falls through
-interprocedurally.
-There may be NOP paddings after the function call.
+A function `Func` is called at instruction `Call` and the call may fall through
+to the next instruction interprocedurally.
+NOP or padding instructions may follow the call.
 */
-.decl call_may_fallthrough_inter(Call:address,Func:address,From:address)
-.output call_may_fallthrough_inter
+.decl call_may_fallthrough_inter(Call:address,Func:address)
 
-call_may_fallthrough_inter(Call,Func,From):-
+call_may_fallthrough_inter(Call,Func):-
     direct_call(Call,Func),
-    may_fallthrough(Call,Fallthrough),
-    (
-        !candidate_block_is_padding(Fallthrough),
-        Next = Fallthrough,
-        From = Call
-        ;
-        candidate_block_is_padding(Fallthrough),
-        block_last_instruction(Fallthrough,From),
-        may_fallthrough(From,Next)
-    ),
+    block_last_instruction(CallBlock,Call),
+    fallthrough_over_padding(CallBlock,From,Next),
     inter_procedural_edge(From,Next).
+
+/**
+Represents the next initial function following `Func`
+(from `function_entry_initial`, before use-def and value analysis).
+`NextFunc` is the immediate successor of `Func`.
+*/
+.decl next_function_entry_initial(Func:address,NextFunc:address)
+
+next_function_entry_initial(Func, NextFunc) :-
+    function_inference.function_entry_initial(Func),
+    NextFunc = min F : {
+        function_inference.function_entry_initial(F),
+        F > Func
+    }.
+
+/**
+An initial function (`function_entry_initial`, prior to use-def
+and value analysis) contains one or more `return` instructions.
+This is a heuristic and may generate false positives.
+*/
+.decl initial_function_containing_return(Func:address,ReturnEA:address)
+
+initial_function_containing_return(Func,EA):-
+    next_function_entry_initial(Func, NextFunc),
+    EA >= Func,
+    EA < NextFunc,
+    arch.return(EA).
 
 /**
 Calls to known no return functions or their PLT blocks.
@@ -174,6 +190,17 @@ no_return_block(Block,"no_return_call_refined"):-
     block_last_instruction(Block,BlockEnd).
 
 /**
+A call `Call` targets a function `CallTarget` that has another call-site
+which falls through interprocedurally.
+*/
+.decl call_target_has_other_fallthrough_inter(Call:address,CallTarget:address)
+
+call_target_has_other_fallthrough_inter(Call,CallTarget):-
+    call_may_fallthrough_inter(OtherCall,CallTarget),
+    direct_call(Call,CallTarget),
+    OtherCall != Call.
+
+/**
 Calls to noreturn blocks.
 */
 .decl no_return_call_propagated(EA:address,Reason:symbol)
@@ -192,7 +219,7 @@ no_return_call_propagated(EA,"direct_call to no_return_block"):-
 // it's interprocedural.
 no_return_call_propagated(Call,"interprocedural fallthrough"):-
     direct_call(Call,CallTarget),
-    call_may_fallthrough_inter(Call,CallTarget,_),
+    call_may_fallthrough_inter(Call,CallTarget),
     !no_return_call_refined(Call),
     !pc_load_call(Call,CallTarget).
 
@@ -204,22 +231,31 @@ no_return_call_propagated(Call,"interprocedural fallthrough"):-
 // To avoid incorrectly removing legitimate fallthrough CFG edges, this rule
 // conservatively checks whether `Next` is a `possible_target`, and if not,
 // we do not classify the function call as noreturn function call.
-no_return_call_propagated(Call,"call possiblly_no_return_func and fallthrough-next is a possible target"):-
-    direct_call(Call,CallTarget),
-    !call_may_fallthrough_inter(Call,CallTarget,_),
+no_return_call_propagated(
+    Call,
+    "call possiblly_no_return_func and fallthrough-next is a possible target"
+):-
+    call_target_has_other_fallthrough_inter(Call,CallTarget),
+    !call_may_fallthrough_inter(Call,CallTarget),
     !pc_load_call(Call,CallTarget),
     !no_return_call_refined(Call),
-    0 != count : {
-        call_may_fallthrough_inter(OtherCall,CallTarget,_),
-        OtherCall != Call
-    },
-    may_fallthrough(Call,Fallthrough),
+    block_last_instruction(CallBlock,Call),
+    fallthrough_over_padding(CallBlock,_,Next),
     (
-        !candidate_block_is_padding(Fallthrough),
-        Next = Fallthrough
+        // No return instruction appears in the target function (internal).
+        !initial_function_containing_return(CallTarget,_), UNUSED(Next),
+        !plt_block(CallTarget,_)
         ;
-        candidate_block_is_padding(Fallthrough),
-        block_last_instruction(Fallthrough,From),
-        may_fallthrough(From,Next)
-    ),
-    possible_target(Next).
+        // If the target is external, there is not enough information to
+        // determine whether it is conditionally non-returning.
+        // As a heuristic, classify it as a no-return call only when
+        // Next is a possible target.
+        plt_block(CallTarget,_),
+        possible_target(Next)
+        ;
+        // The call target function may contain a return, which may
+        // indicate that it is a conditionally non-returning function.
+        // Further check whether Next is a possible target.
+        initial_function_containing_return(CallTarget,_),
+        possible_target(Next)
+    ).

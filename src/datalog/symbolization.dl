@@ -583,12 +583,13 @@ String at EA is followed by another string at Next.
 
 subsequent_string_candidate(EA,Next):-
     string_candidate(EA,End,_),
-    string_candidate(Next,_,_),
-    End <= Next,
+    Next = min Begin : {
+        string_candidate(Begin,_,_),
+        Begin >= End
+    },
     (
         End = Next
         ;
-        0 = count : {string_candidate(Begin,_,_), Begin >= End, Begin < Next},
         Next - End < 8,
         padding_block_limit(Next)
     ).
