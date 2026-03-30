@@ -658,7 +658,7 @@ class CfgTests(unittest.TestCase):
         sequences of edges that lead to the expected target.
 
         Each element in `plt_call` is a tuple with a starting
-        symbol, two edge labels, and a target symbol.
+        symbol name or source block, two edge labels, and a target symbol.
         """
         for src, edge_label1, edge_label2, tgt in plt_calls:
             src_block = (

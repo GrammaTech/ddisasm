@@ -47,7 +47,7 @@ int main()
 
     // Address-of: Forces the .dynsym address to be non-zero (Canonical PLT).
     // The linker stamps the PLT address (e.g., 0x401070) into the symbol table
-    // so taht `&fun` returns the same pointer value throughout the execution.
+    // so that `&fun` returns the same pointer value throughout the execution.
     printf("Canonical PLT address of fun: %p\n", (void*)fun);
 
     return 0;
