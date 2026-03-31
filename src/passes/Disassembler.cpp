@@ -1108,8 +1108,7 @@ std::map<gtirb::Addr, std::string> getPltBlocks(gtirb::Module &Module,
         gtirb::Addr Ea;
         std::string Name;
         Output >> Ea >> Name;
-        assert(Ea.has_value());
-        Res[Ea.value()] = Name;
+        Res[Ea] = Name;
     }
     return Res;
 }
