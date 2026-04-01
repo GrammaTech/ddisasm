@@ -620,7 +620,11 @@ class PeResourcesTests(unittest.TestCase):
 
 class SymbolSelectionTests(unittest.TestCase):
     def check_first_sym_expr(
-        self, m: gtirb.Module, block_name: str, target_name: str
+        self,
+        m: gtirb.Module,
+        block_name: str,
+        target_name: str,
+        code: bool = True,
     ) -> None:
         """
         Check that the first Symexpr in a block identified
@@ -628,7 +632,10 @@ class SymbolSelectionTests(unittest.TestCase):
         name 'target_name'
         """
         sym = next(m.symbols_named(block_name))
-        self.assertIsInstance(sym.referent, gtirb.CodeBlock)
+        if code:
+            self.assertIsInstance(sym.referent, gtirb.CodeBlock)
+        else:
+            self.assertIsInstance(sym.referent, gtirb.DataBlock)
         block = sym.referent
         sexpr = sorted(
             [
@@ -723,6 +730,23 @@ class SymbolSelectionTests(unittest.TestCase):
             ir_library = disassemble(binary).ir()
             m = ir_library.modules[0]
             self.check_first_sym_expr(m, "load_end", "nums_end")
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_noreturn_use_def(self):
+        """
+        Test that instruction referening in the middle of a symbol address
+        is correctly recognized as dead code and the symbol is correctly
+        symbolized.
+        """
+
+        binary = Path("ex")
+        with cd(ex_asm_dir / "ex_noreturn_use_def"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            ir_library = disassemble(binary).ir()
+            m = ir_library.modules[0]
+            self.check_first_sym_expr(m, ".s_hello_ptr", ".s_hello", False)
 
 
 class ElfSymbolAuxdataTests(unittest.TestCase):

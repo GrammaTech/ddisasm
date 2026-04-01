@@ -4,6 +4,7 @@
     - Fix several issues that could result in missing symbolic expressions
     - Improve resolution of TLS-related symbolic expression
 * Fix bug that could lead to functional errors due to false-positive symbolic operands or data.
+* Fix bug that could drop fall-through edges from calls to conditionally no-return functions
 
 # 1.9.2
 
