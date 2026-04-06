@@ -6,7 +6,7 @@ import gtirb
 import subprocess
 import os
 from gtirb.cfg import EdgeType, EdgeLabel
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Union
 
 
 ex_dir = Path("./examples/")
@@ -688,17 +688,24 @@ class CfgTests(unittest.TestCase):
     def check_plt_edges(
         self,
         module: gtirb.Module,
-        plt_calls: List[Tuple[str, EdgeLabel, EdgeLabel, str]],
+        plt_calls: List[
+            Tuple[Union[str, gtirb.CodeBlock], EdgeLabel, EdgeLabel, str]
+        ],
+        is_proxy_target: bool = False,
     ) -> None:
         """
         Check that each call represented in `plt_calls` has the right
         sequences of edges that lead to the expected target.
 
         Each element in `plt_call` is a tuple with a starting
-        symbol, two edge labels, and a target symbol.
+        symbol name or source block, two edge labels, and a target symbol.
         """
         for src, edge_label1, edge_label2, tgt in plt_calls:
-            src_block = next(module.symbols_named(src)).referent
+            src_block = (
+                next(module.symbols_named(src)).referent
+                if isinstance(src, str)
+                else src
+            )
             edges = [
                 edge
                 for edge in src_block.outgoing_edges
@@ -710,12 +717,13 @@ class CfgTests(unittest.TestCase):
                 f"Expected one edge with label {edge_label1} from {src}",
             )
             plt_block = edges[0].target
-            self.assertEqual(plt_block.section.name, ".plt")
+            self.assertIn(plt_block.section.name, [".plt", ".plt.sec"])
             edges_plt = [
                 edge
                 for edge in plt_block.outgoing_edges
                 if edge.label == edge_label2
             ]
+
             self.assertEqual(
                 len(edges_plt),
                 1,
@@ -723,6 +731,10 @@ class CfgTests(unittest.TestCase):
                 f"from block at {plt_block.address:0x} called from {src}",
             )
             tgt_block = edges_plt[0].target
+
+            if is_proxy_target:
+                self.assertIsInstance(tgt_block, gtirb.ProxyBlock)
+
             self.assertIn(tgt, [s.name for s in tgt_block.references])
 
     @unittest.skipUnless(
@@ -1093,6 +1105,43 @@ class CfgTests(unittest.TestCase):
                 )
             ]
             self.check_plt_edges(m, plt_calls)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_x86_64_plt_cfg_edge(self):
+        """
+        Test that a CFG edge is created from a PLT block to its external
+        target (ProxyBlock) when the PLT block and the target have
+        the same symbol.
+        """
+        binary = Path("ex")
+        with cd(ex_dir / "ex_plt_cfg_edge"):
+            self.assertTrue(compile("gcc", "g++", "-O0", ["--save-temps"]))
+            ir_library = disassemble(binary).ir()
+            m = ir_library.modules[0]
+
+            main_sym = next(m.symbols_named("main"))
+            main_block = main_sym.referent
+
+            fallthrough = [
+                edge
+                for edge in main_block.outgoing_edges
+                if edge.label.type == EdgeType.Fallthrough
+            ]
+            self.assertEqual(1, len(fallthrough))
+
+            call_fun_block = fallthrough[0].target
+
+            plt_calls = [
+                (
+                    call_fun_block,
+                    EdgeLabel(EdgeType.Call, False, True),
+                    EdgeLabel(EdgeType.Branch, False, False),
+                    "fun",
+                ),
+            ]
+            self.check_plt_edges(m, plt_calls, True)
 
 
 if __name__ == "__main__":
