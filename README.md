@@ -128,3 +128,17 @@ See [CONTRIBUTING.md](CONTRIBUTING.md)
     primaryClass={cs.PL}
 }
 ```
+
+3. [Ddisasm WIS](https://ieeexplore.ieee.org/document/11023516)
+```
+@INPROCEEDINGS{11023516,
+  author={Flores-Montoya, Antonio and Lim, Junghee and Seitz, Adam and Sood, Akshay and Raff, Edward and Holt, James},
+  booktitle={2025 IEEE Symposium on Security and Privacy (SP)},
+  title={Disassembly as Weighted Interval Scheduling with Learned Weights},
+  year={2025},
+  volume={},
+  number={},
+  pages={3033-3050},
+  keywords={Measurement;Privacy;Accuracy;Heuristic algorithms;Reverse engineering;Binary codes;Benchmark testing;Scheduling;Inference algorithms;Security;disassembly;reverse engineering;learning;binary analysis},
+  doi={10.1109/SP61157.2025.00192}}
+```

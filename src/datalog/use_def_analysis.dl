@@ -72,7 +72,7 @@ inter_procedural_edge(Src,Dest):-
 block_next(Block,EA,Block2):-
     block_last_instruction(Block,EA),
     may_fallthrough(EA,Block2),
-    !no_return_call_propagated(EA),
+    !no_return_call_propagated(EA,_),
     !inter_procedural_edge(EA,Block2),
     block(Block2).
 

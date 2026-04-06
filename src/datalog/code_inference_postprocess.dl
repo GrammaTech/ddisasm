@@ -226,3 +226,22 @@ padding_prefix_end(EA,Block):-
     !arch.is_nop(EA),
     next(PrevEA,EA),
     padding_prefix(PrevEA,Block).
+
+/**
+A refined block `Block` contains at least one `return` instruction.
+*/
+.decl refined_block_contains_return(Block:address)
+
+refined_block_contains_return(Block):-
+    refined_block(Block),
+    code_in_refined_block(EA,Block),
+    arch.return(EA).
+
+/**
+A function `Func` contains at least one `return` instruction.
+*/
+.decl refined_block_contains_return_in_func(Func:address)
+
+refined_block_contains_return_in_func(Func) :-
+    function_inference.in_function(Block, Func),
+    refined_block_contains_return(Block).
