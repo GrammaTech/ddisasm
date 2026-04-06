@@ -75,7 +75,7 @@ bool Arm64Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction)
                        | (static_cast<uint32_t>(CsInstruction.bytes[3]) << 24);
         // MOVZ encoding: sf[31] opc[30:29]=10 100101[28:23] hw[22:21] imm16[20:5] rd[4:0]
         bool IsMovzEncoding = ((Enc >> 23) & 0x3F) == 0x25   // bits [28:23] = 100101
-                              && ((Enc >> 29) & 0x3) == 0x2;  // opc = 10 (MOVZ)
+                              && ((Enc >> 29) & 0x3) == 0x2; // opc = 10 (MOVZ)
         if(IsMovzEncoding)
         {
             unsigned Hw = (Enc >> 21) & 0x3;
