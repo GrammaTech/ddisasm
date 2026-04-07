@@ -59,30 +59,52 @@ bool Arm64Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction)
     gtirb::Addr Addr(CsInstruction.address);
     std::vector<uint64_t> OpCodes;
 
-    // Capstone aliases MOVZ as MOV when imm16 != 0 (ARM preferred disassembly),
-    // folding the shift into the immediate (e.g., "MOVZ X0, #0x40, LSL #16"
-    // becomes "MOV X0, #0x400000") and using ARM64_INS_MOV as the instruction
-    // id. Detect the MOVZ encoding from raw instruction bytes and recover the
-    // canonical form so the Datalog MOVZ+MOVK symbolization rules can match.
+    // Capstone produces the ARM-preferred MOV alias for MOVZ as MOV when
+    // the immediate fits a single 16-bit lane. In that case, the encoded
+    // shjift is folded into the final immediate value (for example,
+    // "MOVZ X0, #0x40, LSL #16"
+    // becomes
+    // "MOV X0, #0x400000")
+    // The mnemonic and instruction id are both reported as MOV, so recover
+    // the canonical MOVZ form by checking the raw instruction encoding
+    // (opc == 10) and reconstructing the original imm16 + shift pair.
+    // This allows the MOVZ+MOVK symbolization rules to match correctly.
     bool IsAliasedMovz = false;
     unsigned AliasedShift = 0;
     int64_t AliasedImm16 = 0;
-    if(Name == "MOV" && CsInstruction.size == 4)
+    if(CsInstruction.id == ARM64_INS_MOV && Details.op_count == 2)
     {
-        uint32_t Enc = static_cast<uint32_t>(CsInstruction.bytes[0])
-                       | (static_cast<uint32_t>(CsInstruction.bytes[1]) << 8)
-                       | (static_cast<uint32_t>(CsInstruction.bytes[2]) << 16)
-                       | (static_cast<uint32_t>(CsInstruction.bytes[3]) << 24);
-        // MOVZ encoding: sf[31] opc[30:29]=10 100101[28:23] hw[22:21] imm16[20:5] rd[4:0]
-        bool IsMovzEncoding = ((Enc >> 23) & 0x3F) == 0x25   // bits [28:23] = 100101
-                              && ((Enc >> 29) & 0x3) == 0x2; // opc = 10 (MOVZ)
-        if(IsMovzEncoding)
+        const cs_arm64_op& Src = Details.operands[1];
+        if(Src.type == ARM64_OP_IMM)
         {
-            unsigned Hw = (Enc >> 21) & 0x3;
-            AliasedShift = Hw * 16;
-            AliasedImm16 = static_cast<int64_t>((Enc >> 5) & 0xFFFF);
-            IsAliasedMovz = true;
-            Name = "MOVZ";
+            uint32_t Enc = static_cast<uint32_t>(CsInstruction.bytes[0])
+                           | (static_cast<uint32_t>(CsInstruction.bytes[1]) << 8)
+                           | (static_cast<uint32_t>(CsInstruction.bytes[2]) << 16)
+                           | (static_cast<uint32_t>(CsInstruction.bytes[3]) << 24);
+
+            // bits[30:29] = opc, where 10 identifies MOVZ
+            IsAliasedMovz = ((Enc >> 29) & 0x3) == 0x2;
+
+            if(IsAliasedMovz)
+            {
+                Name = "MOVZ";
+
+                uint64_t Value = static_cast<uint64_t>(Src.imm);
+
+                // Recover the original imm16 lane and its shift amount.
+                for(unsigned Shift : {0u, 16u, 32u, 48u})
+                {
+                    const int64_t Imm16 = (Value >> Shift) & 0xFFFF;
+
+                    // The immediate must occupy exactly one MOVZ lane
+                    if(Value == (Imm16 << Shift))
+                    {
+                        AliasedShift = Shift;
+                        AliasedImm16 = Imm16;
+                        break;
+                    }
+                }
+            }
         }
     }
 

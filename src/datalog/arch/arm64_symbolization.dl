@@ -318,17 +318,19 @@ unlikely_have_symbolic_immediate(EA):-
 // MOVZ + MOVK address construction
 // ===================================================================
 //
-// In non-PIE ARM64 binaries, absolute addresses are commonly constructed
+// In non-PIE ARM64 binaries, absolute addresses are often constructed
 // using a MOVZ+MOVK instruction sequence:
 //
-//   movz x0, #0x0, lsl #16     ; x0 = 0x00000000
-//   movk x0, #0x4170            ; x0 = 0x00004170  (address of some symbol)
+//   movz x0, #0x0, lsl #16  ; x0 = 0x00000000
+//   movk x0, #0x4170        ; x0 = 0x00004170  (address of some symbol)
 //
-// Each instruction sets a 16-bit slice of the register. The shift amount
-// (lsl #0, #16, #32, #48) determines which slice. MOVZ zeros the register
-// first; subsequent MOVKs insert their slice without disturbing others.
+// Each instruction writes a 16-bit slice of the destination register.
+// The shift amount (lsl #0, #16, #32, #48) selects which slice is updated.
+// MOVZ initializes the register by zeroing all other bits, while
+// subsequent MOVK instructions overwrite only their selected 16-bit
+// slice without affecting the rest of the register.
 //
-// This is analogous to ARM32's MOVW+MOVT (see arm32_binaries.dl).
+// This is analogous to ARM32's MOVW+MOVT sequence (see arm32_binaries.dl).
 // ===================================================================
 
 /**

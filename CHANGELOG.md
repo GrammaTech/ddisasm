@@ -4,6 +4,7 @@
     - Fix several issues that could result in missing symbolic expressions
     - Improve resolution of TLS-related symbolic expression
 * Fix bug that could lead to functional errors due to false-positive symbolic operands or data.
+* Fix an issue where symbolic expressions could be missing from ARM64 MOVZ/MOVK sequences.
 
 # 1.9.2
 
