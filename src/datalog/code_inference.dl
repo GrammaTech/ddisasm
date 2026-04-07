@@ -179,6 +179,26 @@ likely_fallthrough(From,To):-
         conditional_jump(From)
     ).
 
+/**
+A block `Block` falls through a NOP/padding sled to the next real block `NextBlock`.
+`From` is the source instruction of the edge leading to `NextBlock`.
+*/
+.decl fallthrough_over_padding(Block:address, From:address, NextBlock:address)
+
+fallthrough_over_padding(Block, From, NextBlock):-
+    block_last_instruction(Block, BlockLast),
+    may_fallthrough(BlockLast, NextBlock),
+    !candidate_block_is_padding(NextBlock),
+    From = BlockLast.
+
+fallthrough_over_padding(Block, From, NextBlock):-
+    block_last_instruction(Block, Inst),
+    may_fallthrough(Inst, PadBlock),
+    candidate_block_is_padding(PadBlock),
+    block_last_instruction(PadBlock, PadLast),
+    may_fallthrough(PadLast, NextBlock),
+    From = PadLast.
+
 //////////////////////////////////////////////////////////////
 // This is a small refinement for discarding immediates as targets
 // in some obvious cases. This is specially useful for PIE code where

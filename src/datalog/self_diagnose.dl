@@ -213,3 +213,25 @@ moved_data_label_with_large_offset(EA,Offset,Reason):-
     abs_val(Offset,AbsOffset),
     AbsOffset > 64,
     moved_label_class(EA,_,Reason).
+
+/**
+Functions marked as no_return, but with a return
+*/
+.decl no_return_func_with_return(EA:address)
+.output no_return_func_with_return
+
+no_return_func_with_return(Func):-
+    no_return_block(Func,_),
+    function_inference.function_entry(Func),
+    function_inference.in_function(Ret,Func),
+    cfg_edge_to_top(Ret,_,"return").
+
+/**
+Functions marked as initial_function_with_return, but without a return
+*/
+.decl false_positive_initial_function_with_return(Func:address,ReturnEA:address)
+.output false_positive_initial_function_with_return
+
+false_positive_initial_function_with_return(Func,ReturnEA) :-
+    initial_function_containing_return(Func,ReturnEA),
+    !refined_block_contains_return_in_func(Func).

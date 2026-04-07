@@ -1101,6 +1101,20 @@ gtirb::EdgeType getEdgeType(const std::string &type)
     return gtirb::EdgeType::Fallthrough;
 }
 
+std::map<gtirb::Addr, std::string> getPltBlocks(gtirb::Module &Module,
+                                                souffle::SouffleProgram &Program)
+{
+    std::map<gtirb::Addr, std::string> Res;
+    for(auto &Output : *Program.getRelation("plt_block"))
+    {
+        gtirb::Addr Ea;
+        std::string Name;
+        Output >> Ea >> Name;
+        Res[Ea] = Name;
+    }
+    return Res;
+}
+
 void buildCFG(gtirb::Context &Context, gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
     auto &Cfg = Module.getIR()->getCFG();
@@ -1136,6 +1150,7 @@ void buildCFG(gtirb::Context &Context, gtirb::Module &Module, souffle::SoufflePr
         auto E = addEdge(Src, TopBlock, Cfg);
         Cfg[*E] = std::make_tuple(isConditional, gtirb::DirectEdge::IsIndirect, EdgeType);
     }
+    auto PltBlocks = getPltBlocks(Module, Program);
     for(auto &T : *Program.getRelation("cfg_edge_to_symbol"))
     {
         gtirb::Addr EA;
@@ -1157,6 +1172,21 @@ void buildCFG(gtirb::Context &Context, gtirb::Module &Module, souffle::SoufflePr
         if(!ExternalBlock)
         {
             gtirb::CodeBlock *TgtCodeBlock = Symbol.getReferent<gtirb::CodeBlock>();
+            if(TgtCodeBlock)
+            {
+                auto TgtAddr = TgtCodeBlock->getAddress();
+                if(TgtAddr.has_value())
+                {
+                    // If TgtCodeBlock is a PltBlock, invalidate it here
+                    // so that a ProxyBlock can be created instead.
+                    // See the comment in examples/ex_plt_cfg_edge/ex.c
+                    auto PltBlockIt = PltBlocks.find(TgtAddr.value());
+                    if(PltBlockIt != PltBlocks.end())
+                    {
+                        TgtCodeBlock = nullptr;
+                    }
+                }
+            }
             if(TgtCodeBlock)
             {
                 std::cerr
