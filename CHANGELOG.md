@@ -1,4 +1,6 @@
-# 1.9.3 (Unreleased)
+# 1.9.4 (Unreleased)
+
+# 1.9.3
 
 * Enhance MIPS32 support:
     - Fix several issues that could result in missing symbolic expressions
