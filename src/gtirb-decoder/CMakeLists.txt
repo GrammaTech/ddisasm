@@ -11,7 +11,9 @@ set(DATALOG_DECODER_TARGETS
     arch/Arm32Loader.cpp
     arch/X86Loader.cpp
     arch/Arm64Loader.cpp
+    arch/MipsLoader.cpp
     arch/Mips32Loader.cpp
+    arch/Mips64Loader.cpp
     format/ElfLoader.cpp
     format/PeLoader.cpp
     format/RawLoader.cpp)

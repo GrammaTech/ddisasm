@@ -1,6 +1,6 @@
-//===- memory_access.dl -------------------------------------*- datalog -*-===//
+//===- Mips64Loader.h -------------------------------------------*- C++ -*-===//
 //
-//  Copyright (C) 2019-2022 GrammaTech, Inc.
+//  Copyright (C) 2020 GrammaTech, Inc.
 //
 //  This code is licensed under the GNU Affero General Public License
 //  as published by the Free Software Foundation, either version 3 of
@@ -20,19 +20,11 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
-/**
-This module provides implements architecture-independent load and store
-relations for mips32.
-*/
+// Backward-compatibility header. The implementation has been consolidated
+// into MipsLoader.h / MipsLoader.cpp.
+#ifndef SRC_GTIRB_DECODER_ARCH_MIPS64DECODER_H_
+#define SRC_GTIRB_DECODER_ARCH_MIPS64DECODER_H_
 
-memory_access("LOAD",EA,1,2,DstReg,BaseReg,IndexReg,Mult,Offset):-
-    instruction(EA,_,_,Operation,SrcOp,DestOp,0,0,_,_),
-    load_operation(Operation),
-    op_indirect_mapped(SrcOp,"NONE",BaseReg,IndexReg,Mult,Offset,_),
-    op_regdirect_contains_reg(DestOp,DstReg).
+#include "MipsLoader.h"
 
-memory_access("STORE",EA,2,1,SrcReg,BaseReg,IndexReg,Mult,Offset):-
-    instruction(EA,_,_,Operation,DestOp,SrcOp,0,0,_,_),
-    store_operation(Operation),
-    op_indirect_mapped(DestOp,"NONE",BaseReg,IndexReg,Mult,Offset,_),
-    op_regdirect_contains_reg(SrcOp,SrcReg).
+#endif // SRC_GTIRB_DECODER_ARCH_MIPS64DECODER_H_

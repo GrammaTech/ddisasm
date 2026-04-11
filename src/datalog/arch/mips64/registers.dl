@@ -1,0 +1,121 @@
+//===- registers.dl -----------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2020 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+/*
+This module establishes basic information about register:
+ - Which registers and tracked/considered in the different analyses
+ - Whether they all callee or caller saved according to the ABI
+*/
+
+// Capstone uses the O32 ABI register names.
+// https://github.com/capstone-engine/capstone/blob/fe3e7ab6716d0ba249b6779dadd4a3a2eb842f21/arch/Mips/MipsMapping.c#L17
+// SIMD (W0-W31) and FPU (F0-F31) registers are not handled currently.
+
+general_purpose_reg("AT").
+general_purpose_reg("V0").
+general_purpose_reg("V1").
+general_purpose_reg("A0").
+general_purpose_reg("A1").
+general_purpose_reg("A2").
+general_purpose_reg("A3").
+general_purpose_reg("T0").
+general_purpose_reg("T1").
+general_purpose_reg("T2").
+general_purpose_reg("T3").
+general_purpose_reg("T4").
+general_purpose_reg("T5").
+general_purpose_reg("T6").
+general_purpose_reg("T7").
+general_purpose_reg("S0").
+general_purpose_reg("S1").
+general_purpose_reg("S2").
+general_purpose_reg("S3").
+general_purpose_reg("S4").
+general_purpose_reg("S5").
+general_purpose_reg("S6").
+general_purpose_reg("S7").
+general_purpose_reg("T8").
+general_purpose_reg("T9").
+general_purpose_reg("K0").
+general_purpose_reg("K1").
+general_purpose_reg("GP").
+general_purpose_reg("FP").
+
+register_size_bytes(InputReg,8):-
+    general_purpose_reg(Reg),
+    reg_map(InputReg,Reg).
+
+// Use the MIPS calling convention.
+
+function_non_maintained_reg("AT").
+
+function_non_maintained_reg("V0").
+function_non_maintained_reg("V1").
+
+function_non_maintained_reg("A0").
+function_non_maintained_reg("A1").
+function_non_maintained_reg("A2").
+function_non_maintained_reg("A3").
+
+function_non_maintained_reg("T0").
+function_non_maintained_reg("T1").
+function_non_maintained_reg("T2").
+function_non_maintained_reg("T3").
+function_non_maintained_reg("T4").
+function_non_maintained_reg("T5").
+function_non_maintained_reg("T6").
+function_non_maintained_reg("T7").
+
+function_non_maintained_reg("T8").
+function_non_maintained_reg("T9").
+
+function_non_maintained_reg("K0").
+function_non_maintained_reg("K1").
+
+function_non_maintained_reg("RA").
+
+pc_reg(""):-
+    false.
+
+frame_pointer("FP").
+
+stack_pointer("SP").
+
+return_reg("V0").
+return_reg("V1").
+
+// Instead of a condition flags register, conditional MIPS instructions check
+// the condition directly, e.g.:
+// BEQ $t0, $t1, .label
+condition_flags_reg(""):-
+    false.
+
+integer_reg_param("A0",1).
+integer_reg_param("A1",2).
+integer_reg_param("A2",3).
+integer_reg_param("A3",4).
+integer_reg_param("A4",5).
+integer_reg_param("A5",6).
+integer_reg_param("A6",7).
+integer_reg_param("A7",8).
+
+zero_reg("ZERO").

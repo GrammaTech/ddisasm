@@ -110,6 +110,9 @@ Convert between input_reg and register with arch.reg_map
 #elif defined(ARCH_MIPS32)
     #include "arch/mips_symbolization.dl"
     #include "arch/mips_tls.dl"
+#elif defined(ARCH_MIPS64)
+    #include "arch/mips_symbolization.dl"
+    #include "arch/mips_tls.dl"
 #else
     #error "Undefined architecture"
 #endif
