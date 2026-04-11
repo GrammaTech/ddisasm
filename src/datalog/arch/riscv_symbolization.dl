@@ -1,0 +1,285 @@
+//===- riscv_symbolization.dl --------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2024 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+
+// RISC-V symbolization
+//
+// Address patterns:
+// 1. AUIPC + ADDI: %pcrel_hi(sym) / %pcrel_lo(.Ltmp)
+// 2. AUIPC + LD:   %pcrel_hi(sym) / %pcrel_lo(.Ltmp)  (GOT or direct)
+// 3. AUIPC + SD:   %pcrel_hi(sym) / %pcrel_lo(.Ltmp)
+// 4. LUI + ADDI:   %hi(sym) / %lo(sym)
+// 5. LUI + LW/SW:  %hi(sym) / %lo(sym)
+// 6. JAL/CALL:     direct PC-relative calls (handled by loader)
+
+//===----------------------------------------------------------------------===//
+// Split-load detection: AUIPC-based pairs (PC-relative)
+//===----------------------------------------------------------------------===//
+
+// AUIPC + ADDI pair: loads a PC-relative address into a register.
+//   auipc rd, %pcrel_hi(target)
+//   addi  rd, rd, %pcrel_lo(.Ltmp)
+.decl riscv_split_load(ea_head:address, ea_tail:address, target:address, type:symbol)
+
+riscv_split_load(EA_auipc, EA_addi, Target, "AUIPC_ADDI") :-
+    arch.pc_relative_addr(EA_auipc, Reg, BaseAddr),
+    (
+        next(EA_auipc, EA_addi)
+        ;
+        // Allow one intervening instruction that doesn't clobber Reg
+        next(EA_auipc, EA_mid), next(EA_mid, EA_addi),
+        instruction_get_dest_op(EA_mid, _, TmpOp),
+        !op_regdirect_contains_reg(TmpOp, Reg)
+    ),
+    arch.reg_arithmetic_operation(EA_addi, _, Reg, 1, Offset),
+    Target = as(as(BaseAddr, number) + Offset, address).
+
+// AUIPC + LD pair: PC-relative load (often GOT access).
+//   auipc rd, %pcrel_hi(target)
+//   ld    rd2, %pcrel_lo(.Ltmp)(rd)
+riscv_split_load(EA_auipc, EA_ld, Target, "AUIPC_LOAD") :-
+    arch.pc_relative_addr(EA_auipc, Reg, BaseAddr),
+    (
+        next(EA_auipc, EA_ld)
+        ;
+        next(EA_auipc, EA_mid), next(EA_mid, EA_ld),
+        instruction_get_dest_op(EA_mid, _, TmpOp),
+        !op_regdirect_contains_reg(TmpOp, Reg)
+    ),
+    arch.memory_access("LOAD", EA_ld, _, _, _, Reg, "NONE", _, Offset),
+    Target = as(as(BaseAddr, number) + Offset, address).
+
+// AUIPC + SD pair: PC-relative store.
+//   auipc rd, %pcrel_hi(target)
+//   sd    rs2, %pcrel_lo(.Ltmp)(rd)
+riscv_split_load(EA_auipc, EA_sd, Target, "AUIPC_STORE") :-
+    arch.pc_relative_addr(EA_auipc, Reg, BaseAddr),
+    (
+        next(EA_auipc, EA_sd)
+        ;
+        next(EA_auipc, EA_mid), next(EA_mid, EA_sd),
+        instruction_get_dest_op(EA_mid, _, TmpOp),
+        !op_regdirect_contains_reg(TmpOp, Reg)
+    ),
+    arch.memory_access("STORE", EA_sd, _, _, _, Reg, "NONE", _, Offset),
+    Target = as(as(BaseAddr, number) + Offset, address).
+
+// AUIPC + JALR pair: PC-relative indirect call/jump.
+//   auipc rd, %pcrel_hi(target)
+//   jalr  ra, %pcrel_lo(.Ltmp)(rd)
+// Case 1: JALR with MEM operand (2 operands after Capstone)
+riscv_split_load(EA_auipc, EA_jalr, Target, "AUIPC_JALR") :-
+    arch.pc_relative_addr(EA_auipc, Reg, BaseAddr),
+    (
+        next(EA_auipc, EA_jalr)
+        ;
+        next(EA_auipc, EA_mid), next(EA_mid, EA_jalr),
+        instruction_get_dest_op(EA_mid, _, TmpOp),
+        !op_regdirect_contains_reg(TmpOp, Reg)
+    ),
+    instruction(EA_jalr, _, _, "JALR", Op1, _, 0, 0, _, _),
+    op_indirect_mapped(Op1, _, Reg, "NONE", _, Offset, _),
+    Target = as(as(BaseAddr, number) + Offset, address).
+
+// Case 2: JALR with 3 separate operands (REG, IMM, REG after rotation)
+riscv_split_load(EA_auipc, EA_jalr, Target, "AUIPC_JALR") :-
+    arch.pc_relative_addr(EA_auipc, Reg, BaseAddr),
+    (
+        next(EA_auipc, EA_jalr)
+        ;
+        next(EA_auipc, EA_mid), next(EA_mid, EA_jalr),
+        instruction_get_dest_op(EA_mid, _, TmpOp),
+        !op_regdirect_contains_reg(TmpOp, Reg)
+    ),
+    instruction(EA_jalr, _, _, "JALR", Op1, Op2, Op3, 0, _, _),
+    op_regdirect_contains_reg(Op1, Reg),
+    op_immediate(Op2, Offset, _),
+    op_regdirect_contains_reg(Op3, _),
+    Target = as(as(BaseAddr, number) + Offset, address).
+
+//===----------------------------------------------------------------------===//
+// Split-load detection: LUI-based pairs (absolute address)
+//===----------------------------------------------------------------------===//
+
+// LUI + ADDI pair: loads an absolute address.
+//   lui  rd, %hi(target)
+//   addi rd, rd, %lo(target)
+riscv_split_load(EA_lui, EA_addi, Target, "LUI_ADDI") :-
+    instruction(EA_lui, _, _, "LUI", Op1, Op2, 0, 0, _, _),
+    op_immediate(Op1, Upper, _),
+    op_regdirect_contains_reg(Op2, Reg),
+    (
+        next(EA_lui, EA_addi)
+        ;
+        next(EA_lui, EA_mid), next(EA_mid, EA_addi),
+        instruction_get_dest_op(EA_mid, _, TmpOp),
+        !op_regdirect_contains_reg(TmpOp, Reg)
+    ),
+    arch.reg_arithmetic_operation(EA_addi, _, Reg, 1, Lower),
+    Target = as((Upper bshl 12) + Lower, address).
+
+// LUI + LD/SW pair: absolute address load/store.
+//   lui  rd, %hi(target)
+//   lw   rd2, %lo(target)(rd)
+riscv_split_load(EA_lui, EA_mem, Target, "LUI_LOAD") :-
+    instruction(EA_lui, _, _, "LUI", Op1, Op2, 0, 0, _, _),
+    op_immediate(Op1, Upper, _),
+    op_regdirect_contains_reg(Op2, Reg),
+    (
+        next(EA_lui, EA_mem)
+        ;
+        next(EA_lui, EA_mid), next(EA_mid, EA_mem),
+        instruction_get_dest_op(EA_mid, _, TmpOp),
+        !op_regdirect_contains_reg(TmpOp, Reg)
+    ),
+    (
+        arch.memory_access("LOAD", EA_mem, _, _, _, Reg, "NONE", _, Offset)
+        ;
+        arch.memory_access("STORE", EA_mem, _, _, _, Reg, "NONE", _, Offset)
+    ),
+    Target = as((Upper bshl 12) + Offset, address).
+
+//===----------------------------------------------------------------------===//
+// Validation: filter to valid targets
+//===----------------------------------------------------------------------===//
+
+.decl riscv_valid_target(Addr:address) inline
+
+riscv_valid_target(Addr) :-
+    (
+        code(Addr)
+        ;
+        data_segment(Begin, End),
+        Addr >= Begin, Addr <= End
+        ;
+        defined_symbol(Addr, _, _, _, _, _, _, _, _), Addr != 0
+    ).
+
+// Split load targets at defined symbols that are outside code/data segments
+// (e.g., __ehdr_start at the ELF header base).  The standard
+// symbolic_operand_candidate validation in symbolization.dl only accepts
+// code(Dest) or data_segment coverage, so we emit candidates directly here.
+symbolic_operand_candidate(EA_head, 1, Target, "data") :-
+    riscv_split_load(EA_head, _, Target, _),
+    code(EA_head),
+    defined_symbol(Target, _, _, _, _, _, _, _, _),
+    Target != 0.
+
+//===----------------------------------------------------------------------===//
+// split_load_operand: feeds into symbolic_operand_candidate in symbolization.dl
+//===----------------------------------------------------------------------===//
+
+// AUIPC head: symbolic expression at operand 1 points to the final target.
+split_load_operand(EA_head, 1, Target) :-
+    riscv_split_load(EA_head, _, Target, Type),
+    (Type = "AUIPC_ADDI" ; Type = "AUIPC_LOAD" ; Type = "AUIPC_STORE" ; Type = "AUIPC_JALR").
+
+// AUIPC tail (LD/SD/JALR-MEM): indirect operand at index 1.
+// Only emit if the head's target is valid (otherwise the head won't be symbolic).
+split_load_operand(EA_tail, 1, EA_head) :-
+    riscv_split_load(EA_head, EA_tail, Target, Type),
+    (Type = "AUIPC_LOAD" ; Type = "AUIPC_STORE" ; Type = "AUIPC_JALR"),
+    riscv_valid_target(Target).
+
+// AUIPC tail (ADDI): immediate operand at index 2 (after rotation: Op1=reg, Op2=imm).
+split_load_operand(EA_tail, 2, EA_head) :-
+    riscv_split_load(EA_head, EA_tail, Target, "AUIPC_ADDI"),
+    riscv_valid_target(Target).
+
+// LUI head: symbolic expression at operand 1 points to the final target.
+split_load_operand(EA_head, 1, Target) :-
+    riscv_split_load(EA_head, _, Target, Type),
+    (Type = "LUI_ADDI" ; Type = "LUI_LOAD").
+
+// LUI tail (LD/SW): indirect operand at index 1.
+split_load_operand(EA_tail, 1, Target) :-
+    riscv_split_load(_, EA_tail, Target, "LUI_LOAD").
+
+// LUI tail (ADDI): immediate operand at index 2.
+split_load_operand(EA_tail, 2, Target) :-
+    riscv_split_load(_, EA_tail, Target, "LUI_ADDI").
+
+//===----------------------------------------------------------------------===//
+// symbolic_operand_attribute: HI/LO/PCREL attributes for the pprinter
+//===----------------------------------------------------------------------===//
+
+// AUIPC head gets PCREL + HI → pprinter emits %pcrel_hi(target)
+symbolic_operand_attribute(EA_head, 1, "PCREL"),
+symbolic_operand_attribute(EA_head, 1, "HI") :-
+    riscv_split_load(EA_head, _, _, Type),
+    (Type = "AUIPC_ADDI" ; Type = "AUIPC_LOAD" ; Type = "AUIPC_STORE" ; Type = "AUIPC_JALR"),
+    symbolic_operand(EA_head, _, _, _).
+
+// AUIPC tail (LD/SD/JALR) gets PCREL + LO at index 1 (indirect operand)
+// Only if the head is also symbolic (otherwise there's no matching %pcrel_hi).
+symbolic_operand_attribute(EA_tail, 1, "PCREL"),
+symbolic_operand_attribute(EA_tail, 1, "LO") :-
+    riscv_split_load(EA_head, EA_tail, _, Type),
+    (Type = "AUIPC_LOAD" ; Type = "AUIPC_STORE" ; Type = "AUIPC_JALR"),
+    symbolic_operand(EA_head, _, _, _),
+    symbolic_operand(EA_tail, _, _, _).
+
+// AUIPC tail (ADDI) gets PCREL + LO at index 2 (immediate operand)
+symbolic_operand_attribute(EA_tail, 2, "PCREL"),
+symbolic_operand_attribute(EA_tail, 2, "LO") :-
+    riscv_split_load(EA_head, EA_tail, _, "AUIPC_ADDI"),
+    symbolic_operand(EA_head, _, _, _),
+    symbolic_operand(EA_tail, _, _, _).
+
+// LUI head gets HI → pprinter emits %hi(target)
+symbolic_operand_attribute(EA_head, 1, "HI") :-
+    riscv_split_load(EA_head, _, _, Type),
+    (Type = "LUI_ADDI" ; Type = "LUI_LOAD"),
+    symbolic_operand(EA_head, _, _, _).
+
+// LUI tail (LD/SW) gets LO at index 1 (indirect operand)
+symbolic_operand_attribute(EA_tail, 1, "LO") :-
+    riscv_split_load(_, EA_tail, _, "LUI_LOAD"),
+    symbolic_operand(EA_tail, _, _, _).
+
+// LUI tail (ADDI) gets LO at index 2 (immediate operand)
+symbolic_operand_attribute(EA_tail, 2, "LO") :-
+    riscv_split_load(_, EA_tail, _, "LUI_ADDI"),
+    symbolic_operand(EA_tail, _, _, _).
+
+//===----------------------------------------------------------------------===//
+// GOT detection: mark AUIPC+LD pairs that access the GOT
+//===----------------------------------------------------------------------===//
+
+// When the target of an AUIPC+LD pair is in the .got section,
+// the AUIPC gets GOT attribute → pprinter emits %got_pcrel_hi(sym).
+symbolic_operand_attribute(EA_head, 1, "GOT") :-
+    riscv_split_load(EA_head, _, Target, "AUIPC_LOAD"),
+    loaded_section(Beg, End, ".got"),
+    Beg <= Target, Target < End,
+    symbolic_operand(EA_head, _, _, _).
+
+//===----------------------------------------------------------------------===//
+// Prevent non-split-load instructions from getting false symbolic operands
+//===----------------------------------------------------------------------===//
+
+// ADDI instructions that are part of a split load should not independently
+// be considered as having symbolic immediates.
+unlikely_have_symbolic_immediate(EA):-
+    instruction_get_operation(EA, Operation),
+    (Operation = "ADDI" ; Operation = "ADDIW"),
+    !riscv_split_load(_, EA, _, _).

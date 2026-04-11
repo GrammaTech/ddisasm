@@ -1,0 +1,29 @@
+jump_operation("JAL"). jump_operation("JALR"). jump_operation("J"). jump_operation("JR").
+jump_operation("BEQ"). jump_operation("BNE"). jump_operation("BLT"). jump_operation("BGE").
+jump_operation("BLTU"). jump_operation("BGEU").
+jump_operation("BEQZ"). jump_operation("BNEZ"). jump_operation("BLEZ"). jump_operation("BGEZ").
+jump_operation("BLTZ"). jump_operation("BGTZ").
+jump_operation("C.J"). jump_operation("C.JAL"). jump_operation("C.JR"). jump_operation("C.JALR").
+jump_operation("C.BEQZ"). jump_operation("C.BNEZ").
+
+jump_operation_op_index("JAL",1). jump_operation_op_index("JALR",1).
+jump_operation_op_index("J",1). jump_operation_op_index("JR",1).
+jump_operation_op_index("BEQ",3). jump_operation_op_index("BNE",3).
+jump_operation_op_index("BLT",3). jump_operation_op_index("BGE",3).
+jump_operation_op_index("BLTU",3). jump_operation_op_index("BGEU",3).
+jump_operation_op_index("BEQZ",2). jump_operation_op_index("BNEZ",2).
+jump_operation_op_index("BLEZ",2). jump_operation_op_index("BGEZ",2).
+jump_operation_op_index("BLTZ",2). jump_operation_op_index("BGTZ",2).
+jump_operation_op_index("C.J",1). jump_operation_op_index("C.JAL",1).
+jump_operation_op_index("C.JR",1). jump_operation_op_index("C.JALR",1).
+jump_operation_op_index("C.BEQZ",2). jump_operation_op_index("C.BNEZ",2).
+
+call_operation("JAL"). call_operation("JALR"). call_operation("CALL").
+call_operation("C.JAL"). call_operation("C.JALR").
+
+call_operation_op_index("JAL",1). call_operation_op_index("JALR",1).
+call_operation_op_index("CALL",1). call_operation_op_index("C.JAL",1).
+call_operation_op_index("C.JALR",1).
+
+// return_operation is overridden in the arch component to handle C.JR/JR
+// register-dependently (only RA is a return; other regs are indirect jumps).

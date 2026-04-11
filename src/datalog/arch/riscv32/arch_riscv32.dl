@@ -1,0 +1,13 @@
+#include "../riscv/arch_riscv.dl"
+
+.comp RISCV32 : RISCV {
+
+#include "float_operations.dl"
+#include "registers.dl"
+#include "elf_relocations.dl"
+
+arch("RISCV32").
+
+pointer_size(4).
+
+} // end .comp RISCV32

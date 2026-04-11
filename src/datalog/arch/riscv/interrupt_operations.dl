@@ -1,0 +1,5 @@
+interrupt_operation("ECALL"). interrupt_operation("EBREAK").
+interrupt_operation("MRET"). interrupt_operation("SRET"). interrupt_operation("URET"). interrupt_operation("WFI").
+syscall_operation("ECALL").
+halt_operation("EBREAK").
+halt_operation("WFI").
