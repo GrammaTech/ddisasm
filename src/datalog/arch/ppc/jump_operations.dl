@@ -1,0 +1,113 @@
+// Unconditional branches (NOT BL/BLA — those are calls, handled by call_operation)
+jump_operation("B").
+jump_operation("BA").
+
+// Conditional branches (NOT BCTRL/BLRL — those are unconditional calls)
+jump_operation("BC").
+jump_operation("BCA").
+jump_operation("BCL").
+jump_operation("BCLA").
+jump_operation("BCLR").
+jump_operation("BCLRL").
+jump_operation("BCCTR").
+jump_operation("BCCTRL").
+
+// Simplified mnemonics
+jump_operation("BEQ").
+jump_operation("BNE").
+jump_operation("BLT").
+jump_operation("BGT").
+jump_operation("BLE").
+jump_operation("BGE").
+jump_operation("BEQ+").
+jump_operation("BNE+").
+jump_operation("BLT+").
+jump_operation("BGT+").
+jump_operation("BLE+").
+jump_operation("BGE+").
+jump_operation("BEQ-").
+jump_operation("BNE-").
+jump_operation("BLT-").
+jump_operation("BGT-").
+jump_operation("BLE-").
+jump_operation("BGE-").
+jump_operation("BDNZ").
+jump_operation("BDNZ+").
+jump_operation("BDNZ-").
+jump_operation("BDZ").
+jump_operation("BDZ+").
+jump_operation("BDZ-").
+
+// LR-based branches (returns and indirect)
+// NOT BLRL — that's an unconditional call through LR, handled by call_operation
+jump_operation("BLR").
+jump_operation("BEQLR").
+jump_operation("BNELR").
+jump_operation("BLTLR").
+jump_operation("BGTLR").
+jump_operation("BLELR").
+jump_operation("BGELR").
+
+// CTR-based branches
+// NOT BCTRL — that's an unconditional call through CTR, handled by call_operation
+jump_operation("BCTR").
+
+// Operation -> operand index mappings
+jump_operation_op_index("B",1).
+jump_operation_op_index("BA",1).
+jump_operation_op_index("BC",3).
+jump_operation_op_index("BCA",3).
+jump_operation_op_index("BCL",3).
+jump_operation_op_index("BCLA",3).
+jump_operation_op_index("BEQ",1).
+jump_operation_op_index("BNE",1).
+jump_operation_op_index("BLT",1).
+jump_operation_op_index("BGT",1).
+jump_operation_op_index("BLE",1).
+jump_operation_op_index("BGE",1).
+jump_operation_op_index("BEQ+",1).
+jump_operation_op_index("BNE+",1).
+jump_operation_op_index("BLT+",1).
+jump_operation_op_index("BGT+",1).
+jump_operation_op_index("BLE+",1).
+jump_operation_op_index("BGE+",1).
+jump_operation_op_index("BEQ-",1).
+jump_operation_op_index("BNE-",1).
+jump_operation_op_index("BLT-",1).
+jump_operation_op_index("BGT-",1).
+jump_operation_op_index("BLE-",1).
+jump_operation_op_index("BGE-",1).
+jump_operation_op_index("BDNZ",1).
+jump_operation_op_index("BDNZ+",1).
+jump_operation_op_index("BDNZ-",1).
+jump_operation_op_index("BDZ",1).
+jump_operation_op_index("BDZ+",1).
+jump_operation_op_index("BDZ-",1).
+
+// Call operations
+call_operation("BL").
+call_operation("BLA").
+call_operation("BCL").
+call_operation("BCLA").
+call_operation("BCLRL").
+call_operation("BCCTRL").
+call_operation("BCTRL").
+call_operation("BLRL").
+
+call_operation_op_index("BL",1).
+call_operation_op_index("BLA",1).
+call_operation_op_index("BCL",3).
+call_operation_op_index("BCLA",3).
+call_operation_op_index("BCTRL",0).
+call_operation_op_index("BLRL",0).
+
+// Return operations
+return_operation("BLR").
+// Conditional returns (branch to LR if condition met)
+return_operation("BEQLR").
+return_operation("BNELR").
+return_operation("BLTLR").
+return_operation("BGTLR").
+return_operation("BLELR").
+return_operation("BGELR").
+return_operation("BCLR").

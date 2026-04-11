@@ -1,0 +1,253 @@
+//===- arch_ppc.dl ------------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2024 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+
+// Define a common set of predicates for PPC instructions and characteristics.
+// Shared between PPC32 and PPC64.
+.comp PPC : Arch {
+
+#include "jump_operations.dl"
+#include "interrupt_operations.dl"
+#include "float_operations.dl"
+#include "memory_access.dl"
+
+// Move operations
+move_operation("MR").
+move_operation("LI").
+move_operation("LIS").
+move_operation("MFCR").
+move_operation("MFSPR").
+move_operation("MTSPR").
+move_operation("MTCRF").
+move_operation("MCRF").
+move_operation("MFOCRF").
+move_operation("MTOCRF").
+move_operation("MFLR").
+move_operation("MTLR").
+move_operation("MFCTR").
+move_operation("MTCTR").
+
+move_reg_imm(EA,Reg,Value,1):-
+    instruction(EA,_,_,"LIS",Op1,Op2,0,0,_,_),
+    op_immediate(Op1,Immediate,_),
+    Value = Immediate bshl 16,
+    op_regdirect_contains_reg(Op2,Reg).
+
+// Load operations (shared 32-bit-width and narrower loads)
+load_operation("LBZ").
+load_operation("LBZU").
+load_operation("LBZX").
+load_operation("LBZUX").
+load_operation("LHZ").
+load_operation("LHZU").
+load_operation("LHZX").
+load_operation("LHZUX").
+load_operation("LHA").
+load_operation("LHAU").
+load_operation("LHAX").
+load_operation("LHAUX").
+load_operation("LWZ").
+load_operation("LWZU").
+load_operation("LWZX").
+load_operation("LWZUX").
+load_operation("LWA").
+load_operation("LWAX").
+load_operation("LWAUX").
+
+// Store operations (shared 32-bit-width and narrower stores)
+store_operation("STB").
+store_operation("STBU").
+store_operation("STBX").
+store_operation("STBUX").
+store_operation("STH").
+store_operation("STHU").
+store_operation("STHX").
+store_operation("STHUX").
+store_operation("STW").
+store_operation("STWU").
+store_operation("STWX").
+store_operation("STWUX").
+store_operation("STWCX.").
+
+// Arithmetic operations (shared)
+arithmetic_operation("ADD").
+arithmetic_operation("ADD.").
+arithmetic_operation("ADDO").
+arithmetic_operation("ADDO.").
+arithmetic_operation("ADDC").
+arithmetic_operation("ADDC.").
+arithmetic_operation("ADDCO").
+arithmetic_operation("ADDCO.").
+arithmetic_operation("ADDE").
+arithmetic_operation("ADDE.").
+arithmetic_operation("ADDEO").
+arithmetic_operation("ADDEO.").
+arithmetic_operation("ADDI").
+arithmetic_operation("ADDIC").
+arithmetic_operation("ADDIC.").
+arithmetic_operation("ADDIS").
+arithmetic_operation("ADDME").
+arithmetic_operation("ADDME.").
+arithmetic_operation("ADDZE").
+arithmetic_operation("ADDZE.").
+arithmetic_operation("SUBF").
+arithmetic_operation("SUBF.").
+arithmetic_operation("SUBFO").
+arithmetic_operation("SUBFO.").
+arithmetic_operation("SUBFC").
+arithmetic_operation("SUBFC.").
+arithmetic_operation("SUBFCO").
+arithmetic_operation("SUBFCO.").
+arithmetic_operation("SUBFE").
+arithmetic_operation("SUBFE.").
+arithmetic_operation("SUBFEO").
+arithmetic_operation("SUBFEO.").
+arithmetic_operation("SUBFIC").
+arithmetic_operation("SUBFME").
+arithmetic_operation("SUBFME.").
+arithmetic_operation("SUBFZE").
+arithmetic_operation("SUBFZE.").
+arithmetic_operation("NEG").
+arithmetic_operation("NEG.").
+arithmetic_operation("NEGO").
+arithmetic_operation("NEGO.").
+arithmetic_operation("EXTSB").
+arithmetic_operation("EXTSB.").
+arithmetic_operation("EXTSH").
+arithmetic_operation("EXTSH.").
+
+// reg_arithmetic_operation: Dst = Src * Mult + Offset
+// PPC operand order after rotation: (src_reg, imm, dst_reg)
+reg_arithmetic_operation(EA,Dst,Src,1,Offset):-
+    instruction(EA,_,_,"ADDI",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src),
+    op_immediate(Op2,Offset,_),
+    op_regdirect_contains_reg(Op3,Dst).
+
+reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,1,0):-
+    instruction(EA,_,_,"ADD",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src1),
+    op_regdirect_contains_reg(Op2,Src2),
+    op_regdirect_contains_reg(Op3,Dst).
+
+// Multiplication operations (shared 32-bit)
+multiplication_operation("MULLI").
+multiplication_operation("MULLW").
+multiplication_operation("MULLW.").
+multiplication_operation("MULLWO").
+multiplication_operation("MULLWO.").
+multiplication_operation("MULHW").
+multiplication_operation("MULHW.").
+multiplication_operation("MULHWU").
+multiplication_operation("MULHWU.").
+multiplication_operation("DIVW").
+multiplication_operation("DIVW.").
+multiplication_operation("DIVWO").
+multiplication_operation("DIVWO.").
+multiplication_operation("DIVWU").
+multiplication_operation("DIVWU.").
+multiplication_operation("DIVWUO").
+multiplication_operation("DIVWUO.").
+
+// Shift/rotate operations (shared 32-bit)
+shift_rotate_operation("SLW").
+shift_rotate_operation("SLW.").
+shift_rotate_operation("SRW").
+shift_rotate_operation("SRW.").
+shift_rotate_operation("SRAW").
+shift_rotate_operation("SRAW.").
+shift_rotate_operation("SRAWI").
+shift_rotate_operation("SRAWI.").
+shift_rotate_operation("RLWINM").
+shift_rotate_operation("RLWINM.").
+shift_rotate_operation("RLWNM").
+shift_rotate_operation("RLWNM.").
+shift_rotate_operation("RLWIMI").
+shift_rotate_operation("RLWIMI.").
+
+// Logic operations (shared)
+logic_operation("AND").
+logic_operation("AND.").
+logic_operation("ANDI.").
+logic_operation("ANDIS.").
+logic_operation("ANDC").
+logic_operation("ANDC.").
+logic_operation("OR").
+logic_operation("OR.").
+logic_operation("ORI").
+logic_operation("ORIS").
+logic_operation("ORC").
+logic_operation("ORC.").
+logic_operation("XOR").
+logic_operation("XOR.").
+logic_operation("XORI").
+logic_operation("XORIS").
+logic_operation("NAND").
+logic_operation("NAND.").
+logic_operation("NOR").
+logic_operation("NOR.").
+logic_operation("EQV").
+logic_operation("EQV.").
+logic_operation("CNTLZW").
+logic_operation("CNTLZW.").
+
+// Compare operations (shared 32-bit)
+cmp_operation("CMP").
+cmp_operation("CMPI").
+cmp_operation("CMPL").
+cmp_operation("CMPLI").
+cmp_operation("CMPW").
+cmp_operation("CMPWI").
+cmp_operation("CMPLW").
+cmp_operation("CMPLWI").
+
+// Conditional operations (shared)
+conditional_operation("BEQ","E").
+conditional_operation("BNE","NE").
+conditional_operation("BLT","L").
+conditional_operation("BGT","G").
+conditional_operation("BLE","LE").
+conditional_operation("BGE","GE").
+conditional_operation("BEQ+","E").
+conditional_operation("BNE+","NE").
+conditional_operation("BLT+","L").
+conditional_operation("BGT+","G").
+conditional_operation("BLE+","LE").
+conditional_operation("BGE+","GE").
+conditional_operation("BEQ-","E").
+conditional_operation("BNE-","NE").
+conditional_operation("BLT-","L").
+conditional_operation("BGT-","G").
+conditional_operation("BLE-","LE").
+conditional_operation("BGE-","GE").
+conditional_operation("BEQLR","E").
+conditional_operation("BNELR","NE").
+conditional_operation("BLTLR","L").
+conditional_operation("BGTLR","G").
+conditional_operation("BLELR","LE").
+conditional_operation("BGELR","GE").
+conditional_operation("BC","?").
+conditional_operation("BCA","?").
+conditional_operation("BCL","?").
+conditional_operation("BCLA","?").
+
+} // end .comp PPC

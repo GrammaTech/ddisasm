@@ -1,0 +1,7 @@
+interrupt_operation("SC").
+interrupt_operation("TRAP").
+interrupt_operation("TW").
+interrupt_operation("TWI").
+interrupt_operation("TD").
+interrupt_operation("TDI").
+syscall_operation("SC").

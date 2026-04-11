@@ -1,0 +1,278 @@
+//===- ppc_symbolization.dl ---------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2024 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+
+// PPC shared symbolization: split-load patterns for lis/addi address computation.
+//
+// PPC uses two-instruction sequences to load addresses:
+//   lis  rN, sym@ha       ; rN = (sym + 0x8000) >> 16 << 16
+//   addi rN, rN, sym@l    ; rN = rN + (sym & 0xFFFF)  [sign-extended]
+//
+// Or for memory access:
+//   lis  rN, sym@ha
+//   lwz  rM, sym@l(rN)    ; load from computed address
+//   stw  rM, sym@l(rN)    ; store to computed address
+//
+// We detect these patterns and create symbolic expressions so the pprinter
+// emits @ha/@l instead of raw immediates.
+
+// --------------------------------------------------------------------------
+// hi_load: Detect LIS instructions (which set reg = immediate << 16)
+// --------------------------------------------------------------------------
+.decl hi_load(ea:address, reg:register, upper:number)
+
+// LIS is decoded by Capstone as: LIS Reg, Immediate
+// In arch_ppc.dl, move_reg_imm already handles LIS:
+//   move_reg_imm(EA,Reg,Value,1) :- instruction(EA,_,_,"LIS",...), Value = Immediate bshl 16
+// But we need the raw upper half for split_load computation.
+hi_load(EA,Reg,Immediate):-
+    instruction(EA,_,_,"LIS",Op1,Op2,0,0,_,_),
+    op_immediate(Op1,Immediate,_),
+    op_regdirect_contains_reg(Op2,Reg).
+
+// ADDIS with r0 base is equivalent to LIS (r0 reads as 0 in address context)
+hi_load(EA,Reg,Immediate):-
+    instruction(EA,_,_,"ADDIS",Op1,Op2,Op3,0,_,_),
+    op_immediate(Op1,Immediate,_),
+    op_regdirect_contains_reg(Op2,Src),
+    Src = "R0",
+    op_regdirect_contains_reg(Op3,Reg).
+
+// --------------------------------------------------------------------------
+// hi_load_prop: Propagate hi_load through register moves
+// NOTE: Stack-restore propagation is intentionally omitted to avoid
+// Souffle stratification cycles with stack_def_use.
+// --------------------------------------------------------------------------
+.decl hi_load_prop(reg_restore_ea:address, ea:address, reg:register, upper:number, type:symbol)
+
+hi_load_prop(EA,EA,Reg,Upper,"direct"):-
+    hi_load(EA,Reg,Upper).
+
+// Simple register move (MR) -- use next() instead of reg_def_use to avoid cycle
+hi_load_prop(MoveEA,EA,Reg2,Upper,"move"):-
+    hi_load(EA,Reg,Upper),
+    next(EA,MoveEA),
+    arch.move_reg_reg(MoveEA,Reg2,Reg).
+
+// --------------------------------------------------------------------------
+// split_load_candidate: Match lis/addi pairs to compute addresses
+// --------------------------------------------------------------------------
+.decl split_load_candidate(ea_hi:address, ea_lo:address, dest:address, type:symbol)
+
+.decl split_load_point(ea:address, nextea:address, dest:address, type:symbol, point:number, why:symbol)
+
+.decl split_load_conflict(ea:address, nextea:address, dest:address, type:symbol, ea2:address, nextea2:address, dest2:address, type2:symbol)
+
+.decl split_load_total_points(ea:address, nextea:address, dest:address, type:symbol, points:number)
+
+.decl discarded_split_load(ea:address, nextea:address, dest:address, type:symbol, points:number)
+
+.decl split_load(ea:address, nextea:address, dest:address, type:symbol)
+
+.decl split_loadstore(ea:address, nextea:address, dest:address)
+
+// split_load_dest_ok: arch-specific filtering on candidate destinations.
+// PPC32 defines this to exclude .plt/.got/.got.plt section addresses.
+// PPC64 defines this as just valid_address(Dest).
+.decl split_load_dest_ok(Dest:address)
+
+.decl valid_address(EA:address) inline
+
+valid_address(EA):-
+    (
+        code(EA)
+        ;
+        data_segment(Begin,End),
+        EA >= Begin,
+        EA <= End
+        ;
+        symbol(EA,_,_,_,_,_,_,_,_), EA != 0
+        ;
+        bss_section_limits(Begin,End),
+        EA >= Begin, EA <= End
+    ).
+
+// Helper: EA_lo is reachable from EA_hi within a few instructions, using the
+// same register. We avoid reg_def_use to prevent stratification cycles.
+// Instead we use instruction sequencing (next) and check the register isn't
+// redefined between the two instructions.
+.decl hi_lo_pair(ea_hi:address, ea_lo:address, reg:register, upper:number)
+
+// Direct: lis immediately followed by addi/lwz/ori on same register
+hi_lo_pair(EA_hi,EA_lo,Reg,Upper):-
+    hi_load_prop(_,EA_hi,Reg,Upper,_),
+    next(EA_hi,EA_lo).
+
+// 1 instruction gap
+hi_lo_pair(EA_hi,EA_lo,Reg,Upper):-
+    hi_load_prop(_,EA_hi,Reg,Upper,_),
+    next(EA_hi,EA_mid), next(EA_mid,EA_lo),
+    !arch.move_reg_imm(EA_mid,Reg,_,_).
+
+// 2 instruction gap
+hi_lo_pair(EA_hi,EA_lo,Reg,Upper):-
+    hi_load_prop(_,EA_hi,Reg,Upper,_),
+    next(EA_hi,EA1), next(EA1,EA2), next(EA2,EA_lo),
+    !arch.move_reg_imm(EA1,Reg,_,_),
+    !arch.move_reg_imm(EA2,Reg,_,_).
+
+// 3-5 instruction gap (less common but occurs in optimized code)
+hi_lo_pair(EA_hi,EA_lo,Reg,Upper):-
+    hi_load_prop(_,EA_hi,Reg,Upper,_),
+    next(EA_hi,EA1), next(EA1,EA2), next(EA2,EA3), next(EA3,EA_lo),
+    !arch.move_reg_imm(EA1,Reg,_,_),
+    !arch.move_reg_imm(EA2,Reg,_,_),
+    !arch.move_reg_imm(EA3,Reg,_,_).
+
+// Pattern 1: lis rN, HI ; addi rM, rN, LO -> address = (HI << 16) + sign_extend(LO)
+split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset,address), "ADDI") :-
+    hi_lo_pair(EA_hi,EA_lo,Reg,Upper),
+    instruction_get_operation(EA_lo, "ADDI"),
+    arch.reg_arithmetic_operation(EA_lo,_,Reg,1,Offset).
+
+// Pattern 2: lis rN, HI ; lwz/stw rM, LO(rN) -> memory access at (HI << 16) + sign_extend(LO)
+split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset,address), "LoadStore") :-
+    hi_lo_pair(EA_hi,EA_lo,Reg,Upper),
+    arch.memory_access(_,EA_lo,_,_,_,Reg,"NONE",1,Offset).
+
+// Pattern 3: lis rN, HI ; ori rN, rN, LO -> address = (HI << 16) | LO (unsigned)
+split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset,address), "ORI") :-
+    hi_lo_pair(EA_hi,EA_lo,Reg,Upper),
+    instruction(EA_lo,_,_,"ORI",Op1,Op2,Op3,0,_,_),
+    op_immediate(Op1,Offset,_),
+    op_regdirect_contains_reg(Op2,Reg),
+    op_regdirect_contains_reg(Op3,_).
+
+// --------------------------------------------------------------------------
+// Scoring: heuristics to resolve conflicts
+// --------------------------------------------------------------------------
+
+split_load_point(EA_hi,EA_lo,Dest_addr,Type,0,"base"):-
+    split_load_candidate(EA_hi,EA_lo,Dest_addr,Type).
+
+// Backward order is suspicious
+split_load_point(EA_hi,EA_lo,Dest_addr,Type,-1,"hi-lo-backward"):-
+    split_load_candidate(EA_hi,EA_lo,Dest_addr,Type),
+    EA_hi > EA_lo.
+
+// Large distance between hi and lo is suspicious
+split_load_point(EA_hi,EA_lo,Dest_addr,Type,-2,"far-apart"):-
+    split_load_candidate(EA_hi,EA_lo,Dest_addr,Type),
+    EA_lo > EA_hi + 20.
+
+// --------------------------------------------------------------------------
+// Conflict resolution
+// --------------------------------------------------------------------------
+
+split_load_conflict(EA_hi,EA_lo,Dest_addr,Type,EA_hi2,EA_lo2,Dest_addr2,Type2):-
+    split_load_candidate(EA_hi,EA_lo,Dest_addr,Type),
+    split_load_candidate(EA_hi2,EA_lo2,Dest_addr2,Type2),
+    (
+        EA_hi < EA_hi2 ;
+        EA_hi = EA_hi2, EA_lo < EA_lo2 ;
+        EA_hi = EA_hi2, EA_lo = EA_lo2, Dest_addr < Dest_addr2
+    ),
+    (EA_lo = EA_lo2 ; EA_hi = EA_hi2),
+    Dest_addr != Dest_addr2.
+
+split_load_total_points(EA_hi,EA_lo,Dest_addr,Type,Points):-
+    split_load_candidate(EA_hi,EA_lo,Dest_addr,Type),
+    Points = sum X:{split_load_point(EA_hi,EA_lo,Dest_addr,Type,X,_)}.
+
+discarded_split_load(EA_hi,EA_lo,Dest_addr,Type,Points):-
+    split_load_conflict(EA_hi1,EA_lo1,Dest_addr1,Type1,EA_hi2,EA_lo2,Dest_addr2,Type2),
+    split_load_total_points(EA_hi1,EA_lo1,Dest_addr1,Type1,Points1),
+    split_load_total_points(EA_hi2,EA_lo2,Dest_addr2,Type2,Points2),
+    (
+        Points1 < Points2,
+        EA_hi = EA_hi1, EA_lo = EA_lo1, Dest_addr = Dest_addr1, Type = Type1, Points = Points1
+        ;
+        Points1 > Points2,
+        EA_hi = EA_hi2, EA_lo = EA_lo2, Dest_addr = Dest_addr2, Type = Type2, Points = Points2
+    ).
+
+// --------------------------------------------------------------------------
+// Final split_load / split_loadstore selection
+// Uses arch-specific split_load_dest_ok for destination validation.
+// --------------------------------------------------------------------------
+
+split_load(EA_hi, EA_lo, Dest_addr, Type) :-
+    split_load_candidate(EA_hi,EA_lo,Dest_addr,Type),
+    split_load_dest_ok(Dest_addr),
+    Type != "LoadStore",
+    !discarded_split_load(EA_hi,EA_lo,Dest_addr,Type,_).
+
+split_loadstore(EA_hi, EA_lo, Dest_addr):-
+    split_load_candidate(EA_hi,EA_lo,Dest_addr,"LoadStore"),
+    split_load_dest_ok(Dest_addr),
+    !discarded_split_load(EA_hi,EA_lo,Dest_addr,"LoadStore",_).
+
+// --------------------------------------------------------------------------
+// Integration: split_load_operand feeds into symbolic_operand_candidate
+// --------------------------------------------------------------------------
+
+// For the LIS instruction (high half): operand 1 has the immediate
+split_load_operand(EA_hi, 1, Dest_addr) :-
+    split_load(EA_hi, _, Dest_addr, _).
+
+split_load_operand(EA_hi, 1, Dest_addr) :-
+    split_loadstore(EA_hi, _, Dest_addr).
+
+// For the ADDI instruction (low half): operand 2 has the immediate
+// (after rotation: Op1=src_reg, Op2=imm, Op3=dst_reg)
+split_load_operand(EA_lo, 2, Dest_addr) :-
+    split_load(_, EA_lo, Dest_addr, "ADDI").
+
+// ORI: Op1=imm, Op2=src_reg, Op3=dst_reg (different order)
+split_load_operand(EA_lo, 1, Dest_addr) :-
+    split_load(_, EA_lo, Dest_addr, "ORI").
+
+// For LoadStore (lwz/stw): the displacement operand (index 1 for indirect)
+split_load_operand(EA_lo, 1, Dest_addr) :-
+    split_loadstore(_, EA_lo, Dest_addr).
+
+// --------------------------------------------------------------------------
+// Symbolic operand attributes: @ha for high, @l for low
+// --------------------------------------------------------------------------
+
+// LIS gets @ha attribute
+symbolic_operand_attribute(EA_hi, 1, "HA"):-
+    (
+        split_load(EA_hi,_,_,_);
+        split_loadstore(EA_hi,_,_)
+    ),
+    symbolic_operand(EA_hi,_,_,_).
+
+// ADDI gets @l on operand 2 (the immediate after rotation)
+symbolic_operand_attribute(EA_lo, 2, "L"):-
+    split_load(_,EA_lo,_,"ADDI"),
+    symbolic_operand(EA_lo,_,_,_).
+
+// ORI gets @l on operand 1
+symbolic_operand_attribute(EA_lo, 1, "L"):-
+    split_load(_,EA_lo,_,"ORI"),
+    symbolic_operand(EA_lo,_,_,_).
+
+// LoadStore gets @l on operand 1 (displacement)
+symbolic_operand_attribute(EA_lo, 1, "L"):-
+    split_loadstore(_,EA_lo,_),
+    symbolic_operand(EA_lo,_,_,_).
