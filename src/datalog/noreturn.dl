@@ -128,7 +128,11 @@ no_return_block(Block,"no-fallthrough"):-
         no_return_call_propagated(BlockEnd,_)
     ),
     block_boundaries(Block,Beg,EndBlock),
-    EndBlock <= End.
+    EndBlock <= End,
+    // PLT stubs are NOT noreturn — they forward to external functions that
+    // typically return. Without this, PPC BSS-PLT stubs (lis/lwz/mtctr/bctr)
+    // appear noreturn because bctr has no fallthrough or return edge.
+    !plt_block(Block,_).
 
 /**
 A function `Func` is called at instruction `Call` and the call may fall through

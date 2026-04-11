@@ -543,6 +543,9 @@ gtirb::SymAttributeSet buildSymbolicExpressionAttributes(
         {"HI", gtirb::SymAttribute::HI},
         {"LO", gtirb::SymAttribute::LO},
         {"OFST", gtirb::SymAttribute::OFST},
+        // PPC
+        {"HA", gtirb::SymAttribute::HA},
+        {"L", gtirb::SymAttribute::L},
         // X86
         {"INDNTPOFF", gtirb::SymAttribute::INDNTPOFF},
     };
@@ -1209,6 +1212,29 @@ void buildCFG(gtirb::Context &Context, gtirb::Module &Module, souffle::SoufflePr
         gtirb::EdgeType EdgeType = getEdgeType(Type);
         auto E = addEdge(CodeBlock, ExternalBlock, Cfg);
         Cfg[*E] = {IsConditional, IsIndirect, EdgeType};
+    }
+
+    // Add return edges for PLT blocks.
+    // PLT stubs (e.g., PPC BSS-PLT: lis/lwz/mtctr/bctr) forward to external
+    // functions that typically return. Without an explicit return edge, the
+    // NoReturnPass treats PLT blocks as noreturn and removes fallthrough edges
+    // from callers, breaking inter-procedural control flow.
+    for(auto &Output : *Program.getRelation("plt_block"))
+    {
+        gtirb::Addr BlockAddr;
+        std::string Function;
+        Output >> BlockAddr >> Function;
+        auto BlockRange = Module.findCodeBlocksOn(BlockAddr);
+        if(!BlockRange.empty())
+        {
+            const gtirb::CodeBlock *Block = &*BlockRange.begin();
+            auto E = addEdge(Block, TopBlock, Cfg);
+            if(E)
+            {
+                Cfg[*E] = {gtirb::ConditionalEdge::OnFalse, gtirb::DirectEdge::IsIndirect,
+                           gtirb::EdgeType::Return};
+            }
+        }
     }
 }
 

@@ -61,6 +61,8 @@ protected:
 
 private:
     uint64_t TlsBaseAddress = 0;
+    // Original PT_TLS segment start address (before rebasing).
+    std::optional<uint64_t> OriginalTlsStart;
 
     std::optional<std::string> getStringAt(uint32_t Index);
     LIEF::span<const uint8_t> getStrTabBytes();
