@@ -407,12 +407,12 @@ movz_movk_member(EA, EA_first, EA_last):-
 /**
 Helper: map a shift amount to the corresponding group attribute name.
 */
-.decl movz_movk_shift_group(Shift:unsigned, Group:symbol)
+.decl movz_movk_shift_group(ShiftMask:unsigned, Group:symbol)
 
-movz_movk_shift_group(0,  "G0").
-movz_movk_shift_group(16, "G1").
-movz_movk_shift_group(32, "G2").
-movz_movk_shift_group(48, "G3").
+movz_movk_shift_group(1, "G0").
+movz_movk_shift_group(2, "G1").
+movz_movk_shift_group(4, "G2").
+movz_movk_shift_group(8, "G3").
 
 /**
 For non-PIE (EXEC) binaries, generate symbolic operand candidates
@@ -433,8 +433,8 @@ symbolic_operand_candidate(EA, 1, Dest, Type):-
         Type = "data"
     ),
     movz_movk_member(EA, EA_first, EA_last),
-    movz_movk_insn(EA, _, _, Shift, _),
-    movz_movk_shift_group(Shift, Group).
+    movz_movk_insn(EA, _, _, ShiftMask, _),
+    movz_movk_shift_group(ShiftMask, Group).
 
 may_have_symbolic_immediate(EA, as(Value, address)):-
     movz_movk_complete(EA_first, EA_last, Value),
