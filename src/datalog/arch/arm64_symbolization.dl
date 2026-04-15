@@ -336,9 +336,9 @@ unlikely_have_symbolic_immediate(EA):-
 /**
 Individual MOVZ or MOVK instruction with its 16-bit immediate and shift.
 */
-.decl movz_movk_insn(EA:address, Reg:register, Val:number, Shift:unsigned, Operation:symbol)
+.decl movz_movk_insn(EA:address, Reg:register, Val:number, ShiftMask:unsigned, Operation:symbol)
 
-movz_movk_insn(EA, Reg, Imm band 65535, Shift, Operation):-
+movz_movk_insn(EA, Reg, Value, ShiftMask, Operation):-
     instruction_get_operation(EA, Operation),
     (Operation = "MOVZ" ; Operation = "MOVK"),
     arch.move_reg_imm(EA, Reg, Imm, _),
@@ -348,50 +348,36 @@ movz_movk_insn(EA, Reg, Imm band 65535, Shift, Operation):-
         Shift = 0,
         !op_shifted(EA, 1, _, _)
     ),
-    Shift % 16 = 0.
+    Shift % 16 = 0,
+    Value = (Imm band 0xFFFF) * 2^as(Shift,number),
+    ShiftMask = 1 bshl (Shift bshr 4).
 
 /**
 A chain of MOVZ followed by one or more MOVKs to the same register.
-EA_first is always the MOVZ; EA_last is the last instruction added.
-Value is the accumulated composite from all instructions in the chain.
-Count tracks the number of instructions in the chain (2-4).
+EA_first is always the MOVZ instruction.
+EA_last is the final instruction in the chain.
+Value is the accumulated 64-bit constant constructed from all instructions.
+UsedShiftMask tracks which 16-bit lanes have been written.
+Count is the number of instructions in the chain (1-4).
 */
-.decl movz_movk_chain(EA_first:address, EA_last:address, Reg:register, Value:number, Count:unsigned)
+.decl movz_movk_chain(EA_first:address, EA_last:address, Reg:register, Value:number, UsedShiftMask:unsigned, Count:unsigned)
 
-// Base case: MOVZ followed immediately by a MOVK to the same register.
-movz_movk_chain(EA_movz, EA_movk, Reg, Value, 2):-
-    movz_movk_insn(EA_movz, Reg, Val_z, Shift_z, "MOVZ"),
-    next(EA_movz, EA_movk),
-    movz_movk_insn(EA_movk, Reg, Val_k, Shift_k, "MOVK"),
-    Shift_z != Shift_k,
-    Value = (Val_z * 2^as(Shift_z, number)) bor (Val_k * 2^as(Shift_k, number)).
+// Base case: single MOVZ initializes the main.
+movz_movk_chain(EA_movz, EA_movz, Reg, Value, UsedShiftMask, 1):-
+    movz_movk_insn(EA_movz, Reg, Value, UsedShiftMask, "MOVZ").
 
-// Chain of 3: MOVZ + MOVK + MOVK, each with a unique shift.
-movz_movk_chain(EA_first, EA3, Reg, NewValue, 3):-
-    movz_movk_chain(EA_first, EA2, Reg, Value, 2),
-    next(EA2, EA3),
-    movz_movk_insn(EA3, Reg, Val_3, Shift_3, "MOVK"),
-    // Shift_3 must differ from both earlier shifts.
-    movz_movk_insn(EA_first, _, _, Shift_first, _),
-    movz_movk_insn(EA2, _, _, Shift_2, _),
-    Shift_3 != Shift_first,
-    Shift_3 != Shift_2,
-    NewValue = Value bor (Val_3 * 2^as(Shift_3, number)).
+// Recursive case: extend chain with a consecutive MOVK to the same register.
+movz_movk_chain(EA_start, EA_last, Reg, Value, UsedShiftMask, Count+1):-
+    movz_movk_chain(EA_start, EA_prev, Reg, PrevValue, PrevShiftMask, Count),
+    Count < 4,
+    next(EA_prev, EA_last),
+    movz_movk_insn(EA_last, Reg, CurrValue, CurrShiftMask, "MOVK"),
 
-// Chain of 4: MOVZ + 3 MOVKs, each with a unique shift.
-movz_movk_chain(EA_first, EA4, Reg, NewValue, 4):-
-    movz_movk_chain(EA_first, EA3, Reg, Value, 3),
-    next(EA3, EA4),
-    movz_movk_insn(EA4, Reg, Val_4, Shift_4, "MOVK"),
-    // Shift_4 must differ from all three earlier shifts.
-    movz_movk_insn(EA_first, _, _, Shift_first, _),
-    movz_movk_chain(EA_first, EA2, _, _, 2),
-    movz_movk_insn(EA2, _, _, Shift_2, _),
-    movz_movk_insn(EA3, _, _, Shift_3, _),
-    Shift_4 != Shift_first,
-    Shift_4 != Shift_2,
-    Shift_4 != Shift_3,
-    NewValue = Value bor (Val_4 * 2^as(Shift_4, number)).
+    // Ensure the MOVK writes to a previously unused 16-bit lane.
+    PrevShiftMask band CurrShiftMask = 0,
+
+    UsedShiftMask = PrevShiftMask bor CurrShiftMask,
+    Value = PrevValue bor CurrValue.
 
 /**
 The longest complete MOVZ+MOVK chain: a chain that cannot be extended further.
@@ -400,20 +386,8 @@ This is the one we use for symbolization.
 .decl movz_movk_complete(EA_first:address, EA_last:address, Value:number)
 
 movz_movk_complete(EA_first, EA_last, Value):-
-    movz_movk_chain(EA_first, EA_last, Reg, Value, _),
-    // This chain cannot be extended by another MOVK.
-    (
-        !next(EA_last, _),
-        UNUSED(Reg)
-        ;
-        next(EA_last, EA_after),
-        !movz_movk_insn(EA_after, _, _, _, "MOVK"),
-        UNUSED(Reg)
-        ;
-        next(EA_last, EA_after),
-        movz_movk_insn(EA_after, Reg2, _, _, "MOVK"),
-        Reg2 != Reg
-    ).
+    movz_movk_chain(EA_first, EA_last, _, Value, _, Count),
+    !movz_movk_chain(EA_first, _, _, _, _, Count+1).
 
 /**
 Helper: is EA part of a complete MOVZ+MOVK chain?
@@ -427,7 +401,7 @@ movz_movk_member(EA_first, EA_first, EA_last):-
 // Each MOVK in the chain.
 movz_movk_member(EA, EA_first, EA_last):-
     movz_movk_complete(EA_first, EA_last, _),
-    movz_movk_chain(EA_first, EA, _, _, _),
+    movz_movk_chain(EA_first, EA, _, _, _, _),
     EA != EA_first.
 
 /**

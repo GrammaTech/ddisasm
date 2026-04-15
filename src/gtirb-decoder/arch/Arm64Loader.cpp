@@ -61,7 +61,7 @@ bool Arm64Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction)
 
     // Capstone produces the ARM-preferred MOV alias for MOVZ as MOV when
     // the immediate fits a single 16-bit lane. In that case, the encoded
-    // shjift is folded into the final immediate value (for example,
+    // shift is folded into the final immediate value (for example,
     // "MOVZ X0, #0x40, LSL #16"
     // becomes
     // "MOV X0, #0x400000")
@@ -69,7 +69,6 @@ bool Arm64Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction)
     // the canonical MOVZ form by checking the raw instruction encoding
     // (opc == 10) and reconstructing the original imm16 + shift pair.
     // This allows the MOVZ+MOVK symbolization rules to match correctly.
-    bool IsAliasedMovz = false;
     unsigned AliasedShift = 0;
     int64_t AliasedImm16 = 0;
     if(CsInstruction.id == ARM64_INS_MOV && Details.op_count == 2)
@@ -83,27 +82,12 @@ bool Arm64Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction)
                            | (static_cast<uint32_t>(CsInstruction.bytes[3]) << 24);
 
             // bits[30:29] = opc, where 10 identifies MOVZ
-            IsAliasedMovz = ((Enc >> 29) & 0x3) == 0x2;
-
-            if(IsAliasedMovz)
+            if(((Enc >> 29) & 0x3) == 0x2)
             {
                 Name = "MOVZ";
-
-                uint64_t Value = static_cast<uint64_t>(Src.imm);
-
-                // Recover the original imm16 lane and its shift amount.
-                for(unsigned Shift : {0u, 16u, 32u, 48u})
-                {
-                    const int64_t Imm16 = (Value >> Shift) & 0xFFFF;
-
-                    // The immediate must occupy exactly one MOVZ lane
-                    if(Value == (Imm16 << Shift))
-                    {
-                        AliasedShift = Shift;
-                        AliasedImm16 = Imm16;
-                        break;
-                    }
-                }
+                // bits[22:21] = shift/16  <==>  shift = bits[22:21] << 4
+                AliasedShift = ((Enc >> 21) & 0x3) << 4;
+                AliasedImm16 = (static_cast<uint64_t>(Src.imm) >> AliasedShift) & 0xFFFF;
             }
         }
     }
@@ -117,7 +101,7 @@ bool Arm64Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction)
             cs_arm64_op CsOp = Details.operands[i];
             // For aliased MOVZ, we fix up the immediate operand to recover the
             // original 16-bit value and shift that capstone folded away.
-            if(IsAliasedMovz && CsOp.type == ARM64_OP_IMM && AliasedShift > 0)
+            if(CsOp.type == ARM64_OP_IMM && AliasedShift > 0)
             {
                 CsOp.imm = AliasedImm16;
                 CsOp.shift.type = ARM64_SFT_LSL;
@@ -138,8 +122,7 @@ bool Arm64Loader::build(BinaryFacts& Facts, const cs_insn& CsInstruction)
             // Populate shift metadata for immediate operands (e.g., MOVZ/MOVK
             // with lsl #16/#32/#48). This is needed for MOVZ+MOVK address
             // reconstruction in the Datalog symbolization rules.
-            if(CsOp.type == ARM64_OP_IMM && CsOp.shift.type == ARM64_SFT_LSL
-               && CsOp.shift.value != 0)
+            if(CsOp.type == ARM64_OP_IMM && CsOp.shift.type == ARM64_SFT_LSL)
             {
                 Facts.Instructions.shiftedOp(
                     relations::ShiftedOp{Addr, rotated_op_index(i + 1, OpCount),
