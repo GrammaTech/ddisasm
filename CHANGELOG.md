@@ -8,6 +8,7 @@
 * Fix bug that could lead to functional errors due to false-positive symbolic operands or data.
 * Fix bug that could drop fall-through edges from calls to conditionally no-return functions
 * Fix bug that could drop inter-procedural CFG edges.
+* Fix an issue where symbolic expressions could be missing from ARM64 MOVZ/MOVK sequences.
 
 # 1.9.2
 

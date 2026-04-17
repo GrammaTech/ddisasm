@@ -176,6 +176,9 @@ tests:
   - name: ex_post_index_no_lo12
     <<: *assembly
 
+  - name: ex_movz_movk
+    <<: *assembly
+
   # ex1, stripped, dynamic
   - name: ex1
     <<: *default

@@ -313,3 +313,134 @@ unlikely_have_symbolic_immediate(EA):-
     instruction_get_operation(EA, Operation),
     contains("ADD", Operation),
     !split_load(_,EA,_,"ADD").
+
+// ===================================================================
+// MOVZ + MOVK address construction
+// ===================================================================
+//
+// In non-PIE ARM64 binaries, absolute addresses are often constructed
+// using a MOVZ+MOVK instruction sequence:
+//
+//   movz x0, #0x0, lsl #16  ; x0 = 0x00000000
+//   movk x0, #0x4170        ; x0 = 0x00004170  (address of some symbol)
+//
+// Each instruction writes a 16-bit slice of the destination register.
+// The shift amount (lsl #0, #16, #32, #48) selects which slice is updated.
+// MOVZ initializes the register by zeroing all other bits, while
+// subsequent MOVK instructions overwrite only their selected 16-bit
+// slice without affecting the rest of the register.
+//
+// This is analogous to ARM32's MOVW+MOVT sequence (see arm32_binaries.dl).
+// ===================================================================
+
+/**
+Individual MOVZ or MOVK instruction with its 16-bit immediate and shift.
+*/
+.decl movz_movk_insn(EA:address, Reg:register, Val:number, ShiftMask:unsigned, Operation:symbol)
+
+movz_movk_insn(EA, Reg, Value, ShiftMask, Operation):-
+    instruction_get_operation(EA, Operation),
+    (Operation = "MOVZ" ; Operation = "MOVK"),
+    arch.move_reg_imm(EA, Reg, Imm, _),
+    (
+        op_shifted(EA, 1, Shift, "LSL")
+        ;
+        Shift = 0,
+        !op_shifted(EA, 1, _, _)
+    ),
+    Shift % 16 = 0,
+    Value = (Imm band 0xFFFF) * 2^as(Shift,number),
+    ShiftMask = 1 bshl (Shift bshr 4).
+
+/**
+A chain of MOVZ followed by one or more MOVKs to the same register.
+EA_first is always the MOVZ instruction.
+EA_last is the final instruction in the chain.
+Value is the accumulated 64-bit constant constructed from all instructions.
+UsedShiftMask tracks which 16-bit lanes have been written.
+Count is the number of instructions in the chain (1-4).
+*/
+.decl movz_movk_chain(EA_first:address, EA_last:address, Reg:register, Value:number, UsedShiftMask:unsigned, Count:unsigned)
+
+// Base case: single MOVZ initializes the chain.
+movz_movk_chain(EA_movz, EA_movz, Reg, Value, UsedShiftMask, 1):-
+    movz_movk_insn(EA_movz, Reg, Value, UsedShiftMask, "MOVZ").
+
+// Recursive case: extend chain with a consecutive MOVK to the same register.
+movz_movk_chain(EA_start, EA_last, Reg, Value, UsedShiftMask, Count+1):-
+    movz_movk_chain(EA_start, EA_prev, Reg, PrevValue, PrevShiftMask, Count),
+    next(EA_prev, EA_last),
+    movz_movk_insn(EA_last, Reg, CurrValue, CurrShiftMask, "MOVK"),
+
+    // Ensure the MOVK writes to a previously unused 16-bit lane.
+    PrevShiftMask band CurrShiftMask = 0,
+
+    UsedShiftMask = PrevShiftMask bor CurrShiftMask,
+    Value = PrevValue bor CurrValue.
+
+/**
+The longest complete MOVZ+MOVK chain: a chain that cannot be extended further.
+This is the one we use for symbolization.
+*/
+.decl movz_movk_complete(EA_first:address, EA_last:address, Value:number)
+
+movz_movk_complete(EA_first, EA_last, Value):-
+    movz_movk_chain(EA_first, EA_last, _, Value, _, Count),
+    !movz_movk_chain(EA_first, _, _, _, _, Count+1).
+
+/**
+Helper: is EA part of a complete MOVZ+MOVK chain?
+*/
+.decl movz_movk_member(EA:address, EA_first:address, EA_last:address)
+
+// The MOVZ itself.
+movz_movk_member(EA_first, EA_first, EA_last):-
+    movz_movk_complete(EA_first, EA_last, _).
+
+// Each MOVK in the chain.
+movz_movk_member(EA, EA_first, EA_last):-
+    movz_movk_complete(EA_first, EA_last, _),
+    movz_movk_chain(EA_first, EA, _, _, _, _),
+    EA != EA_first.
+
+/**
+Helper: map a shift amount to the corresponding group attribute name.
+*/
+.decl movz_movk_shift_group(ShiftMask:unsigned, Group:symbol)
+
+movz_movk_shift_group(1, "G0").
+movz_movk_shift_group(2, "G1").
+movz_movk_shift_group(4, "G2").
+movz_movk_shift_group(8, "G3").
+
+/**
+For non-PIE (EXEC) binaries, generate symbolic operand candidates
+when a complete MOVZ+MOVK chain constructs a value that matches a known
+code or data address. Each instruction gets a G0-G3 attribute
+indicating which 16-bit group it contributes.
+*/
+symbolic_operand_attribute(EA, 1, Group),
+symbolic_operand_candidate(EA, 1, Dest, Type):-
+    binary_type("EXEC"),
+    movz_movk_complete(EA_first, EA_last, Value),
+    Dest = as(Value, address),
+    (
+        code(Dest), Type = "code"
+        ;
+        data_segment(Begin, End),
+        Dest >= Begin, Dest <= End,
+        Type = "data"
+    ),
+    movz_movk_member(EA, EA_first, EA_last),
+    movz_movk_insn(EA, _, _, ShiftMask, _),
+    movz_movk_shift_group(ShiftMask, Group).
+
+may_have_symbolic_immediate(EA, as(Value, address)):-
+    movz_movk_complete(EA_first, EA_last, Value),
+    movz_movk_member(EA, EA_first, EA_last).
+
+// Immediate in movz or movk may not be symbolic unless the instruction is part of movz_movk_chain.
+unlikely_have_symbolic_immediate(EA):-
+    instruction_get_operation(EA, Operation),
+    (Operation = "MOVZ" ; Operation = "MOVK"),
+    !movz_movk_member(EA, _, _).
