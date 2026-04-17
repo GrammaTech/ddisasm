@@ -362,14 +362,13 @@ Count is the number of instructions in the chain (1-4).
 */
 .decl movz_movk_chain(EA_first:address, EA_last:address, Reg:register, Value:number, UsedShiftMask:unsigned, Count:unsigned)
 
-// Base case: single MOVZ initializes the main.
+// Base case: single MOVZ initializes the chain.
 movz_movk_chain(EA_movz, EA_movz, Reg, Value, UsedShiftMask, 1):-
     movz_movk_insn(EA_movz, Reg, Value, UsedShiftMask, "MOVZ").
 
 // Recursive case: extend chain with a consecutive MOVK to the same register.
 movz_movk_chain(EA_start, EA_last, Reg, Value, UsedShiftMask, Count+1):-
     movz_movk_chain(EA_start, EA_prev, Reg, PrevValue, PrevShiftMask, Count),
-    Count < 4,
     next(EA_prev, EA_last),
     movz_movk_insn(EA_last, Reg, CurrValue, CurrShiftMask, "MOVK"),
 
