@@ -22,10 +22,10 @@
 //===----------------------------------------------------------------------===//
 #include "AuxDataLoader.h"
 
+#include <iostream>
+
 #include "../../AuxDataSchema.h"
 #include "../Relations.h"
-
-#include <iostream>
 
 void PaddingLoader::operator()(const gtirb::Module& Module, souffle::SouffleProgram& Program)
 {
