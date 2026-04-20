@@ -392,10 +392,14 @@ if(DDISASM_MIPS_64)
       datalog/arch/mips_tls.dl)
 
   generate_arch_static_lib(
-    ARCH MIPS64
-    MARCH MIPS64
-    DATALOG_SOURCES ${DATALOG_MIPS64_SOURCES}
-    PATH souffle_disasm_mips64)
+    ARCH
+    MIPS64
+    MARCH
+    MIPS64
+    DATALOG_SOURCES
+    ${DATALOG_MIPS64_SOURCES}
+    PATH
+    souffle_disasm_mips64)
 endif()
 
 if(DDISASM_X86_32)
