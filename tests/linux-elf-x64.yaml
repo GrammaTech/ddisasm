@@ -269,11 +269,6 @@ tests:
     <<: *default
     binary: fun.so
 
-  - name: ex_symbol_selection3
-    <<: *default
-    reassemble:
-      flags: ["libfoo.so"]
-
   # ----------------------------------------------------------------------------
   # Static examples
   # ----------------------------------------------------------------------------
@@ -428,12 +423,6 @@ tests:
     <<: *test-strip-default
     binary: fun.so
 
-  - name: ex_symbol_selection3
-    <<: *default
-    <<: *test-strip-default
-    reassemble:
-      flags: ["libfoo.so"]
-
   # ----------------------------------------------------------------------------
   # Assembly examples.
   # ----------------------------------------------------------------------------
@@ -547,6 +536,10 @@ tests:
   - name: ex_referred_string
     <<: *assembly
 
+  - name: ex_symbol_selection3
+    <<: *assembly
+    flags: ["libfoo.so"]
+
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
   # ----------------------------------------------------------------------------
@@ -650,6 +643,11 @@ tests:
   - name: ex_referred_string
     <<: *assembly
     <<: *test-strip-default
+
+  - name: ex_symbol_selection3
+    <<: *assembly
+    <<: *test-strip-default
+    flags: ["libfoo.so"]
 
   # ----------------------------------------------------------------------------
   # Relocatable ELF objects (.o).
