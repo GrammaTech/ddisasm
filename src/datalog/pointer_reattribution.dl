@@ -632,14 +632,52 @@ boundary_sym_expr(EA+InstrOffset,ImmediateAddr):-
     dest_enlarged_data_section(EA_def,Reg,_,_,_,_,EndSection),
     ImmediateAddr = EndSection.
 
-// Data entry that points to the end of an address array as well as the end of
-// a section.
+// Data entry whose value correponds to the end of an address array and
+// simultaneously marks a section boundary.
+//
+// This pattern commonly arises from linker-generated symbols such as
+// __stop_foo, which denotes the first address immediately following a section.
+// Such symbols are frequently used as array terminators when the section
+// contains an array of pointers.
+//
+// Conservatively, only apply this rule when the following section is a
+// special data section (e.g., .got).
+//
 boundary_sym_expr(EA,ArrayEnd):-
     binary_type("EXEC"),
     aligned_address_in_data(EA,ArrayEnd),
     loaded_section(_,ArrayEnd,_),
     loaded_section(ArrayEnd,_,Name),
     special_data_section(Name),
+    arch.pointer_size(Size),
+    address_array(ArrayEnd-Size,_,ArrayStart),
+    !address_array(ArrayEnd,_,ArrayStart).
+
+// Special case for PIE executables where a section-boundary symbol is
+// co-located with a COPY relocation slot in the immediately following
+// section (typically .bss).
+//
+// In this situation, the same address may be associated with both a
+// linker-generated section-boundary symbol (e.g., __stop_foo) and a
+// copy-relocated object symbol. Although the symbols share the same address,
+// the section-boundary symbol is the semantically correct target because
+// it represents the end of the address array.
+//
+// Without this rule, symbol selection may incorrectly prefer the
+// copy-relocated object symbol. As a result, references that originally
+// pointed to the array boundary may be reconstructed against the wrong symbol,
+// potentially resulting in incorrect relocations and invalid array traversal
+// bounds, and runtime failures.
+//
+// See examples/asm_examples/ex_symbol_selection3/ex_original.s for a concrete
+// example.
+//
+boundary_sym_expr(EA,ArrayEnd):-
+    address_in_data_refined(EA,ArrayEnd),
+    aligned_address_in_data(EA,ArrayEnd),
+    loaded_section(_,ArrayEnd,_),
+    loaded_section(ArrayEnd,_,_),
+    relocation(ArrayEnd,"COPY",_,_,_,_,_),
     arch.pointer_size(Size),
     address_array(ArrayEnd-Size,_,ArrayStart),
     !address_array(ArrayEnd,_,ArrayStart).

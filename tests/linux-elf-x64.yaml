@@ -269,6 +269,11 @@ tests:
     <<: *default
     binary: fun.so
 
+  - name: ex_symbol_selection3
+    <<: *default
+    reassemble:
+      flags: ["libfoo.so"]
+
   # ----------------------------------------------------------------------------
   # Static examples
   # ----------------------------------------------------------------------------
@@ -422,6 +427,12 @@ tests:
     <<: *default
     <<: *test-strip-default
     binary: fun.so
+
+  - name: ex_symbol_selection3
+    <<: *default
+    <<: *test-strip-default
+    reassemble:
+      flags: ["libfoo.so"]
 
   # ----------------------------------------------------------------------------
   # Assembly examples.
