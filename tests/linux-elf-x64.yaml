@@ -538,7 +538,6 @@ tests:
 
   - name: ex_symbol_selection3
     <<: *assembly
-    flags: ["libfoo.so"]
 
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
@@ -647,7 +646,6 @@ tests:
   - name: ex_symbol_selection3
     <<: *assembly
     <<: *test-strip-default
-    flags: ["libfoo.so"]
 
   # ----------------------------------------------------------------------------
   # Relocatable ELF objects (.o).
