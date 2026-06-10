@@ -1,8 +1,8 @@
 # 1.9.4 (Unreleased)
 
-* Fix a symbolization bug in PIE executables where a section-boundary symbol
+* Fix a symbolization bug in executables where a section-boundary symbol
   could be incorrectdly replaced by another symbol at the same address,
-  potentially resulting in incorrect relocations and runtime failures.
+  potentially resulting in runtime failures or unexpected behavior.
 
 # 1.9.3
 

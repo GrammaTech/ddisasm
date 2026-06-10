@@ -5,4 +5,4 @@ SECTIONS
         *(xref_array)
     }
 }
-INSERT BEFORE .bss;
+INSERT BEFORE .data;

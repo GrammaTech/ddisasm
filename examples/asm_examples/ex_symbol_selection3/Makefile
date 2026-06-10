@@ -1,4 +1,5 @@
 CC=gcc
+CFLAGS=
 
 all: libfoo.so ex
 
@@ -6,7 +7,7 @@ libfoo.so: libfoo.c
 	$(CC) -shared -fPIC -o $@ $<
 
 ex: ex_original.s
-	$(CC) -pie -Wl,-T,linker-script.ld ex_original.s -L. -lfoo -Wl,-rpath,'$$ORIGIN' -o $@
+	$(CC) -Wl,-T,linker-script.ld ex_original.s -L. -lfoo -Wl,-rpath,'$$ORIGIN' $(CFLAGS) -o $@
 	@LD_LIBRARY_PATH=$LD_LIBRARY_PATH:. ./ex > out.txt
 clean:
 	rm -f ex libfoo.so out.txt

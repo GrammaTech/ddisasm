@@ -11,46 +11,43 @@
  *
  * Layout
  * ======
- * The linker script places the xref_array section immediately before .bss:
- * xref_array:
- *   ...
- * __stop_xref_array
+ * The linker script places the `xref_array` section immediately before .bss:
+ * This make `__stop_xref_array` and `copy_var` share the exact same address:
+ *
+ *   xref_array:
+ *   __start_xref_array:
+ *     ...
+ *   __stop_xref_array:
  *
  * .bss
- *   copy_var (R_X86_64_COPY slot)
+ *   copy_var: (R_X86_64_COPY slot)
+ *     .zero 64
  *
- * As a result, `__stop_xref_array` and the copy-relocated instance of
- * `copy_var` resolve to the same address in the final executable.
+ * The `_xref_block` structure holds pointers to the start and stop symbols of
+ * the array. The `print_symbols` function uses these bounds to loop through
+ * the data.
  *
- * The structure `_xref_block` stores pointers to `__start_xref_array` and
- * `__stop_xref_array`. These symbols define the bounds of the array
- * traversal performed by `print_symbols`.
+ * Evan though they share an address, these two symbols mean differnt things:
+ * - `__stop_xref_array`: A linker symbol that marks the end of `xref_array`.
+ * - `copy_var`: A standard data object.
  *
  *
- * Failure Mode
- * ================
+ * Failure Mode 1: Array Loop Crash
+ * ================================
  *
- * Although `__stop_xref_array` and `copy_var` have identical addresses, they
- * represent different symbols with different meanings:
- * - `__stop_xref_array` is a linker-generated section-boundary symbol
- *  identifying the end of `xref_array`.
- * - `copy_var` is a data object.
+ * If Ddisasm wrongly picks `copy_var` instead of `__stop_xref_array` for
+ * `_xref_block`, the pointer breaks when the section layout changes.
  *
- * During disassembly and reassembly, ddisasm must preserve the original
- * relocation target. A buggy implementation may incorrectly select `copy_var`
- * instead of `__stop_xref_array` because both symbols are associated with the
- * same address.
+ * When `print_symbols` loops through the array, it will march past the real
+ * data. It will eventually read an invalid address and cause a crash
+ * (Segmentation Fault).
  *
- * In a PIE executable, the rewritten binary may therefore emit a relocation
- * against `copy_var` rather than against the intended section-boundary symbol.
- * The resulting pointer no longer represents the logical end of `xref_array`.
+ * Failure Mode 2: Bad Data Output
+ * ===============================
  *
- * When `print_symbols` traverses the array using the corrupted bounds, it
- * walks beyond the valid entries and eventually dereferences an invalid
- * address, resulting in a segmentation fault.
- *
- * The dummy reference to `copy_var` in main() exists solely to force creation
- * of the R_X86_64_COPY relocation.
+ * If Ddisasm wrongly picks `__stop_xref_array` instead `copy_var`for
+ * `_copy_var_ref`, `print_symbols` will read from the wrong place.
+ * It will print garbage data instead of the number 7.
  */
     # --------------------------------------
     .section .text
@@ -61,7 +58,28 @@ main:
     movq   %rsp, %rbp
     pushq  %r12
 
-    movq   (copy_var)(%rip), %r12 # dummy reference to copy_var
+    #--------------------------------------------------------------------------
+    # LINKER LAYOUT NOTE FOR `copy_var`
+    #--------------------------------------------------------------------------
+    # This instruction uses a direct RIP-relative memory lookup. Because it
+    # bypasses GOT, it forces the linker to generate an R_X86_64_COPY
+    # relocation for the external DSO variable `copy_var`.
+    #
+    # To handle this, the linker allocates a local storage slot for `copy_var`
+    # inside this binary's own .bss section.
+    #
+    # By default, the linker sorts the internal layout of the .bss section
+    #  using the following rules:
+    # 1. FIRST: Copy-relocated external variables are hoisted to the absolute
+    #    front of the .bss segment. External variables from a dynamic library
+    #    often have strict hardware alignment needs; sorting the largest and
+    #    most strictly aligned variables first prevents memory waste from
+    #    padding.
+    # 2. SECOND: Compiler runtime markers, such as `completed.XXX`, are placed.
+    # 3. THIRD: Local, user-defined variables are placed last.
+    #
+    # Therefore, `copy_var` is placed at the very beginning of .bss.
+    movq   $7, (copy_var)(%rip) # dummy reference to copy_var
 
     call print_symbols
 
@@ -73,6 +91,7 @@ main:
     .type print_symbols, @function
     .align 2
 print_symbols:
+    pushq  %r11
     pushq  %r12
     pushq  %r14
     subq   $8, %rsp
@@ -85,6 +104,9 @@ print_symbols:
     cmpq  %r12, %r14
     jae   .Lloop_end
 
+    leaq  _copy_var_ref(%rip), %r11
+    movq  (%r11), %r11
+    movq  (%r11), %rdx
     movq  (%r14), %rsi
     leaq  fmt_str(%rip), %rdi
     xorl  %eax, %eax
@@ -97,6 +119,7 @@ print_symbols:
     addq $8, %rsp
     popq  %r14
     popq  %r12
+    popq  %r11
     ret
 
     # --------------------------------------
@@ -113,7 +136,7 @@ str.2:
 str.3:
     .string "string3"
 fmt_str:
-    .string "Symbol String: %s\n"
+    .string "Symbol String: %s: %d\n"
 
     # --------------------------------------
     .section .data
@@ -131,10 +154,20 @@ _xref_block:
     # The linker script places `xref_array` immediately before .bss, causing
     # `__stop_xref_array` to be co-located with the symbol `copy_var`.
     #
-    # If ddisasm incorrectly selects the symbol `code_var` instead of
-    # `__stop_xref_array`, `print_symbols` uses the original address in
-    # `libfoo.so` instead of the copy-relocated slot in this binary, which
-    # causes a seg-fault in the loop iterating the address arrays.
+    # Note that Reassemble uses a different linker script to change the section
+    # layout: linker-script.ld places `xref_array` before `.bss`,
+    # whereas linker-script.reassemble.ld before `.data`.
+    #
+    # If ddisasm incorrectly selects the symbol `copy_var` instead of
+    # `__stop_xref_array`, `print_symbols` will pull an incorrect address from
+    # the next section, which causes a seg-fault in the loop iterating the
+    # address arrays.
+
+_copy_var_ref:
+    # `copy_var` and `__stop_xref_array` share the same address.
+    # If ddisasm incorrectly selects `__stop_xref_array` instead of `copy_var`,
+    # `print_symbols` will print garbage data instead of the number 7.
+    .quad copy_var
 
     # --------------------------------------
     .section xref_array,"a",@progbits
@@ -151,3 +184,5 @@ _xref_block:
     .globl dummy
     .type  dummy, @object
     .size  dummy, 64
+dummy:
+    .zero 64

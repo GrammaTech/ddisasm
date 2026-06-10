@@ -147,7 +147,7 @@ def make(target="") -> List[str]:
 
 
 def quote_args(*args):
-    return " ".join(shlex.quote(arg) for arg in args)
+    return " ".join(shlex.quote(arg) for arg in args if arg)
 
 
 def compile(

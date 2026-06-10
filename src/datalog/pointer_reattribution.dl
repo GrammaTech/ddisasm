@@ -640,47 +640,29 @@ boundary_sym_expr(EA+InstrOffset,ImmediateAddr):-
 // Such symbols are frequently used as array terminators when the section
 // contains an array of pointers.
 //
-// Conservatively, only apply this rule when the following section is a
-// special data section (e.g., .got).
-//
 boundary_sym_expr(EA,ArrayEnd):-
-    binary_type("EXEC"),
     aligned_address_in_data(EA,ArrayEnd),
     loaded_section(_,ArrayEnd,_),
     loaded_section(ArrayEnd,_,Name),
-    special_data_section(Name),
     arch.pointer_size(Size),
-    address_array(ArrayEnd-Size,_,ArrayStart),
-    !address_array(ArrayEnd,_,ArrayStart).
 
-// Special case for PIE executables where a section-boundary symbol is
-// co-located with a COPY relocation slot in the immediately following
-// section (typically .bss).
-//
-// In this situation, the same address may be associated with both a
-// linker-generated section-boundary symbol (e.g., __stop_foo) and a
-// copy-relocated object symbol. Although the symbols share the same address,
-// the section-boundary symbol is the semantically correct target because
-// it represents the end of the address array.
-//
-// Without this rule, symbol selection may incorrectly prefer the
-// copy-relocated object symbol. As a result, references that originally
-// pointed to the array boundary may be reconstructed against the wrong symbol,
-// potentially resulting in incorrect relocations and invalid array traversal
-// bounds, and runtime failures.
-//
-// See examples/asm_examples/ex_symbol_selection3/ex_original.s for a concrete
-// example.
-//
-boundary_sym_expr(EA,ArrayEnd):-
-    address_in_data_refined(EA,ArrayEnd),
-    aligned_address_in_data(EA,ArrayEnd),
-    loaded_section(_,ArrayEnd,_),
-    loaded_section(ArrayEnd,_,_),
-    relocation(ArrayEnd,"COPY",_,_,_,_,_),
-    arch.pointer_size(Size),
-    address_array(ArrayEnd-Size,_,ArrayStart),
-    !address_array(ArrayEnd,_,ArrayStart).
+    // Ensure we are really at a pointer-aligned array boundary candidate
+    address_array(ArrayEnd-Size,Size,ArrayStart),
+    !address_array(ArrayEnd,_,ArrayStart),
+    (
+        // Case 1: Special runtime/linker sections (e.g., .git, .dynamic, etc.)
+        // These are conservative anchors for inferred boundaries.
+        special_data_section(Name)
+        ;
+        // Case 2: Regular data sections (.bss, .data, etc.)
+        // Heuristic: Pointers to the start and end of an array structure
+        // often appear adjacent to each other.
+        !special_data_section(Name),
+        aligned_address_in_data(EA-Size,ArrayStart)
+        ;
+        !special_data_section(Name),
+        aligned_address_in_data(EA+Size,ArrayStart)
+    ).
 
 /* Symbolic expression that points to the
 end of a section, which is not the beginning of another.
