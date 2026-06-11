@@ -1,8 +1,8 @@
 # 1.9.4 (Unreleased)
 
-* Fix a symbolization bug in executables where a section-boundary symbol
-  could be incorrectdly replaced by another symbol at the same address,
-  potentially resulting in runtime failures or unexpected behavior.
+* Resolve a symbolization edge case where certain adjacent start/stop pointer pairs
+  for array sections were mis-symbolized, potentially resulting in runtime failures
+  or unexpected behavior.
 
 # 1.9.3
 

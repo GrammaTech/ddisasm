@@ -27,7 +27,7 @@
  * the array. The `print_symbols` function uses these bounds to loop through
  * the data.
  *
- * Evan though they share an address, these two symbols mean differnt things:
+ * Even though they share an address, these two symbols mean differnt things:
  * - `__stop_xref_array`: A linker symbol that marks the end of `xref_array`.
  * - `copy_var`: A standard data object.
  *
@@ -61,25 +61,13 @@ main:
     #--------------------------------------------------------------------------
     # LINKER LAYOUT NOTE FOR `copy_var`
     #--------------------------------------------------------------------------
-    # This instruction uses a direct RIP-relative memory lookup. Because it
-    # bypasses GOT, it forces the linker to generate an R_X86_64_COPY
-    # relocation for the external DSO variable `copy_var`.
+    # This RIP-relative reference forces an R_X86_64_COPY relocation.
+    # The linker hoists copy-relocated extern variables to the very front of
+    # the .bss section, ahead of standard internal symbols.
     #
-    # To handle this, the linker allocates a local storage slot for `copy_var`
-    # inside this binary's own .bss section.
-    #
-    # By default, the linker sorts the internal layout of the .bss section
-    #  using the following rules:
-    # 1. FIRST: Copy-relocated external variables are hoisted to the absolute
-    #    front of the .bss segment. External variables from a dynamic library
-    #    often have strict hardware alignment needs; sorting the largest and
-    #    most strictly aligned variables first prevents memory waste from
-    #    padding.
-    # 2. SECOND: Compiler runtime markers, such as `completed.XXX`, are placed.
-    # 3. THIRD: Local, user-defined variables are placed last.
-    #
-    # Therefore, `copy_var` is placed at the very beginning of .bss.
-    movq   $7, (copy_var)(%rip) # dummy reference to copy_var
+    # This guarantees `copy_var` sits at the top of .bss, ensuring a garbage
+    # value is written when _copy_var_ref is mis-symbolized.
+    movq   $7, (copy_var)(%rip)
 
     call print_symbols
 
