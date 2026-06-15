@@ -6,3 +6,12 @@ SECTIONS
     }
 }
 INSERT BEFORE .data;
+
+SECTIONS
+{
+    extra_data :
+    {
+        *(extra_data)
+    }
+}
+INSERT AFTER .data;

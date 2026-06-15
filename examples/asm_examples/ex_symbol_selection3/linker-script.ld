@@ -4,5 +4,10 @@ SECTIONS
     {
         *(xref_array)
     }
+
+    extra_data :
+    {
+        *(extra_data)
+    }
 }
-INSERT BEFORE .bss;
+INSERT BEFORE .data;
