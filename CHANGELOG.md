@@ -1,5 +1,9 @@
 # 1.9.4 (Unreleased)
 
+* Resolve a symbolization edge case where certain adjacent start/stop pointer pairs
+  for array sections were mis-symbolized, potentially resulting in runtime failures
+  or unexpected behavior.
+
 # 1.9.3
 
 * Enhance MIPS32 support:

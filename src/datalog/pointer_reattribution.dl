@@ -632,17 +632,37 @@ boundary_sym_expr(EA+InstrOffset,ImmediateAddr):-
     dest_enlarged_data_section(EA_def,Reg,_,_,_,_,EndSection),
     ImmediateAddr = EndSection.
 
-// Data entry that points to the end of an address array as well as the end of
-// a section.
+// Data entry whose value correponds to the end of an address array and
+// simultaneously marks a section boundary.
+//
+// This pattern commonly arises from linker-generated symbols such as
+// __stop_foo, which denotes the first address immediately following a section.
+// Such symbols are frequently used as array terminators when the section
+// contains an array of pointers.
+//
 boundary_sym_expr(EA,ArrayEnd):-
-    binary_type("EXEC"),
     aligned_address_in_data(EA,ArrayEnd),
     loaded_section(_,ArrayEnd,_),
     loaded_section(ArrayEnd,_,Name),
-    special_data_section(Name),
     arch.pointer_size(Size),
-    address_array(ArrayEnd-Size,_,ArrayStart),
-    !address_array(ArrayEnd,_,ArrayStart).
+
+    // Ensure we are really at a pointer-aligned array boundary candidate
+    address_array(ArrayEnd-Size,Size,ArrayStart),
+    !address_array(ArrayEnd,_,ArrayStart),
+    (
+        // Case 1: Special runtime/linker sections (e.g., .git, .dynamic, etc.)
+        // These are conservative anchors for inferred boundaries.
+        special_data_section(Name)
+        ;
+        // Case 2: Regular data sections (.bss, .data, etc.)
+        // Heuristic: Pointers to the start and end of an array structure
+        // often appear adjacent to each other.
+        !special_data_section(Name),
+        aligned_address_in_data(EA-Size,ArrayStart)
+        ;
+        !special_data_section(Name),
+        aligned_address_in_data(EA+Size,ArrayStart)
+    ).
 
 /* Symbolic expression that points to the
 end of a section, which is not the beginning of another.

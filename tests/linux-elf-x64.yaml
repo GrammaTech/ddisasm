@@ -536,6 +536,26 @@ tests:
   - name: ex_referred_string
     <<: *assembly
 
+  - name: ex_symbol_selection3
+    <<: *assembly
+    build:
+      c: ["gcc"]
+      cpp: ["g++"]
+      flags: ["-pie"]
+      optimizations: [""]
+    reassemble:
+      flags: ["-Wl,-T,linker-script.reassemble.ld"]
+
+  - name: ex_symbol_selection3
+    <<: *assembly
+    build:
+      c: ["gcc"]
+      cpp: ["g++"]
+      flags: ["-no-pie"]
+      optimizations: [""]
+    reassemble:
+      flags: ["-Wl,-T,linker-script.reassemble.ld"]
+
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
   # ----------------------------------------------------------------------------
@@ -639,6 +659,28 @@ tests:
   - name: ex_referred_string
     <<: *assembly
     <<: *test-strip-default
+
+  - name: ex_symbol_selection3
+    <<: *assembly
+    <<: *test-strip-default
+    build:
+      c: ["gcc"]
+      cpp: ["g++"]
+      flags: ["-pie"]
+      optimizations: [""]
+    reassemble:
+      flags: ["-Wl,-T,linker-script.reassemble.ld"]
+
+  - name: ex_symbol_selection3
+    <<: *assembly
+    <<: *test-strip-default
+    build:
+      c: ["gcc"]
+      cpp: ["g++"]
+      flags: ["-no-pie"]
+      optimizations: [""]
+    reassemble:
+      flags: ["-Wl,-T,linker-script.reassemble.ld"]
 
   # ----------------------------------------------------------------------------
   # Relocatable ELF objects (.o).
