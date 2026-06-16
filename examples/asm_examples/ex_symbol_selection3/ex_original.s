@@ -27,7 +27,7 @@
  * The `_xref_block` structure holds pointers to the start and stop symbols of
  * the array. The `print_symbols` function uses these bounds to loop through
  * the data.
- * Even though they share an address, these two symbols mean differnt things:
+ * Even though they share an address, these two symbols mean different things:
  * - `__stop_xref_array`: A linker symbol that marks the end of `xref_array`.
  * - `_mydata`: A standard data object.
  *
