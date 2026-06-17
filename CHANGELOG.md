@@ -1,5 +1,7 @@
 # 1.9.4 (Unreleased)
 
+# 1.9.4
+
 * Resolve a symbolization edge case where certain adjacent start/stop pointer pairs
   for array sections were mis-symbolized, potentially resulting in runtime failures
   or unexpected behavior.
