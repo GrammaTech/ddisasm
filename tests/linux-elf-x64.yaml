@@ -556,6 +556,9 @@ tests:
     reassemble:
       flags: ["-Wl,-T,linker-script.reassemble.ld"]
 
+  - name: ex_symbol_selection5
+    <<: *assembly
+
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
   # ----------------------------------------------------------------------------
@@ -681,6 +684,10 @@ tests:
       optimizations: [""]
     reassemble:
       flags: ["-Wl,-T,linker-script.reassemble.ld"]
+
+  - name: ex_symbol_selection5
+    <<: *assembly
+    <<: *test-strip-default
 
   # ----------------------------------------------------------------------------
   # Relocatable ELF objects (.o).

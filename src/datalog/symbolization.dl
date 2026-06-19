@@ -874,7 +874,7 @@ data_object_point(EA,Pt_size,"symbol",-1,"overlaps string: likely spurious"):-
 data_object_point(EA,Pt_size,"symbol",4,"point-to-boundary-sym"):-
     data_object_candidate(EA,Pt_size,"symbol"),
     address_in_data_refined(EA,Dest),
-    boundary_sym_expr(EA,Dest).
+    boundary_sym_expr(EA,Dest,_).
 
 data_object_point(EA,Pt_size,"symbol",-2,"point-to-exception-section"):-
     data_object_candidate(EA,Pt_size,"symbol"),
@@ -1118,9 +1118,9 @@ symbolic_expr_symbol_minus_symbol(EA,Size,SymbolName1,SymbolName2,Scale,FinalOff
     ),
     best_symexpr_symbol(NewSymbol1,SymbolName1,Symbol1Loc),
     (
-        boundary_sym_expr(EA,NewSymbol2), Symbol2Loc = "End"
+        boundary_sym_expr(EA,NewSymbol2,_), Symbol2Loc = "End"
         ;
-        !boundary_sym_expr(EA,NewSymbol2), Symbol2Loc = "Beg"
+        !boundary_sym_expr(EA,NewSymbol2,_), Symbol2Loc = "Beg"
     ),
     best_symexpr_symbol(NewSymbol2,SymbolName2,Symbol2Loc).
 
@@ -1148,9 +1148,9 @@ symbolic_expr(EA+InstrOffset,Size,SymbolName,0):-
     !symbol_minus_symbol_from_relocation(EA+InstrOffset,_,_,_,_,_),
     !symbol_minus_symbol(EA+InstrOffset,_,_,_,_,_),
     (
-        boundary_sym_expr(EA+InstrOffset,Dest), SymbolLoc = "End"
+        boundary_sym_expr(EA+InstrOffset,Dest,_), SymbolLoc = "End"
         ;
-        !boundary_sym_expr(EA+InstrOffset,Dest), SymbolLoc = "Beg"
+        !boundary_sym_expr(EA+InstrOffset,Dest,_), SymbolLoc = "Beg"
     ),
     best_symexpr_symbol(Dest,SymbolName,SymbolLoc).
 
@@ -1171,9 +1171,9 @@ symbolic_expr(EA,Size,SymbolName,0):-
     !symbol_minus_symbol(EA,_,_,_,_,_),
     !moved_data_label(EA,_,_,_),
     (
-        boundary_sym_expr(EA,Dest), SymbolLoc = "End"
+        boundary_sym_expr(EA,Dest,_), SymbolLoc = "End"
         ;
-        !boundary_sym_expr(EA,Dest), SymbolLoc = "Beg"
+        !boundary_sym_expr(EA,Dest,_), SymbolLoc = "Beg"
     ),
     best_symexpr_symbol(Dest,SymbolName,SymbolLoc).
 

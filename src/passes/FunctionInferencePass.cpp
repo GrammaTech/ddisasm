@@ -101,9 +101,13 @@ void FunctionInferencePass::transformImpl(AnalysisPassResult& Result, gtirb::Con
                         // Prefer symbols of type FUNC.
                         if(Type1 == "FUNC" && Type2 != "FUNC")
                             return true;
+                        if(Type2 == "FUNC" && Type1 != "FUNC")
+                            return false;
                         // Prefer GLOBAL FUNC symbols to LOCAL FUNC symbols.
                         if(Binding1 == "GLOBAL" && Binding2 != "GLOBAL")
                             return true;
+                        if(Binding2 == "GLOBAL" && Binding1 != "GLOBAL")
+                            return false;
                         // Prefer symbols without underscore prefixes.
                         const std::string &Name1 = Symbol1->getName(), &Name2 = Symbol2->getName();
                         if(Name1.substr(0, 1) != "_" && Name2.substr(0, 1) == "_")

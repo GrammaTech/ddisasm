@@ -183,9 +183,18 @@ symbol_minus_symbol(EA,Size,Symbol1,Symbol2,Scale,Offset):-
 
 // If the second address is the end of the section, create `boundary_sym_expr`
 // for the address.
-boundary_sym_expr(EA, Dest):-
-    lsda_symbol_minus_symbol(EA,_,_,Dest,_,_,_),
-    loaded_section(_,Dest,_).
+boundary_sym_expr(EA, Dest,"lsda_symbol_minus_symbol"):-
+    lsda_symbol_minus_symbol(EA,_,Sym1,Dest,_,_,_),
+    loaded_section(_,Dest,_),
+    // Do not create an END symbol when Sym1 == Dest, which means the guarded
+    // region starts exactly at the function entry point (offset 0 from the
+    // landing pad base). In that case Dest is already the function start
+    // symbol (e.g., foo), and creating an END symbol at the same address
+    // would cause `symbolic_expr_symbol_minus_symbol` to prefer the END label
+    // over the function symbol, producing the incorrect form
+    // `.uleb128 .L_XXX_END - .L_XXX_END` instead of the correct
+    // `.uleb128 foo - foo`.
+    Sym1 != Dest.
 
 // type table pointer
 symbol_special_encoding(TypeTablePointerLocation,"uleb128"),
@@ -224,7 +233,7 @@ lsda_symbol_minus_symbol(EA_start,Size,LandingPadBaseAddress,StartRegion,1,0,"re
     Size > 0.
 
 //region end
-boundary_sym_expr(EA_end,EndRegion),
+boundary_sym_expr(EA_end,EndRegion,"region-end"),
 lsda_symbol_minus_symbol(EA_end,Size,StartRegion,EndRegion,1,0,"region-end"):-
     lsda_callsite(_, _, StartRegion,EA_end,EndRegion,EA_landingPad,_,_),
     Size = EA_landingPad-EA_end,

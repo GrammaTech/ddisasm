@@ -94,6 +94,40 @@ class SymbolicOperandsTests(unittest.TestCase):
                 self.assertEqual(sym_expr.symbol1.name, sym1)
                 self.assertEqual(sym_expr.symbol2.name, sym2)
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_lsda_symbol_selection(self):
+        """
+        Test that LSDA symbol-minus-symbol expressions use the best available
+        symbol (e.g. a FUNC/GLOBAL symbol) rather than a boundary label such as
+        .L_<addr>_END, when multiple symbols share the same address.
+        """
+        binary = Path("ex")
+        with cd(ex_asm_dir / "ex_symbol_selection4"):
+            self.assertTrue(compile("g++", "g++", "-O0", []))
+            ir_library = disassemble(binary).ir()
+            m = ir_library.modules[0]
+
+            # check that we symbolize the LEA instructions
+            symbolized = [
+                ("CHECK_SYMBOL", "_bar", "_bar"),
+            ]
+            for name, sym1, sym2 in symbolized:
+                symbol = next(m.symbols_named(name))
+                block = symbol.referent
+                self.assertIsInstance(block, gtirb.DataBlock)
+                _, _, sym_expr = next(
+                    block.byte_interval.symbolic_expressions_at(
+                        range(block.address, block.address + block.size)
+                    )
+                )
+                self.assertIsInstance(sym_expr, gtirb.SymAddrAddr)
+                self.assertEqual(sym_expr.scale, 1)
+                self.assertEqual(sym_expr.offset, 0)
+                self.assertEqual(sym_expr.symbol1.name, sym1)
+                self.assertEqual(sym_expr.symbol2.name, sym2)
+
 
 if __name__ == "__main__":
     unittest.main()

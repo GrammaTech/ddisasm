@@ -1,5 +1,10 @@
 # 1.9.4 (Unreleased)
 
+* Fix bug that could generate invalid `.size` directives when multiple symbols
+  share the same address.
+* Fix bug in LSDA exception table emission that could generate semantically
+  incorrect symbolic expressions when multiple symbols shared the same address.
+
 # 1.9.4
 
 * Resolve a symbolization edge case where certain adjacent start/stop pointer pairs
