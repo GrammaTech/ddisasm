@@ -152,6 +152,45 @@ class OverlappingInstructionTests(unittest.TestCase):
             with self.subTest(example=example), cd(ex_asm_dir / example):
                 self.subtest_lock_cmpxchg(example)
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_overlap_symexpr(self):
+        """
+        Test that no symbolic expression is derived at the immediate field of
+        valid_instr due to an overlapping non-code instruction (overlap_instr)
+        whose disp32 field is at the same address as valid_instr's imm32 field.
+        The overlapping instruction matches tls_relative_operand and would
+        incorrectly produce a symbolic_expr at that address if the code(EA)
+        guard is missing.
+        """
+        binary = Path("ex")
+        with cd(ex_asm_dir / "ex_overlap_symexpr"):
+            self.assertTrue(compile("g++", "g++", "-O0", []))
+            ir_library = disassemble(binary).ir()
+            m = ir_library.modules[0]
+
+            symbol = next(m.symbols_named("valid_instr"))
+            block = symbol.referent
+            self.assertIsInstance(block, gtirb.CodeBlock)
+
+            # The shared address is valid_instr+8: the imm32 field of
+            # valid_instr coincides with the disp32 of the overlapping non-code
+            # instruction.
+            # A spurious symbolic_expr is incorrectly emitted here when the
+            # code(EA) guard is missing from the symbolic_expr rules.
+            shared_addr = block.address + 8
+            symexprs = list(
+                block.byte_interval.symbolic_expressions_at(
+                    range(shared_addr, shared_addr + 4)
+                )
+            )
+            self.assertEqual(
+                len(symexprs),
+                0,
+                f"Unexpected symbolic expression at valid_instr+8",
+            )
+
 
 def check_avx512f_support():
     if platform.system() == "Linux":

@@ -5,6 +5,7 @@
 * Resolve a symbolization edge case where certain adjacent start/stop pointer pairs
   for array sections were mis-symbolized, potentially resulting in runtime failures
   or unexpected behavior.
+* Fix incorrect symbolic expression derived from non-code overlapping instruction
 
 # 1.9.3
 
