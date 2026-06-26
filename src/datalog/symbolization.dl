@@ -1160,7 +1160,6 @@ symbolic_expr(EA+InstrOffset,Size,SymbolName,0):-
 // Symbolic data
 symbolic_expr(EA,Size,SymbolName,Offset):-
     moved_data_label(EA,Size,Dest,FinalDest),
-    !code(EA),
     !symbolic_expr_from_relocation(EA,_,_,_,_),
     !symbol_minus_symbol_from_relocation(EA,_,_,_,_,_),
     !symbol_minus_symbol(EA,_,_,_,_,_),
@@ -1169,7 +1168,6 @@ symbolic_expr(EA,Size,SymbolName,Offset):-
 
 symbolic_expr(EA,Size,SymbolName,0):-
     symbolic_data(EA,Size,Dest),
-    !code(EA),
     !symbolic_expr_from_relocation(EA,_,_,_,_),
     !symbol_minus_symbol_from_relocation(EA,_,_,_,_,_),
     !symbol_minus_symbol(EA,_,_,_,_,_),
