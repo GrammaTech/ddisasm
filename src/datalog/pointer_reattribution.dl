@@ -81,7 +81,7 @@ The offset is NewDest-Dest.
 The symbolic expression at address 'EA' pointing to 'Dest' should
 point to an 'at-end' symbol.
 */
-.decl boundary_sym_expr(EA:address,Dest:address)
+.decl boundary_sym_expr(EA:address,Dest:address,Reason:symbol)
 
 // this predicate is just for debugging purposes
 .decl moved_label_class(EA:address,Index:operand_index,Reason:symbol)
@@ -584,7 +584,7 @@ moved_label_candidate(EA,Op_index,Dest,ImageBase,5):-
 
 
 // The immediate is the start of a loop counting down
-boundary_sym_expr(EA+InstrOffset,Dest):-
+boundary_sym_expr(EA+InstrOffset,Dest,"loop counting down"):-
     symbolic_operand(EA,Index,Dest,"data"),
     (
         arch.move_reg_imm(EA,_,as(Dest,number),Index),
@@ -604,7 +604,7 @@ leaq __elf_set___libc_atexit_element__IO_cleanup__(%rip),%rbx
 leaq __start___libc_IO_vtables(%rip),%rax (or mov __start___libc_IO_vtables, %rax)
 cmpq %rax,%rbx
 */
-boundary_sym_expr(EA+InstrOffset,Dest):-
+boundary_sym_expr(EA+InstrOffset,Dest,"loop-bound check"):-
     symbolic_operand(EA,Index,Dest,"data"),
     //  At the boundary between two sections
     loaded_section(Dest,_,_),
@@ -623,7 +623,7 @@ boundary_sym_expr(EA+InstrOffset,Dest):-
     ).
 
 // Immediate comparison to loop counter
-boundary_sym_expr(EA+InstrOffset,ImmediateAddr):-
+boundary_sym_expr(EA+InstrOffset,ImmediateAddr,"comparison to loop counter"):-
     binary_type("EXEC"),
     symbolic_operand(EA,Index,ImmediateAddr,"data"),
     cmp_immediate_to_reg(EA,Reg,Index,_),
@@ -640,7 +640,7 @@ boundary_sym_expr(EA+InstrOffset,ImmediateAddr):-
 // Such symbols are frequently used as array terminators when the section
 // contains an array of pointers.
 //
-boundary_sym_expr(EA,ArrayEnd):-
+boundary_sym_expr(EA,ArrayEnd,"end of address array"):-
     aligned_address_in_data(EA,ArrayEnd),
     loaded_section(_,ArrayEnd,_),
     loaded_section(ArrayEnd,_,Name),
@@ -669,7 +669,7 @@ end of a section, which is not the beginning of another.
 If we have known symbols at the end of the section,
 those should be preferred over inferred symbols.
 */
-boundary_sym_expr(EA+InstrOffset,Dest):-
+boundary_sym_expr(EA+InstrOffset,Dest,"no preceding section"):-
     symbolic_operand(EA,Index,Dest,"data"),
     !loaded_section(Dest,_,_),
     loaded_section(_,Dest,_),

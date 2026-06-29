@@ -256,7 +256,7 @@ best_symexpr_symbol(EA,SymbolName,"Beg"):-
 inferred_symbol(EA,SymbolName,"LOCAL","DEFAULT","NONE","End"),
 best_symexpr_symbol(EA,SymbolName,"End"):-
     labeled_ea(EA),
-    boundary_sym_expr(_,EA),
+    boundary_sym_expr(_,EA,_),
     !symbol_score(EA,_,_,"End",_),
     SymbolName = cat(cat(".L_",@to_string_hex(EA)),"_END").
 

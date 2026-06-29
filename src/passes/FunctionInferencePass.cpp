@@ -79,8 +79,9 @@ void FunctionInferencePass::transformImpl(AnalysisPassResult& Result, gtirb::Con
             }
             else if(SymbolInfo)
             {
-                // Aggregate candidate symbols.
-                std::vector<std::tuple<const gtirb::Symbol*, std::string, std::string>> Candidates;
+                // Prefer symbols with type FUNC, GLOBAL binding, and no
+                // underscores, in that order.
+                std::vector<std::tuple<bool, bool, bool, const gtirb::Symbol*>> Candidates;
                 for(auto& Symbol : It)
                 {
                     if(const auto& Found = SymbolInfo->find(Symbol.getUUID());
@@ -88,30 +89,30 @@ void FunctionInferencePass::transformImpl(AnalysisPassResult& Result, gtirb::Con
                     {
                         std::string& Type = std::get<1>(Found->second);
                         std::string& Binding = std::get<2>(Found->second);
-                        Candidates.push_back({&Symbol, Type, Binding});
+                        const std::string& Name = Symbol.getName();
+                        Candidates.emplace_back(
+                            // Prefer symbols of type FUNC.
+                            Type == "FUNC",
+                            // Prefer GLOBAL FUNC symbols to LOCAL FUNC symbols.
+                            Binding == "GLOBAL",
+                            // Prefer symbols without underscore prefixes.
+                            !Name.empty() && Name.at(0) != '_',
+                            // Simplify retrieving the best candidate.
+                            &Symbol);
                     }
                 }
-                // Select best candidate symbols.
-                auto Found = std::min_element(
-                    Candidates.begin(), Candidates.end(),
-                    [](const std::tuple<const gtirb::Symbol*, std::string, std::string>& S1,
-                       const std::tuple<const gtirb::Symbol*, std::string, std::string>& S2) {
-                        auto& [Symbol1, Type1, Binding1] = S1;
-                        auto& [Symbol2, Type2, Binding2] = S2;
-                        // Prefer symbols of type FUNC.
-                        if(Type1 == "FUNC" && Type2 != "FUNC")
-                            return true;
-                        // Prefer GLOBAL FUNC symbols to LOCAL FUNC symbols.
-                        if(Binding1 == "GLOBAL" && Binding2 != "GLOBAL")
-                            return true;
-                        // Prefer symbols without underscore prefixes.
-                        const std::string &Name1 = Symbol1->getName(), &Name2 = Symbol2->getName();
-                        if(Name1.substr(0, 1) != "_" && Name2.substr(0, 1) == "_")
-                            return true;
-                        return false;
-                    });
-                assert(Found != Candidates.end() && "Expected candidate function symbols.");
-                FunctionNames.insert({FunctionUUID, std::get<0>(*Found)->getUUID()});
+                const gtirb::Symbol* Best;
+                if(!Candidates.empty())
+                {
+                    Best = std::get<const gtirb::Symbol*>(
+                        *std::max_element(Candidates.begin(), Candidates.end()));
+                }
+                else
+                {
+                    // No symbols found in SymbolInfo; fall back to an arbitrary symbol.
+                    Best = &*It.begin();
+                }
+                FunctionNames.insert({FunctionUUID, Best->getUUID()});
             }
             else
             {
