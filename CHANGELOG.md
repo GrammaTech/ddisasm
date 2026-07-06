@@ -1,16 +1,16 @@
-# 1.9.4 (Unreleased)
+# 1.9.5
 
 * Fix bug that could generate invalid `.size` directives when multiple symbols
   share the same address.
 * Fix bug in LSDA exception table emission that could generate semantically
   incorrect symbolic expressions when multiple symbols shared the same address.
+* Fix incorrect symbolic expression derived from non-code overlapping instruction
 
 # 1.9.4
 
 * Resolve a symbolization edge case where certain adjacent start/stop pointer pairs
   for array sections were mis-symbolized, potentially resulting in runtime failures
   or unexpected behavior.
-* Fix incorrect symbolic expression derived from non-code overlapping instruction
 
 # 1.9.3
 
