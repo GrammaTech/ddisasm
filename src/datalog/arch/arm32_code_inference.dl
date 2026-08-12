@@ -389,7 +389,7 @@ litpool_ref(EA,EA,RefAddr,0,Size,OpIndex):-
 
 litpool_ref(EA,EA_load,RefAddr,Offset,Size,OpIndex):-
     arch.pc_relative_addr(EA,_,RefAddr),
-    composite_data_access(EA,EA_load,Data,Size),
+    composite_data_access_candidate(EA,EA_load,Data,Size),
     Offset = Data - RefAddr,
     !invalid(EA,_),
     !invalid(EA_load,_),
@@ -423,7 +423,7 @@ References to potential litpools with indeterminate sizes.
 indefinite_litpool_ref(RefAddr,Size):-
     arch.pc_relative_addr(EA,_,RefAddr),
     code_in_block_candidate(EA,_),
-    !composite_data_access(EA,_,_,_),
+    !composite_data_access_candidate(EA,_,_,_),
     !ascii_string(RefAddr,_),
     NextLimit = min Limit : {
         data_block_limit(Limit),

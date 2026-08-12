@@ -390,7 +390,7 @@ block_limit(as(EA,address)):-
 block_limit(Inst):-
     (
         arch.simple_data_load(_,EA,_);
-        composite_data_access(_,_,EA,_);
+        composite_data_access_candidate(_,_,EA,_);
         arch.pc_relative_addr(_,_,EA)
     ),
     arch.instruction_at(EA,Inst).
@@ -398,7 +398,7 @@ block_limit(Inst):-
 block_limit(Inst):-
     (
         arch.simple_data_load(_,EA,Size);
-        composite_data_access(_,_,EA,Size);
+        composite_data_access_candidate(_,_,EA,Size);
         repeated_byte(EA,_,Size), Size > 8
     ),
     arch.instruction_at(EA+Size,Inst).
@@ -646,12 +646,17 @@ code_in_block_candidate_refined(EA_next,Block):-
 A pair of instructions form an access to data with a predetermined size and location
 */
 .decl composite_data_access(EA:address,EA_load:address,Data:address,Size:unsigned)
+.decl composite_data_access_candidate(EA:address,EA_load:address,Data:address,Size:unsigned)
 
-composite_data_access(EA,EA_load,Data,Size):-
+composite_data_access_candidate(EA,EA_load,Data,Size):-
     arch.pc_relative_addr(EA,Reg,RefAddr),
     straight_line_def_used(EA,Reg,EA_load,_),
     arch.reg_relative_load(EA_load,Reg,Offset,Size),
     Data = as(as(RefAddr,number) + Offset,address).
+
+composite_data_access(EA,EA_load,Data,Size):-
+    composite_data_access_candidate(EA,EA_load,Data,Size),
+    code(EA).
 
 /**
 A data block candidate in a code section.
@@ -667,7 +672,7 @@ data_block_candidate(Block,Size):-
     code_in_block_candidate(EA,_).
 
 data_block_candidate(Block,AccessSize):-
-    composite_data_access(EA,EA_load,Block,AccessSize),
+    composite_data_access_candidate(EA,EA_load,Block,AccessSize),
     code_in_block_candidate(EA,_),
     code_in_block_candidate(EA_load,_).
 
@@ -712,7 +717,7 @@ data_block_candidate(RefAddr,Size):-
     (
         arch.pc_relative_addr(EA,_,RefAddr),
         code_in_block_candidate(EA,_),
-        !composite_data_access(EA,_,_,_)
+        !composite_data_access_candidate(EA,_,_,_)
         ;
         Size > 8
     ).
@@ -812,7 +817,7 @@ block_candidate_dependency_edge(BlockA,"code",EndAddrA-BegAddrA,BlockB,"data",Si
 
 // composite data access in a single block
 block_candidate_dependency_edge(BlockA,"code",EndAddrA-BegAddrA,BlockB,"data",SizeB):-
-    composite_data_access(EA,EA_load,BlockB,SizeB),
+    composite_data_access_candidate(EA,EA_load,BlockB,SizeB),
     code_in_block_candidate_refined(EA,BlockA),
     code_in_block_candidate_refined(EA_load,BlockA),
     data_block_candidate(BlockB,SizeB),
@@ -821,7 +826,7 @@ block_candidate_dependency_edge(BlockA,"code",EndAddrA-BegAddrA,BlockB,"data",Si
 // composite data access is split between blocks, but the first block implies the other.
 // thus, if the first block is selected, so must the data block.
 block_candidate_dependency_edge(BlockA,"code",EndAddrA-BegAddrA,BlockC,"data",SizeC):-
-    composite_data_access(EA,EA_load,BlockC,SizeC),
+    composite_data_access_candidate(EA,EA_load,BlockC,SizeC),
     code_in_block_candidate_refined(EA,BlockA),
     code_in_block_candidate_refined(EA_load,BlockB),
     block_implies_block(BlockA,"code",_,BlockB,"code",_),
@@ -1719,7 +1724,7 @@ block_heuristic(Block,"data",AccessSize,0,Heuristic):-
 
 block_heuristic(Block,"data",AccessSize,0,Heuristic):-
     !binary_isa("ARM"), // ARM's litpool_ref system gives points
-    composite_data_access(EA,EA_load,Block,AccessSize),
+    composite_data_access_candidate(EA,EA_load,Block,AccessSize),
     unresolved_block(Block,"data",AccessSize),
     code_in_block_candidate_refined(EA,CodeBlock1),
     code_in_block_candidate_refined(EA_load,CodeBlock2),

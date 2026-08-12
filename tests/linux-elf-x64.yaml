@@ -559,6 +559,9 @@ tests:
   - name: ex_symbol_selection5
     <<: *assembly
 
+  - name: ex_composite_data_access
+    <<: *assembly
+
   # ----------------------------------------------------------------------------
   # Assembly examples. (stripped)
   # ----------------------------------------------------------------------------
@@ -686,6 +689,10 @@ tests:
       flags: ["-Wl,-T,linker-script.reassemble.ld"]
 
   - name: ex_symbol_selection5
+    <<: *assembly
+    <<: *test-strip-default
+
+  - name: ex_composite_data_access
     <<: *assembly
     <<: *test-strip-default
 

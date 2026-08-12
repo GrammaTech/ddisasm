@@ -1,5 +1,8 @@
 # 1.9.6 (Unreleased)
 
+* Fix bug that could add invalid alignment based on overlapping instructions,
+  causing incorrect alignment requirements and data corruption.
+
 # 1.9.5
 
 * Fix bug that could generate invalid `.size` directives when multiple symbols
