@@ -647,6 +647,7 @@ A pair of instructions form an access to data with a predetermined size and loca
 */
 .decl composite_data_access(EA:address,EA_load:address,Data:address,Size:unsigned)
 .decl composite_data_access_candidate(EA:address,EA_load:address,Data:address,Size:unsigned)
+.output composite_data_access
 
 composite_data_access_candidate(EA,EA_load,Data,Size):-
     arch.pc_relative_addr(EA,Reg,RefAddr),
