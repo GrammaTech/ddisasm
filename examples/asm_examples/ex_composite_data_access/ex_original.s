@@ -12,10 +12,11 @@
 # any spurious alignment inserted before `target` would shift its address and
 # corrupt the surrounding layout.
 #
-# The `lea rbp, [rsp + 0x55]` instruction supplies the overlapping byte
-# sequence that, if misdecoded as `lea esp, [rip + target]` instead of the
-# intended `lea r12, [rip + target]`, would appear to satisfy
-# composite_data_access via the subsequent `movdqa xmm1, [rsp]` read.
+# The instruction at EA: `lea r12, [rip + target]` (4c8d25df2e0000) has an
+# overlapping instruction at EA+1: `lea esp, [rip + target]` (8d25df2e0000).
+# The overlapping instruction satisfies composite_data_access via
+# the subsequent `movdqa xmm1, [rsp]` read, which makes `target` as alignment-
+# required because the AVX instruction requires explicitly aligned memory.
 #
 # Expected behavior: no alignment should be applied at `target`, and
 # disassembly/reprinting should preserve the exact byte layout of the .data
@@ -31,9 +32,8 @@
 target:
     .ascii "d"          # target is itself a 1-byte string object
     .string "e\n"       # more data after target, NUL-terminated
-    .align 16
-    .ascii "more padding after, just to keep target mid-section"
 
+    .align 16
 .section .text
 .global main
 main:
@@ -48,7 +48,7 @@ main:
     mov rax, 1                  # sys_write
     mov rdi, 1                  # fd = stdout
     lea rsi, [rip + target - 3] # start of "abc..." blob(3 bytes before target)
-    mov rdx, 6                  # "abcde" = 5 bytes
+    mov rdx, 6                  # "abcde\n" = 6 bytes
     syscall
 
     mov rax, 60                 # sys_exit
