@@ -644,6 +644,10 @@ code_in_block_candidate_refined(EA_next,Block):-
 
 /**
 A pair of instructions form an access to data with a predetermined size and location
+
+Use `composite_data_access` unless it introduces a stratification issue
+(e.g., cyclic negation).
+`composite_data_access_candidate` is intended for pre-code-inference heuristics.
 */
 .decl composite_data_access(EA:address,EA_load:address,Data:address,Size:unsigned)
 .decl composite_data_access_candidate(EA:address,EA_load:address,Data:address,Size:unsigned)

@@ -12,12 +12,6 @@
 # any spurious alignment inserted before `target` would shift its address and
 # corrupt the surrounding layout.
 #
-# The instruction at EA: `lea r12, [rip + target]` (4c8d25df2e0000) has an
-# overlapping instruction at EA+1: `lea esp, [rip + target]` (8d25df2e0000).
-# The overlapping instruction satisfies composite_data_access via
-# the subsequent `movdqa xmm1, [rsp]` read, which makes `target` as alignment-
-# required because the AVX instruction requires explicitly aligned memory.
-#
 # Expected behavior: no alignment should be applied at `target`, and
 # disassembly/reprinting should preserve the exact byte layout of the .data
 # section. The runtime write(2) call prints "abcde" as a simple end-to-end
