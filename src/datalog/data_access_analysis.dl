@@ -45,10 +45,10 @@ other access.
 .decl instruction_memory_access_size(EA:address,Op_index:operand_index,Size:unsigned)
 
 instruction_memory_access_size(EA,Index,SizeAccess):-
-    !invalid(EA,_),
-    instruction_get_operation(EA,Operation),
     instruction_get_op(EA,Index,Op),
     op_indirect(Op,_,_,_,_,_,NBytes),
+    instruction_get_operation(EA,Operation),
+    !invalid(EA,_),
     (
         // If the dest op is a register, see if there is a corresponding
         // data_access_size available.

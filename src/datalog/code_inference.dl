@@ -256,14 +256,12 @@ max_instruction_size(MaxSize):-
         instruction(_,Size,_,_,_,_,_,_,_,_)
     }.
 
-invalid(Inst,"overlaps object"):-
-    defined_symbol(Start,ObjSize,"OBJECT",_,_,_,_,_,_),
-    max_instruction_size(MaxInstSize),
-    arch.instruction_at(EA,Inst),
-    Start-MaxInstSize < EA,
-    EA < Start+ObjSize,
-    instruction(Inst,InstSize,_,_,_,_,_,_,_,_),
-    Start < EA+InstSize.
+invalid(Inst,"overlaps object") :-
+    opt_instruction(EA, InstEnd, Inst, Bin),
+    opt_defined_symbol(SymbolStart, SymbolEnd, Bin),
+    EA < SymbolEnd,
+    SymbolStart < InstEnd.
+
 
 // propagate the invalid instructions backwards until ret or jmp (encoded in must_fallthrough)
 // propagate through direct jumps and calls
@@ -461,6 +459,11 @@ aligned_address_in_data(EA,Value):-
     arch.pointer_size(Pt_size),
     EA % Pt_size = 0.
 
+.decl opt_aligned_address_in_data(EA:address,Value:address,Bin:unsigned)
+opt_aligned_address_in_data(EA,Value,EA / BIN_SIZE),
+opt_aligned_address_in_data(EA,Value,EA / BIN_SIZE + 1) :-
+    aligned_address_in_data(EA,Value).
+    
 // start a new block given a possible target
 code_in_block_candidate(EA,EA):-
     possible_target(EA),
@@ -673,13 +676,14 @@ data_block_candidate(Block,Size):-
     relative_address(Block,Size,_,_,_,_).
 
 data_block_candidate(Block,Size):-
-    arch.simple_data_load(EA,Block,Size),
-    code_in_block_candidate(EA,_).
+    code_in_block_candidate(EA,_),
+    arch.simple_data_load(EA,Block,Size).
 
 data_block_candidate(Block,AccessSize):-
-    composite_data_access_candidate(EA,EA_load,Block,AccessSize),
     code_in_block_candidate(EA,_),
+    composite_data_access_candidate(EA,EA_load,Block,AccessSize),
     code_in_block_candidate(EA_load,_).
+  .plan 1:(3,2,1)
 
 // Repeated bytes in code section
 data_block_candidate(EA,Size):-
@@ -712,28 +716,36 @@ EA:    adr r0, RefAddr
 ...
 RefAddr: .string "..."
 */
+
+// Auxiliary predicate. Don't mix the two rules in one. The second is recursive, needs different
+// clause order.
+.decl aux_interesting_ascii_string(EAString:address,Size:unsigned,Bin:unsigned)
+aux_interesting_ascii_string(RefAddr,Size,Bin) :-
+    opt_ascii_string(RefAddr,End,Bin),
+    Size = End - RefAddr,
+    Size > 8.
+
+aux_interesting_ascii_string(RefAddr,Size,Bin) :-
+    code_in_block_candidate(EA,_),
+    arch.pc_relative_addr(EA,_,RefAddr),
+    opt_ascii_string(RefAddr,End,Bin),
+    Size = End - RefAddr,
+    !composite_data_access_candidate(EA,_,_,_).
+
 block_heuristic(RefAddr,"data",Size,0,"possible string"),
 data_block_candidate(RefAddr,Size):-
+    opt_loaded_section(BegSect,EndSect,Name,Bin),
     code_section(Name),
-    loaded_section(BegSect,EndSect,Name),
     BegSect <= RefAddr, RefAddr < EndSect,
-    ascii_string(RefAddr,End),
-    Size = End - RefAddr,
-    (
-        arch.pc_relative_addr(EA,_,RefAddr),
-        code_in_block_candidate(EA,_),
-        !composite_data_access_candidate(EA,_,_,_)
-        ;
-        Size > 8
-    ).
+    aux_interesting_ascii_string(RefAddr,Size,Bin).
 
 // Pointer to a string
 data_block_candidate(Addr,Pt_size):-
+    opt_loaded_section(BegSect,EndSect,Name,Bin),
     code_section(Name),
-    loaded_section(BegSect,EndSect,Name),
     BegSect <= Addr, Addr < EndSect,
-    aligned_address_in_data(Addr,Dest),
-    ascii_string(StrBeg,StrEnd),
+    opt_aligned_address_in_data(Addr,Dest,Bin),
+    opt_ascii_string(StrBeg,StrEnd,Bin),
     StrBeg <= Dest, Dest < StrEnd,
     arch.pointer_size(Pt_size).
 /**
@@ -779,11 +791,18 @@ Two blocks overlap.
 */
 .decl block_overlap(Block1:address,Type1:block_type,Size1:unsigned,Block2:address,Type2:block_type,Size2:unsigned)
 
+.decl opt_block_candidate_boundaries(Block:address,Type:block_type,BegAddr:address,EndAddr:address,Bin:unsigned)
+
+opt_block_candidate_boundaries(Block,Type,BegAddr,EndAddr,BegAddr / BIN_SIZE) :-
+    block_candidate_boundaries(Block,Type,BegAddr,EndAddr).
+
+opt_block_candidate_boundaries(Block,Type,BegAddr,EndAddr,Bin+1) :-
+    opt_block_candidate_boundaries(Block,Type,BegAddr,EndAddr,Bin),
+    Bin < EndAddr / BIN_SIZE.
+
 block_overlap(Block1,Type1,Size1,Block2,Type2,Size2):-
-    block_candidate_boundaries(Block1,Type1,BegAddr1,EndAddr1),
-    block_candidate_boundaries(Block2,Type2,BegAddr2,EndAddr2),
-    Size1 = EndAddr1-BegAddr1,
-    Size2 = EndAddr2-BegAddr2,
+    opt_block_candidate_boundaries(Block1,Type1,BegAddr1,EndAddr1,Bin),
+    opt_block_candidate_boundaries(Block2,Type2,BegAddr2,EndAddr2,Bin),
     (
         Block1 != Block2
         ;
@@ -792,13 +811,15 @@ block_overlap(Block1,Type1,Size1,Block2,Type2,Size2):-
         Size1 != Size2
     ),
     BegAddr1 <= BegAddr2,
-    BegAddr2 < EndAddr1.
+    BegAddr2 < EndAddr1,
+    Size1 = EndAddr1-BegAddr1,
+    Size2 = EndAddr2-BegAddr2.
 
 block_overlap(Block2,Type2,Size2,Block1,Type1,Size1):-
     block_overlap(Block1,Type1,Size1,Block2,Type2,Size2).
 
 /**
-The block BlockA,TypeA implies the existence of of BlockB,TypeB
+The block BlockA,TypeA implies the existence of BlockB,TypeB
 */
 .decl block_candidate_dependency_edge(BlockA:address,TypeA:block_type,SizeA:unsigned,BlockB:address,TypeB:block_type,SizeB:unsigned)
 
@@ -946,21 +967,103 @@ impossible_block(BlockA,TypeA,SizeA,"implies self-overlapping block"):-
     block_overlap(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
     !known_block(BlockA,TypeA,SizeA,_).
 
-impossible_block(BlockA,TypeA,SizeA,"implies overlapping blocks"):-
+
+//// START HAIRY OPTIMIZATION
+// The next impossible_block computation is outrageously wasteful, involving an enormous self-join.
+// We try to limit it by defining many subsets of the joined predicates.
+
+.decl block_can_overlap(Block:address,Type:block_type,Size:unsigned)
+block_can_overlap(Block,Type,Size) :-
+    block_overlap(Block,Type,Size,_,_,_);
+    block_overlap(_,_,_,Block,Type,Size).
+
+.decl block_implies_block_that_can_overlap(BlockA:address,TypeA:block_type,SizeA:unsigned,BlockB:address,TypeB:block_type,SizeB:unsigned)
+block_implies_block_that_can_overlap(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB) :-
     block_implies_block(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
-    block_implies_block(BlockA,TypeA,SizeA,BlockC,TypeC,SizeC),
-    (
-        BlockB != BlockC,
-        // Implying overlapping data blocks is permissible; code might access
-        // data both as a series of bytes and as a word, resulting in
-        // different overlapping data blocks.
-        TypeB != "data",
-        TypeC != "data"
-        ;
-        TypeB != TypeC
-    ),
-    block_overlap(BlockB,TypeB,SizeB,BlockC,TypeC,SizeC),
+    block_can_overlap(BlockB,TypeB,SizeB).
+
+.decl block_implies_some_block_that_can_overlap(BlockA:address,TypeA:block_type,SizeA:unsigned)
+block_implies_some_block_that_can_overlap(BlockA,TypeA,SizeA) :-
+    block_implies_block_that_can_overlap(BlockA,TypeA,SizeA,_,_,_).
+    
+.decl candidate_block_that_implies_other(Block:address,Type:block_type,Size:unsigned)
+candidate_block_that_implies_other(BlockA,TypeA,SizeA) :-
+    block_implies_some_block_that_can_overlap(BlockA,TypeA,SizeA),
     !known_block(BlockA,TypeA,SizeA,_).
+     
+.decl block_implies_N_blocks(Block:address,Type:block_type,Size:unsigned,c:number)
+block_implies_N_blocks(Block,Type,Size, count:{ block_implies_block_that_can_overlap(Block,_,_,_,_,_) }) :-
+    candidate_block_that_implies_other(Block,Type,Size).
+
+.decl block_implies_many_blocks(Block:address,Type:block_type,Size:unsigned)
+block_implies_many_blocks(Block,Type,Size) :-
+    block_implies_N_blocks(Block,Type,Size,c),
+    c > 1.
+
+// First filtered subset. Hopefully much smaller than the full block_implies_block
+.decl block_implies_block_subset1(BlockA:address,TypeA:block_type,SizeA:unsigned,BlockB:address,TypeB:block_type,SizeB:unsigned)
+block_implies_block_subset1(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB) :-
+    block_implies_many_blocks(BlockA,TypeA,SizeA),
+    block_implies_block_that_can_overlap(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
+    TypeB != "data".
+
+
+// Now second optimization, even more challenging. Wasting a bit of memory, but there's little
+// hope of making this scale for large programs unless we push all filters as early as possible.
+
+// This is actually rare! That's the most useful concept for this shrinking.
+.decl block_can_overlap_with_block_of_different_type(Block:address,Type:block_type,Size:unsigned)
+block_can_overlap_with_block_of_different_type(Block,Type,Size) :-
+    (block_overlap(Block,Type,Size,_,TypeB,_);
+     block_overlap(_,TypeB,_,Block,Type,Size)),
+    Type != TypeB.
+
+.decl block_implies_block_that_can_overlap_with_block_of_different_type(BlockA:address,TypeA:block_type,SizeA:unsigned,BlockB:address,TypeB:block_type,SizeB:unsigned)
+block_implies_block_that_can_overlap_with_block_of_different_type(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB) :-
+    block_implies_block(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
+    block_can_overlap_with_block_of_different_type(BlockB,TypeB,SizeB).
+
+.decl block_implies_block_of_type(BlockA:address,TypeA:block_type,SizeA:unsigned,TypeB:block_type)
+block_implies_block_of_type(BlockA,TypeA,SizeA,TypeB) :-
+    block_implies_block_that_can_overlap_with_block_of_different_type(BlockA,TypeA,SizeA,_,TypeB,_), 
+    !known_block(BlockA,TypeA,SizeA,_).
+   
+.decl block_implies_blocks_of_N_types(Block:address,Type:block_type,Size:unsigned,c:number)
+block_implies_blocks_of_N_types(Block,Type,Size, count:{ block_implies_block_of_type(Block,Type,Size,_) }) :-
+    candidate_block_that_implies_other(Block,Type,Size).
+
+.decl block_implies_blocks_of_many_types(Block:address,Type:block_type,Size:unsigned)
+block_implies_blocks_of_many_types(Block,Type,Size) :-
+    block_implies_blocks_of_N_types(Block,Type,Size,c),
+    c > 1.
+
+// Second filtered subset. Hopefully much smaller than the full block_implies_block
+.decl block_implies_block_subset2(BlockA:address,TypeA:block_type,SizeA:unsigned,BlockB:address,TypeB:block_type,SizeB:unsigned)
+block_implies_block_subset2(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB) :-
+    block_implies_blocks_of_many_types(BlockA,TypeA,SizeA),
+    block_implies_block_that_can_overlap_with_block_of_different_type(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB).
+
+
+// Now the rule that we're optimizing, split into two cases
+
+// Case 1: none of B,C are data blocks
+impossible_block(BlockA,TypeA,SizeA,"implies overlapping blocks"):-
+    block_implies_block_subset1(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
+    block_implies_block_subset1(BlockA,TypeA,SizeA,BlockC,TypeC,SizeC),
+    BlockB != BlockC,
+    block_overlap(BlockB,TypeB,SizeB,BlockC,TypeC,SizeC).
+
+// Case 2: B,C are of different types
+impossible_block(BlockA,TypeA,SizeA,"implies overlapping blocks"):-
+    block_implies_block_subset2(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
+    block_implies_block_subset2(BlockA,TypeA,SizeA,BlockC,TypeC,SizeC),
+    TypeB != TypeC,
+    block_overlap(BlockB,TypeB,SizeB,BlockC,TypeC,SizeC).
+
+// The cases in the above are implying that overlapping data blocks is permissible; code might access
+// data both as a series of bytes and as a word, resulting in different overlapping data blocks.
+
+//// END HAIRY OPTIMIZATION
 
 /**
 Blocks that are still overlapping after known_block and impossible_block are determined.
