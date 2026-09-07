@@ -321,7 +321,7 @@ value_reg(EA,Reg_def,EA_third,Reg3,Mult1+(Mult*Mult2),Offset+Offset1+Offset2*Mul
     EA != EA_third,
     Steps2 <= StepLimit-3,
     Steps3 = max(Steps1,Steps2)+2.
-  .plan 1:(3,2,1,4)
+  .plan 1:(2,1,3,4), 2:(3,2,1,4)
   
 // deal with arithmetic operation on two registers when one of the registers contains a constant
 value_reg(EA,Reg_def,EA_third,Reg3,Mult*Mult2,Offset+Offset1+Offset2*Mult,Steps3):-
@@ -334,7 +334,7 @@ value_reg(EA,Reg_def,EA_third,Reg3,Mult*Mult2,Offset+Offset1+Offset2*Mult,Steps3
     EA != EA_third,
     Reg3 != "NONE",
     Steps3 = max(Steps1,Steps2)+2.
-  .plan 1:(3,2,1,4)
+  .plan 1:(2,1,3,4), 2:(3,2,1,4)
 
 // the other register constains a constant.
 value_reg(EA,Reg_def,EA_third,Reg3,Mult1,Offset+Offset1+Offset2*Mult,Steps3):-
@@ -347,7 +347,7 @@ value_reg(EA,Reg_def,EA_third,Reg3,Mult1,Offset+Offset1+Offset2*Mult,Steps3):-
     Reg3 != "NONE",
     EA != EA_third,
     Steps3 = max(Steps1,Steps2)+2.
-  .plan 1:(3,2,1,4)
+  .plan 1:(2,1,3,4), 2:(3,2,1,4)
 
 // normal forward propagation
 value_reg(EA1,Reg1,EA3,Reg3,Multiplier*Multiplier2,(Offset2*Multiplier)+Offset,Steps+1):-
