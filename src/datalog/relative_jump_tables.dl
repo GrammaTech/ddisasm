@@ -113,13 +113,19 @@ jump_table_element_access(EA,1,TableStartAddr,RegBase_nn):-
     TableStartAddr >= Beg,
     TableStartAddr <= End.
 
-jump_table_element_access(EA,Size,TableStartAddr,RegIndex_nn):-
+// The next rule was slow, worth hand-optimizing
+.decl opt_data_access(EA:address,RegIndex_nn:register,Size:unsigned,TableStartAddr:address,Bin:unsigned)
+
+opt_data_access(EA,RegIndex_nn,Size,TableStartAddr,TableStartAddr / BIN_SIZE) :-
     data_access(EA,_,"NONE",RegBase,RegIndex,as(Size,number),Offset,Size),
     reg_nonnull(RegBase,RegBase_nn),
     reg_nonnull(RegIndex,RegIndex_nn),
     const_value_reg_used(EA,_,_,RegBase_nn,Base),
-    TableStartAddr = as(Base+Offset,address),
-    data_segment(Beg,End),
+    TableStartAddr = as(Base+Offset,address).
+    
+jump_table_element_access(EA,Size,TableStartAddr,RegIndex_nn):-
+    opt_data_access(EA,RegIndex_nn,Size,TableStartAddr,Bin),
+    opt_data_segment(Beg,End,Bin),
     TableStartAddr >= Beg,
     TableStartAddr <= End.
 

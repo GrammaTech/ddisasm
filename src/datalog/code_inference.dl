@@ -71,7 +71,7 @@ There is a code block starting at 'Block'.
 /**
 The instruction at address 'EA' is code.
 */
-.decl code(EA:address) inline
+.decl code(EA:address)
 
 /**
 The last instruction of 'Block' is at address 'EA'
@@ -972,28 +972,29 @@ impossible_block(BlockA,TypeA,SizeA,"implies self-overlapping block"):-
 // The next impossible_block computation is outrageously wasteful, involving an enormous self-join.
 // We try to limit it by defining many subsets of the joined predicates.
 
-.decl block_can_overlap(Block:address,Type:block_type,Size:unsigned)
-block_can_overlap(Block,Type,Size) :-
-    block_overlap(Block,Type,Size,_,_,_);
-    block_overlap(_,_,_,Block,Type,Size).
+.decl block_can_overlap_with_non_data_block(Block:address,Type:block_type,Size:unsigned)
+block_can_overlap_with_non_data_block(Block,Type,Size) :-
+    (block_overlap(Block,Type,Size,_,TypeB,_);
+     block_overlap(_,TypeB,_,Block,Type,Size)),
+    TypeB != "data".
 
-.decl block_implies_block_that_can_overlap(BlockA:address,TypeA:block_type,SizeA:unsigned,BlockB:address,TypeB:block_type,SizeB:unsigned)
-block_implies_block_that_can_overlap(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB) :-
+.decl block_implies_block_that_can_overlap_with_non_data_block(BlockA:address,TypeA:block_type,SizeA:unsigned,BlockB:address,TypeB:block_type,SizeB:unsigned)
+block_implies_block_that_can_overlap_with_non_data_block(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB) :-
     block_implies_block(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
-    block_can_overlap(BlockB,TypeB,SizeB).
+    block_can_overlap_with_non_data_block(BlockB,TypeB,SizeB).
 
-.decl block_implies_some_block_that_can_overlap(BlockA:address,TypeA:block_type,SizeA:unsigned)
-block_implies_some_block_that_can_overlap(BlockA,TypeA,SizeA) :-
-    block_implies_block_that_can_overlap(BlockA,TypeA,SizeA,_,_,_).
+.decl block_implies_some_block_that_can_overlap_with_non_data_block(BlockA:address,TypeA:block_type,SizeA:unsigned)
+block_implies_some_block_that_can_overlap_with_non_data_block(BlockA,TypeA,SizeA) :-
+    block_implies_block_that_can_overlap_with_non_data_block(BlockA,TypeA,SizeA,_,_,_).
     
-.decl candidate_block_that_implies_other(Block:address,Type:block_type,Size:unsigned)
-candidate_block_that_implies_other(BlockA,TypeA,SizeA) :-
-    block_implies_some_block_that_can_overlap(BlockA,TypeA,SizeA),
+.decl candidate_block1(Block:address,Type:block_type,Size:unsigned)
+candidate_block1(BlockA,TypeA,SizeA) :-
+    block_implies_some_block_that_can_overlap_with_non_data_block(BlockA,TypeA,SizeA),
     !known_block(BlockA,TypeA,SizeA,_).
      
 .decl block_implies_N_blocks(Block:address,Type:block_type,Size:unsigned,c:number)
-block_implies_N_blocks(Block,Type,Size, count:{ block_implies_block_that_can_overlap(Block,_,_,_,_,_) }) :-
-    candidate_block_that_implies_other(Block,Type,Size).
+block_implies_N_blocks(Block,Type,Size, count:{ block_implies_block_that_can_overlap_with_non_data_block(Block,_,_,_,_,_) }) :-
+    candidate_block1(Block,Type,Size).
 
 .decl block_implies_many_blocks(Block:address,Type:block_type,Size:unsigned)
 block_implies_many_blocks(Block,Type,Size) :-
@@ -1004,7 +1005,7 @@ block_implies_many_blocks(Block,Type,Size) :-
 .decl block_implies_block_subset1(BlockA:address,TypeA:block_type,SizeA:unsigned,BlockB:address,TypeB:block_type,SizeB:unsigned)
 block_implies_block_subset1(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB) :-
     block_implies_many_blocks(BlockA,TypeA,SizeA),
-    block_implies_block_that_can_overlap(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
+    block_implies_block_that_can_overlap_with_non_data_block(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
     TypeB != "data".
 
 
@@ -1027,10 +1028,14 @@ block_implies_block_that_can_overlap_with_block_of_different_type(BlockA,TypeA,S
 block_implies_block_of_type(BlockA,TypeA,SizeA,TypeB) :-
     block_implies_block_that_can_overlap_with_block_of_different_type(BlockA,TypeA,SizeA,_,TypeB,_), 
     !known_block(BlockA,TypeA,SizeA,_).
-   
+
+.decl candidate_block2(Block:address,Type:block_type,Size:unsigned)
+candidate_block2(Block,Type,Size) :-
+    block_implies_block_of_type(Block,Type,Size,_).
+
 .decl block_implies_blocks_of_N_types(Block:address,Type:block_type,Size:unsigned,c:number)
 block_implies_blocks_of_N_types(Block,Type,Size, count:{ block_implies_block_of_type(Block,Type,Size,_) }) :-
-    candidate_block_that_implies_other(Block,Type,Size).
+    candidate_block2(Block,Type,Size).
 
 .decl block_implies_blocks_of_many_types(Block:address,Type:block_type,Size:unsigned)
 block_implies_blocks_of_many_types(Block,Type,Size) :-
@@ -1205,10 +1210,38 @@ next_start(PrevStart,End,NextStart):-
         Start > PrevStart
     }.
 
-next_end(PrevEnd,NextEnd):-
-    unresolved_interval(_,PrevEnd,_,_),
+.decl opt_unresolved_interval(End:address, Bin:unsigned)
+opt_unresolved_interval(End, End / BIN_SIZE) :-
+    unresolved_interval(_,End,_,_).
+
+// Break up the n^2 sorting into bins, resulting in k^2 speedup
+.decl opt_next_end_in_bin(PrevEnd:address, NextEnd:address, Bin:unsigned)
+opt_next_end_in_bin(PrevEnd,NextEnd,Bin):-
+    opt_unresolved_interval(PrevEnd,Bin),
     NextEnd = min End : {
-        unresolved_interval(_,End,_,_),
+        opt_unresolved_interval(End,Bin),
+        End > PrevEnd
+    }.
+
+// Intervals first or last in a bin. One doesn't have a previous, the other a next.
+.decl opt_unresolved_interval_at_bin_start(End:address)
+opt_unresolved_interval_at_bin_start(End) :-
+    opt_unresolved_interval(End, Bin),
+    !opt_next_end_in_bin(_, End, Bin).
+
+.decl opt_unresolved_interval_at_bin_end(End:address)
+opt_unresolved_interval_at_bin_end(End) :-
+    opt_unresolved_interval(End, Bin),
+    !opt_next_end_in_bin(End, _, Bin).
+
+// Union of the ordering inside a bin and between bin edges.
+next_end(PrevEnd,NextEnd) :-
+    opt_next_end_in_bin(PrevEnd,NextEnd,_).
+    
+next_end(PrevEnd,NextEnd):-
+    opt_unresolved_interval_at_bin_end(PrevEnd), // doesn't have a next
+    NextEnd = min End : {   // that's its next
+        opt_unresolved_interval_at_bin_start(End),
         End > PrevEnd
     }.
 
@@ -1267,15 +1300,71 @@ Only calculated for intervals that have prior intervals.
 */
 .decl wis_has_prior(I:unsigned,Count:unsigned)
 
-wis_has_prior(I,Prior):-
-    unresolved_interval_order(Prior,_,PriorEnd,_,_),
-    // check the we have the last interval ending at PriorEnd
-    unresolved_interval_order(Prior+1,_,NextEnd,_,_),
-    NextEnd > PriorEnd,
-    // find intervals that start after PriorEnd but before NextEnd.
-    // for those intervals `Prior` is the prior.
-    unresolved_interval_order(I,Start,_,_,_),
-    NextEnd > Start, Start >= PriorEnd.
+///// Original form of the rule.
+// wis_has_prior(I,Prior):-
+//     unresolved_interval_order(Prior,_,PriorEnd,_,_),
+//     // check the we have the last interval ending at PriorEnd
+//     unresolved_interval_order(Prior+1,_,NextEnd,_,_),
+//     NextEnd > PriorEnd,
+//     // find intervals that start after PriorEnd but before NextEnd.
+//     // for those intervals `Prior` is the prior.
+//     unresolved_interval_order(I,Start,_,_,_),
+//     NextEnd > Start, Start >= PriorEnd.
+//
+
+.decl opt1_unresolved_interval_order(ID:unsigned, Start:address, StartBin:unsigned)
+opt1_unresolved_interval_order(ID, Start, Start / BIN_SIZE) :-
+    unresolved_interval_order(ID,Start,_,_,_).
+
+.decl opt2_unresolved_interval_order(ID:unsigned, End:address, EndBin:unsigned)
+opt2_unresolved_interval_order(ID, End, End / BIN_SIZE) :-
+    unresolved_interval_order(ID,_,End,_,_).
+
+.decl wis_has_prior_in_bin(ID:unsigned, MaxPrior:unsigned, Bin:unsigned)
+wis_has_prior_in_bin(ID, MaxPrior, Bin) :-
+    opt1_unresolved_interval_order(ID, Start, Bin),
+    MaxPrior = max Prior : {
+        opt2_unresolved_interval_order(Prior,PriorEnd,Bin),
+        PriorEnd <= Start
+    }.
+// We could also add the conditions from the original code about Prior+1 existing, etc. But it's
+// unnecessary: there is certainly *some* interval satisfying them, since the current I does.
+
+.decl is_bin(Bin: unsigned)
+is_bin(Bin) :-
+    opt2_unresolved_interval_order(_, _, Bin).
+
+.decl max_end_in_bin(MaxEnd:unsigned, Bin:unsigned)
+max_end_in_bin(MaxEnd, Bin) :-
+    is_bin(Bin),
+    MaxEnd = max End : {
+        opt2_unresolved_interval_order(_, End, Bin)
+    }.
+
+.decl max_id_interval_with_max_end_in_bin(MaxID: unsigned, MaxEnd:unsigned)
+max_id_interval_with_max_end_in_bin(MaxID, MaxEnd) :-
+    max_end_in_bin(MaxEnd, Bin),
+    MaxID = max ID : {
+        opt2_unresolved_interval_order(ID, MaxEnd, Bin)
+    }.
+
+.decl wis_has_no_prior_in_bin(ID:unsigned, Start:unsigned)
+wis_has_no_prior_in_bin(ID, Start) :-
+    opt1_unresolved_interval_order(ID, Start, Bin),
+    !wis_has_prior_in_bin(ID, _, Bin).
+
+
+wis_has_prior(ID, MaxPrior) :-
+    wis_has_prior_in_bin(ID, MaxPrior, _).
+
+
+wis_has_prior(ID, MaxPrior) :-
+   wis_has_no_prior_in_bin(ID, Start),
+   MaxPrior = max Prior : {
+        max_id_interval_with_max_end_in_bin(Prior, MaxEnd),
+        MaxEnd <= Start
+   }.
+
 
 /**
 wis_prior extends wis_has_prior, including intervals that have no prior
@@ -1542,17 +1631,31 @@ block_heuristic(Block,"data",Size,0,"relative-jump-table-start"):-
 //////////////////////////////////////////////////////////////////////
 // code block candidate points
 
+// REVIEW: I don't understand the / 8, but I'm keeping semantic equivalence with the original
+// code.
+.decl opt_relocation(Target:address,Size:unsigned,Bin:unsigned)
+opt_relocation(Target, Size, Target / BIN_SIZE) :-
+    relocation_size(Type,Size),
+    relocation(Target,Type,_,_,_,_,_).
+
+opt_relocation(Target,Size,Bin+1) :-
+    opt_relocation(Target,Size,Bin),
+    Bin < (Target+(Size/8)) / BIN_SIZE.
+
+.decl opt_code_in_block_candidate_refined(EA:address,Block:address,Bin:unsigned)
+opt_code_in_block_candidate_refined(EA,Block,EA / BIN_SIZE) :-
+    code_in_block_candidate_refined(EA,Block).
+
 block_heuristic(Block,"code",BlockSize,0,"overlaps with relocation"):-
     (
         binary_isa("X86");
         binary_isa("X64")
     ),
-    code_in_block_candidate_refined(EA,Block),
+    opt_code_in_block_candidate_refined(EA,Block,Bin),
     (
         // Block beginning intersects relocation bytes:
-        relocation_size(Type,Size),
-        relocation(Target,Type,_,_,_,_,_),
-        EA >= Target, EA < Target + (Size/8)
+        opt_relocation(Target,Size,Bin),
+        EA >= Target, EA < Target + (Size/8) 
         ;
         // Relocation target is in block but not aligned with operand offsets.
         instruction(EA,Size,_,_,_,_,_,_,_,_),

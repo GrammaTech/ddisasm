@@ -318,9 +318,8 @@ Possible null-terminated ASCII string of 'Size' bytes begins at address 'EA'.
  to turn inefficient rules into highly efficient ones.
 */
 
-// Introduce binning for addresses, to efficiently match symbols with potentially conflicting
-// instructions. Symbols are a lot fewer than instructions, they are efficient to overapproximate at one bin
-// over or under.
+// Binning works by associating to objects that have addresses all the possible bins that these addresses
+// can be in. 
 
 // We conservatively add rules, even for small objects (e.g., instructions) to extend the associated bin ids,
 // until we reach the object's end point. In most cases these rules will never fire.
@@ -361,6 +360,14 @@ opt_loaded_section(Beg,End,Name,Beg / BIN_SIZE) :-
 
 opt_loaded_section(Beg,End,Name,Bin+1) :-
     opt_loaded_section(Beg,End,Name,Bin),
+    Bin < End / BIN_SIZE.
+    
+.decl opt_data_segment(Begin:address,End:address,Bin:unsigned)
+opt_data_segment(Begin,End,Begin / BIN_SIZE) :-
+    data_segment(Begin,End).
+
+opt_data_segment(Begin,End,Bin+1) :-
+    opt_data_segment(Begin,End,Bin),
     Bin < End / BIN_SIZE.
     
 ///////////////////////////////////////////////////////////////

@@ -197,12 +197,12 @@ simple_data_access_pattern(Address,Op_index,Size,EA):-
 
 // pc relative
 simple_data_access_pattern(Address,Op_index,Size,EA):-
-    code(EA),
     (
         pc_relative_operand(EA,Op_index,Address);
         split_load_operand(EA,Op_index,Address)
     ),
     instruction_memory_access_size(EA,Op_index,Size),
+    code(EA), // I think this is extraneous, but ok
     data_segment(Beg,End),
     Address >= Beg,
     Address <= End.

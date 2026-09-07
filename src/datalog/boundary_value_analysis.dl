@@ -367,11 +367,15 @@ To: the address at which the limit is active
 last_value_reg_limit(From,To,Reg,Value,LimitType,0):-
     value_reg_limit(From,To,Reg,Value,LimitType).
 
+.decl opt_last_value_reg_limit(From:address,To:address,Reg:register,Value:number,LimitType:limit_type,Steps:unsigned)
+opt_last_value_reg_limit(From,To,Reg,Value,LimitType,Steps) :-
+    last_value_reg_limit(From,To,Reg,Value,LimitType,Steps),
+    step_limit_small(StepLimit),
+    Steps <= StepLimit.
+
 // Simple propagation
 last_value_reg_limit(BlockEnd,BlockNext,PropagatedReg,PropagatedVal,PropagatedType,Steps+1):-
-    step_limit_small(StepLimit),
-    last_value_reg_limit(_,EA,PropagatedReg,PropagatedVal,PropagatedType,Steps),
-    Steps <= StepLimit,
+    opt_last_value_reg_limit(_,EA,PropagatedReg,PropagatedVal,PropagatedType,Steps),
     code_in_block(EA,Block),
     block_next(Block,BlockEnd,BlockNext),
     !reg_def_use.defined_in_block(Block,PropagatedReg),
@@ -407,19 +411,21 @@ limit_reg_op(EA,DstReg,SrcReg,0):-
 limit_reg_op(EA,DstReg,SrcReg,Offset):-
     arch.reg_arithmetic_operation(EA,DstReg,SrcReg,1,Offset).
 
+.decl earlier_code_in_block(EA:address,EA2:address,Block:address)
+earlier_code_in_block(EA,EA2,Block) :-
+    code_in_block(EA,Block),
+    code_in_block(EA2,Block),
+    EA <= EA2.
+
 // Propagate through:
 // * move to a different register
 // * simple add or sub operation modifying a register that has a known limit
 last_value_reg_limit(EA_mov,EA_next,DstReg,PropagatedVal+Offset,PropagatedType,Steps+1):-
-    step_limit_small(StepLimit),
-    last_value_reg_limit(From,EA,SrcReg,PropagatedVal,PropagatedType,Steps),
-    Steps <= StepLimit,
-    code_in_block(EA,Block),
-    block_last_instruction(Block,BlockEnd),
+    opt_last_value_reg_limit(From,EA,SrcReg,PropagatedVal,PropagatedType,Steps),
+    earlier_code_in_block(EA,EA_mov,Block),
     limit_reg_op(EA_mov,DstReg,SrcReg,Offset),
-    EA <= EA_mov,
-    EA_mov <= BlockEnd,
-    code_in_block(EA_mov,Block),
+    block_last_instruction(Block,BlockEnd),
+    // EA_mov <= BlockEnd, // seems completely unnecessary to me
     // The limit for the move is placed on the next instruction, because that is
     // where the limit becomes active. This is analagous to the limit propagated
     // from a previous block being placed at the beginning of the new block.
