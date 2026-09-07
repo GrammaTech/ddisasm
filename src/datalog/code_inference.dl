@@ -791,18 +791,28 @@ Two blocks overlap.
 */
 .decl block_overlap(Block1:address,Type1:block_type,Size1:unsigned,Block2:address,Type2:block_type,Size2:unsigned)
 
-.decl opt_block_candidate_boundaries(Block:address,Type:block_type,BegAddr:address,EndAddr:address,Bin:unsigned)
+// Optimization predicate that associates with every block_candidate_boundaries entry all bins that the block may cover
+.decl opt_block_candidate_boundaries_all_bins(Block:address,Type:block_type,BegAddr:address,EndAddr:address,Bin:unsigned)
 
-opt_block_candidate_boundaries(Block,Type,BegAddr,EndAddr,BegAddr / BIN_SIZE) :-
+opt_block_candidate_boundaries_all_bins(Block,Type,BegAddr,EndAddr,BegAddr / BIN_SIZE) :-
     block_candidate_boundaries(Block,Type,BegAddr,EndAddr).
 
-opt_block_candidate_boundaries(Block,Type,BegAddr,EndAddr,Bin+1) :-
-    opt_block_candidate_boundaries(Block,Type,BegAddr,EndAddr,Bin),
+opt_block_candidate_boundaries_all_bins(Block,Type,BegAddr,EndAddr,Bin+1) :-
+    opt_block_candidate_boundaries_all_bins(Block,Type,BegAddr,EndAddr,Bin),
     Bin < EndAddr / BIN_SIZE.
 
+// Optimization predicate that associates with every block_candidate_boundaries entry only the beginning and ending bin
+.decl opt_block_candidate_boundaries_edge_bins(Block:address,Type:block_type,BegAddr:address,EndAddr:address,Bin:unsigned)
+
+opt_block_candidate_boundaries_edge_bins(Block,Type,BegAddr,EndAddr,BegAddr / BIN_SIZE),
+opt_block_candidate_boundaries_edge_bins(Block,Type,BegAddr,EndAddr,EndAddr / BIN_SIZE):-
+    block_candidate_boundaries(Block,Type,BegAddr,EndAddr).
+
+// Note the performance trick: for one block, we consider only the beginning and
+// ending bin. For the other, we consider all bins.
 block_overlap(Block1,Type1,Size1,Block2,Type2,Size2):-
-    opt_block_candidate_boundaries(Block1,Type1,BegAddr1,EndAddr1,Bin),
-    opt_block_candidate_boundaries(Block2,Type2,BegAddr2,EndAddr2,Bin),
+    opt_block_candidate_boundaries_edge_bins(Block1,Type1,BegAddr1,EndAddr1,Bin),
+    opt_block_candidate_boundaries_all_bins(Block2,Type2,BegAddr2,EndAddr2,Bin),
     (
         Block1 != Block2
         ;
@@ -1054,9 +1064,9 @@ block_implies_block_subset2(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB) :-
 // Case 1: none of B,C are data blocks
 impossible_block(BlockA,TypeA,SizeA,"implies overlapping blocks"):-
     block_implies_block_subset1(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
+    block_overlap(BlockB,TypeB,SizeB,BlockC,TypeC,SizeC),
     block_implies_block_subset1(BlockA,TypeA,SizeA,BlockC,TypeC,SizeC),
-    BlockB != BlockC,
-    block_overlap(BlockB,TypeB,SizeB,BlockC,TypeC,SizeC).
+    BlockB != BlockC.
 
 // Case 2: B,C are of different types
 impossible_block(BlockA,TypeA,SizeA,"implies overlapping blocks"):-

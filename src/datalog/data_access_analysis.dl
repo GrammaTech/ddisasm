@@ -78,7 +78,7 @@ data_access(EA,Op_index,RegSegment,RegBase,RegIndex,Mult,Offset,Size):-
     instruction_get_op(EA,Op_index,Op),
     op_indirect_mapped(Op,RegSegment,RegBase,RegIndex,Mult,Offset,_),
     instruction_memory_access_size(EA,Op_index,Size).
-
+    
 // the register Reg has the given value at instruction EA and operand Op_index
 .decl value_reg_at_operand(EA:address,Op_index:operand_index,Reg:reg_nullable,EA_from:address,Mult:number,Offset:number,Type:symbol)
 

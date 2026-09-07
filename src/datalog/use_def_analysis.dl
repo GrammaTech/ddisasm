@@ -400,17 +400,17 @@ analysis for both registers and stack variables.
 
     // Inter-blocks def-use (explicit def)
     def_used(EA_def,VarIdentity,EA_used,Index):-
-        live_var_at_block_end(Block,BlockUsed,Var),
         live_var_def(Block,VarIdentity,Var,EA_def),
+        live_var_at_block_end(Block,BlockUsed,Var),
         live_var_used(BlockUsed,Var,Var,EA_used,Index,_).
-    .plan 1: (3, 1, 2)
+    .plan 1:(3,2,1)
 
     // Forward propagate def_used to downstream used
     def_used(EA_def,Var,Next_EA_used,NextIndex):-
         live_var_at_prior_used(EA_used,NextUsedBlock,Var),
         def_used(EA_def,Var,EA_used,_),
         live_var_used(NextUsedBlock,Var,Var,Next_EA_used,NextIndex,_).
-    .plan 1: (3, 1, 2)
+    .plan 1:(2,1,3), 2:(3,2,1)
 
     // Inter-procedural def-use
     def_used(EA_def,Reg,EA_used,Index):-
@@ -519,10 +519,10 @@ stack_base_reg_move(Block,EA,Src,Dst):-
 
     // Inter-blocks def-use (explicit def)
     def_used(EA_def,VarDef,EA_used,VarUsed,Index):-
-        live_var_at_block_end(Block,BlockUsed,Var),
         live_var_def(Block,VarDef,Var,EA_def),
+        live_var_at_block_end(Block,BlockUsed,Var),
         live_var_used(BlockUsed,Var,VarUsed,EA_used,Index,_).
-      .plan 1:(3,1,2)
+      .plan 1:(3,2,1)
 
     // def in block with moves/adjustments (used may be in the same block, or propagated to this block).
     def_used(EA_def,DefVar,EA_used,UsedVar,Index):-
@@ -557,8 +557,9 @@ stack_base_reg_move(Block,EA,Src,Dst):-
     live_var_used_in_block(Block,EA_used,[BaseReg,StackPos],[BaseReg,StackPos],EA_used,Index,0):-
         used_in_block(Block,EA_used,[BaseReg,StackPos],Index).
 
-    // The next derivation of live_var_used_in_block ended up taking most of the time in otherwise-optimized executions.
+    // The next derivation of live_var_used_in_block ends up taking most of the time in otherwise-optimized executions.
     // Great index optimization is essential, hence the complex plan and unfolding of records for good join indexing.
+    // Also manual materialization of intermediate results.
 
     // Unfold every record ever arising, keep only the BaseReg.
     .decl decode_live_var(LiveVar:stack_var, BaseReg:register)
@@ -567,21 +568,29 @@ stack_base_reg_move(Block,EA,Src,Dst):-
          used(_, LiveVar, _)),
         // (live_var_at_block_end(_, _, LiveVar);
         //  live_var_used(_, LiveVar, _, _, _, _)),
-        LiveVar = [BaseReg, StackPos].
+        LiveVar = [BaseReg,StackPos], StackPos = StackPos.
 
+    .decl live_var_used_not_at_moves_limit(Block:address,LiveVar:stack_var,UsedVar:stack_var,EA_used:address,Index:operand_index,Moves:unsigned)
+    live_var_used_not_at_moves_limit(Block,LiveVar,UsedVar,EA_used,Index,Moves) :-
+        live_var_used(Block,LiveVar,UsedVar,EA_used,Index,Moves),
+        moves_limit(MovesLimit),
+        Moves <= MovesLimit.
+        
+    .decl opt_adjusts_stack_or_base_reg_move(Block:address, BaseReg:register)
+    opt_adjusts_stack_or_base_reg_move(Block, BaseReg) :-
+        adjusts_stack_in_block(Block,_,BaseReg,_);
+        stack_base_reg_move(Block,_,_,BaseReg).
+    
     // live_var_used has propagated to this block, and there is a stack adjustment or move.
     // we must propagate through this block on a per-instruction basis.
     live_var_used_in_block(Block,NextEA,LiveVar,VarUsed,EA_used,Index,Moves+1):-
         live_var_at_block_end(Block,BlockUsed,LiveVar),
-        live_var_used(BlockUsed,LiveVar,VarUsed,EA_used,Index,Moves),
         decode_live_var(LiveVar, BaseReg),
-        (adjusts_stack_in_block(Block,_,BaseReg,_);
-         stack_base_reg_move(Block,_,_,BaseReg)),
-        moves_limit(MovesLimit),
-        Moves <= MovesLimit,
+        opt_adjusts_stack_or_base_reg_move(Block, BaseReg),
+        live_var_used_not_at_moves_limit(BlockUsed,LiveVar,VarUsed,EA_used,Index,Moves),
         block_last_instruction(Block,LastEA),
         next(LastEA,NextEA).
-      .plan 1:(2,1,3,4,5,6,7)
+      .plan 1:(4,1,2,3,5,6)
 
     // Propagate
     live_var_used_in_block(Block,EA,[BaseReg,StackPos],[FinalBaseReg,FinalStackPos],EA_used,Index,Moves):-
@@ -653,6 +662,7 @@ def_used_for_address(EA_def,Reg,Type):-
 def_used_for_address(EA_def,Reg,Type):-
     def_used_for_address(EA_used,_,Type),
     reg_def_use.def_used(EA_def,Reg,EA_used,_).
+  .plan 1:(2,1)
 
 def_used_for_address(EA,Reg,"PCRelative"):-
     arch.pc_relative_addr(EA,Reg,_).
