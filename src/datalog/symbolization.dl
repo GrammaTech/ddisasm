@@ -181,10 +181,10 @@ in symbolic expressions.
 .decl symbolic_operand_point(ea:address,operand_index:operand_index,points:number,why:symbol)
 .decl symbolic_operand_total_points(ea:address,operand_index:operand_index,points:number) inline
 
-.decl opt_symbolic_operand_candidate(ea:address,operand_index:operand_index,Dest:address,Type:symbol,Bin:unsigned)
+.decl opt_symbolic_operand_candidate(ea:address,operand_index:operand_index,Dest:address,Bin:unsigned)
 
 // Symbolic operands that can occur in any binary type
-opt_symbolic_operand_candidate(EA,Op_index,Dest,Type,Dest / BIN_SIZE):-
+opt_symbolic_operand_candidate(EA,Op_index,Dest,Dest / BIN_SIZE):-
     code(EA),
     instruction_get_op(EA,Op_index,Op),
     (
@@ -207,7 +207,7 @@ opt_symbolic_operand_candidate(EA,Op_index,Dest,Type,Dest / BIN_SIZE):-
     ).
 
 // Symbolic operands that can only occur in executables
-opt_symbolic_operand_candidate(EA,Op_index,Dest_addr,Type,Dest_addr / BIN_SIZE):-
+opt_symbolic_operand_candidate(EA,Op_index,Dest_addr,Dest_addr / BIN_SIZE):-
     binary_type("EXEC"),
     code(EA),
     instruction_get_op(EA,Op_index,Op),
@@ -225,7 +225,7 @@ opt_symbolic_operand_candidate(EA,Op_index,Dest_addr,Type,Dest_addr / BIN_SIZE):
     ).
 
 // Deal with pie and relocatable code
-opt_symbolic_operand_candidate(EA,Op_index,Dest,Type,Dest / BIN_SIZE):-
+opt_symbolic_operand_candidate(EA,Op_index,Dest,Dest / BIN_SIZE):-
     !binary_type("EXEC"),
     !binary_type("REL"),
     code(EA),
@@ -239,7 +239,7 @@ opt_symbolic_operand_candidate(EA,Op_index,Dest,Type,Dest / BIN_SIZE):-
     Dest = as(as(SymbolAddr,number)+Addend,address).
 
 // Handle PE base-relative relocations.
-opt_symbolic_operand_candidate(EA,Index,Dest,Type,Dest / BIN_SIZE):-
+opt_symbolic_operand_candidate(EA,Index,Dest,Dest / BIN_SIZE):-
     binary_format("PE"),
     code(EA),
     (
@@ -255,9 +255,9 @@ opt_symbolic_operand_candidate(EA,Index,Dest,Type,Dest / BIN_SIZE):-
     Dest = as(Value,address).
 
 symbolic_operand_candidate(EA,Op_index,Dest,Type) :-
-    opt_symbolic_operand_candidate(EA,Op_index,Dest,Type,Bin)
+    opt_symbolic_operand_candidate(EA,Op_index,Dest,Bin),
     (
-        code(Dest), Type = "code"
+        code(Dest), Type = "code", Bin = Bin /* suppress warning */
         ;
         opt_data_segment(Begin,End,Bin),
         Dest >= Begin,

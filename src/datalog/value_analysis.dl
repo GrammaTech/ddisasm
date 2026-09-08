@@ -227,7 +227,7 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     data_word(MemAddr,Size,Val),
     !symbolic_expr_from_relocation(MemAddr,_,_,_,_),
     Val >= 0.
-   .plan 1:(3,2,1,4,5)
+   .plan 1:(3,2,1,4)
 
 /**
 Constant folding for bitwise operations (reg op reg)

@@ -490,7 +490,7 @@ opt_data_access_pattern_start(EA, EA / BIN_SIZE) :-
 
 .decl aux_next_data_access(EA:address,DataSegmentEnd:address)
 aux_next_data_access(EA,End) :-
-    opt_next_data_access(EA,Bin),
+    opt_data_access_pattern_start(EA,Bin),
     opt_data_segment(Beg,End,Bin), EA >= Beg, EA < End.
 
 next_data_access(EA,Next):-
