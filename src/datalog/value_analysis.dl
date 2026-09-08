@@ -153,6 +153,7 @@ value_reg(EALoad,Reg2,EALoad,"NONE",0,Immediate,1):-
     stack_def_use.def_used(EAStore,[RegBaseStore,StackPosStore],EALoad,[RegBaseLoad,StackPosLoad],_),
     arch.load(EALoad,_,_,Reg2,RegBaseLoad,"NONE",_,StackPosLoad),
     def_used_for_address(EALoad,Reg2,_).
+   .plan 1:(4,3,2,1)
 
 //reset a register
 value_reg(EA,Reg,EA,"NONE",0,0,1):-
@@ -197,6 +198,9 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
 
 // Load QWORD or DWORD from memory where memory is accessed using a register
 // but the register has a constant value.
+
+// This rule has to be split in two because the two parts have a different number
+// of positive clauses and hence cannot admit the same plan.
 value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     const_value_reg_used(EA,_,_,BaseReg,RegVal),
     arch.load(EA,SrcOp,_,Reg,BaseReg,"NONE",_,Offset),
@@ -206,15 +210,24 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     RegVal + Offset >= 0,
     MemAddr = as(RegVal + Offset,address),
     4 <= Size, Size <= 8,
-    (
-        data_word(MemAddr,Size,Val),
-        !symbolic_expr_from_relocation(MemAddr,_,_,_,_)
-        ;
-        symbolic_expr_from_relocation(MemAddr,Size, Symbol, _, TargetAddr),
-        defined_symbol(_,_,_,_,_,_,_,_,Symbol),
-        Val = as(TargetAddr,number)
-    ),
+    symbolic_expr_from_relocation(MemAddr,Size, Symbol, _, TargetAddr),
+    defined_symbol(_,_,_,_,_,_,_,_,Symbol),
+    Val = as(TargetAddr,number),
     Val >= 0.
+   .plan 1:(3,2,1,4,5,6)
+value_reg(EA,Reg,EA,"NONE",0,Val,1):-
+    const_value_reg_used(EA,_,_,BaseReg,RegVal),
+    arch.load(EA,SrcOp,_,Reg,BaseReg,"NONE",_,Offset),
+    def_used_for_address(EA,Reg,_),
+    instruction_memory_access_size(EA,SrcOp,Size),
+
+    RegVal + Offset >= 0,
+    MemAddr = as(RegVal + Offset,address),
+    4 <= Size, Size <= 8,
+    data_word(MemAddr,Size,Val),
+    !symbolic_expr_from_relocation(MemAddr,_,_,_,_),
+    Val >= 0.
+   .plan 1:(3,2,1,4,5)
 
 /**
 Constant folding for bitwise operations (reg op reg)

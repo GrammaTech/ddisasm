@@ -181,8 +181,10 @@ in symbolic expressions.
 .decl symbolic_operand_point(ea:address,operand_index:operand_index,points:number,why:symbol)
 .decl symbolic_operand_total_points(ea:address,operand_index:operand_index,points:number) inline
 
+.decl opt_symbolic_operand_candidate(ea:address,operand_index:operand_index,Dest:address,Type:symbol,Bin:unsigned)
+
 // Symbolic operands that can occur in any binary type
-symbolic_operand_candidate(EA,Op_index,Dest,Type):-
+opt_symbolic_operand_candidate(EA,Op_index,Dest,Type,Dest / BIN_SIZE):-
     code(EA),
     instruction_get_op(EA,Op_index,Op),
     (
@@ -202,18 +204,10 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
         ;
         split_load_operand(EA,Op_index,Dest),
         UNUSED(Op)
-    ),
-    (
-        code(Dest), Type = "code"
-        ;
-        data_segment(Begin,End),
-        Dest >= Begin,
-        Dest <= End,
-        Type = "data"
     ).
 
 // Symbolic operands that can only occur in executables
-symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
+opt_symbolic_operand_candidate(EA,Op_index,Dest_addr,Type,Dest_addr / BIN_SIZE):-
     binary_type("EXEC"),
     code(EA),
     instruction_get_op(EA,Op_index,Op),
@@ -228,17 +222,10 @@ symbolic_operand_candidate(EA,Op_index,Dest_addr,Type):-
         Dest_addr = as(Dest,address),
         !pc_relative_operand(EA,Op_index,_),
         !split_load_operand(EA,Op_index,_)
-    ),
-    (
-        code(Dest_addr), Type="code"
-        ;
-        data_segment(Begin,End),
-        Dest_addr >= Begin, Dest_addr <= End,
-        Type = "data"
     ).
 
 // Deal with pie and relocatable code
-symbolic_operand_candidate(EA,Op_index,Dest,Type):-
+opt_symbolic_operand_candidate(EA,Op_index,Dest,Type,Dest / BIN_SIZE):-
     !binary_type("EXEC"),
     !binary_type("REL"),
     code(EA),
@@ -249,18 +236,10 @@ symbolic_operand_candidate(EA,Op_index,Dest,Type):-
     ),
     relocation(EA+Offset,_,Symbol,Addend,_,_,_),
     symbol(SymbolAddr,_,_,_,_,_,_,_,Symbol),
-    Dest = as(as(SymbolAddr,number)+Addend,address),
-    (
-        code(Dest), Type = "code"
-        ;
-        data_segment(Begin,End),
-        Dest >= Begin,
-        Dest <= End,
-        Type = "data"
-    ).
+    Dest = as(as(SymbolAddr,number)+Addend,address).
 
 // Handle PE base-relative relocations.
-symbolic_operand_candidate(EA,Index,Dest,Type):-
+opt_symbolic_operand_candidate(EA,Index,Dest,Type,Dest / BIN_SIZE):-
     binary_format("PE"),
     code(EA),
     (
@@ -273,15 +252,20 @@ symbolic_operand_candidate(EA,Index,Dest,Type):-
         op_indirect(Op,_,_,_,1,Value,_)
     ),
     relocation(EA+Offset,_,_,_,_,_,_),
-    Dest = as(Value,address),
+    Dest = as(Value,address).
+
+symbolic_operand_candidate(EA,Op_index,Dest,Type) :-
+    opt_symbolic_operand_candidate(EA,Op_index,Dest,Type,Bin)
     (
-        code(Dest),
-        Type = "code"
+        code(Dest), Type = "code"
         ;
-        data_segment(Begin,End),
-        Dest >= Begin, Dest <= End,
+        opt_data_segment(Begin,End,Bin),
+        Dest >= Begin,
+        Dest <= End,
         Type = "data"
     ).
+
+
 
 /////////////////////////////////////////////////////////////////
 /// Final decision on symbolization of operands
@@ -558,17 +542,20 @@ Possible string of some 'Encoding' at interval ['EA','End').
 
 .decl string_candidate_refined(EA:address,End:address,Encoding:symbol)
 
+.decl aux_string_candidate_evidence(EA:address,Bin:unsigned)
+aux_string_candidate_evidence(EA, EA / BIN_SIZE) :-
+    labeled_data_candidate(EA);
+    preferred_data_access(_,_,EA).
+
 string_candidate(EA,End,"ascii"):-
-    ascii_string(Beg,End),
-    (
-      labeled_data_candidate(EA);
-      preferred_data_access(_,_,EA)
-    ),
+    opt_ascii_string(Beg,End,Bin),
+    aux_string_candidate_evidence(EA,Bin),
+    opt_data_segment(DataBeg,DataEnd,Bin),
     EA >= Beg, EA < End,
-    data_segment(DataBeg,DataEnd),
     EA >= DataBeg,
     End <= DataEnd.
 
+// This one doesn't seem to need optimization, but could use binning in the future
 string_candidate(EA,End,"ascii"):-
     string_candidate(_,EA,"ascii"),
     ascii_string(EA,End),
@@ -579,20 +566,43 @@ string_candidate(EA,End,"ascii"):-
 /**
 String at EA is followed by another string at Next.
 */
+
+/// Original form of rule, took 90mins on wrt
+// subsequent_string_candidate(EA,Next):-
+//     string_candidate(EA,End,_),
+//     Next = min Begin : {
+//         string_candidate(Begin,_,_),
+//         Begin >= End
+//     },
+//     (
+//         End = Next
+//         ;
+//         Next - End < 8,
+//         padding_block_limit(Next)
+//     ).
+
+
 .decl subsequent_string_candidate(EA:address,Next:address)
+
+subsequent_string_candidate(EA,Next):-
+    string_candidate(EA,Next,_),
+    string_candidate(Next,_,_).
+
+// Hopefully this is a small enough subset that we don't need more optimization for this
+// case, the n^2 computation is efficient enough.
+.decl potential_subsequent_string_candidate(Begin:address)
+potential_subsequent_string_candidate(Begin) :-
+    string_candidate(Begin,_,_),
+    padding_block_limit(Begin).
 
 subsequent_string_candidate(EA,Next):-
     string_candidate(EA,End,_),
     Next = min Begin : {
-        string_candidate(Begin,_,_),
+        potential_subsequent_string_candidate(Begin),
         Begin >= End
     },
-    (
-        End = Next
-        ;
-        Next - End < 8,
-        padding_block_limit(Next)
-    ).
+    Next - End < 8.
+
 
 /**
 String candidate refinement projects candidate string references onto a compound
@@ -940,10 +950,21 @@ data_object_point(EA,Size,"other",1,"data access xmm"):-
     data_object_candidate(EA,Size,"other"),
     Size >= 16.
 
-//range mismatch
+.decl opt_data_object_candidate_first_bin(EA:address,Size:unsigned,Type:symbol,Bin:unsigned)
+opt_data_object_candidate_first_bin(EA,Size,Type,EA / BIN_SIZE) :-
+    data_object_candidate(EA,Size,Type).
+
+.decl opt_data_object_candidate_all_bins(EA:address,Size:unsigned,Type:symbol,Bin:unsigned)
+opt_data_object_candidate_all_bins(EA,Size,Type,Bin) :-
+    opt_data_object_candidate_first_bin(EA,Size,Type,Bin).
+opt_data_object_candidate_all_bins(EA,Size,Type,Bin+1) :-
+    opt_data_object_candidate_all_bins(EA,Size,Type,Bin),
+    Bin < (EA+Size) / BIN_SIZE.
+
+//range mismatch: this is the expensive join, no matching ends
 data_object_conflict(EA,Size,Type,EA2,Size2,Type2):-
-    data_object_candidate(EA,Size,Type),
-    data_object_candidate(EA2,Size2,Type2),
+    opt_data_object_candidate_first_bin(EA2,Size2,Type2,Bin),
+    opt_data_object_candidate_all_bins(EA,Size,Type,Bin),
     EA2 > EA,
     EA2 < EA+Size.
 
