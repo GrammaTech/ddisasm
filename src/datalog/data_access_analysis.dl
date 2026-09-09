@@ -508,8 +508,8 @@ data_limit_after_access_in_bin(Access,DataLimit,Bin) :-
     DataLimit = min DataLimit : {opt_data_access_limit(DataLimit, Bin), DataLimit > Access},
     DataLimit <= SegmentEnd.
 
-.decl data_limit_not_first_in_bin(DataLimit:address,Bin:unsigned)
-data_limit_not_first_in_bin(DataLimit, Bin) :-
+.decl data_limit_not_first_in_bin(DataLimit:address)
+data_limit_not_first_in_bin(DataLimit) :-
     opt_data_access_limit(DataLimit, Bin),
     opt_data_access_limit(Other, Bin),
     Other < DataLimit.
@@ -517,8 +517,8 @@ data_limit_not_first_in_bin(DataLimit, Bin) :-
 // This is probably replaceable by data_limit_at_bin_start, but I want the semantics-preserving optimizations to be trivial.
 .decl data_limit_first_in_bin(DataLimit:address)
 data_limit_first_in_bin(DataLimit) :-
-    opt_data_access_limit(DataLimit, Bin),
-    !data_limit_not_first_in_bin(DataLimit, Bin).
+    opt_data_access_limit(DataLimit,_),
+    !data_limit_not_first_in_bin(DataLimit).
 
 .decl data_access_pattern_at_bin_end(Access:address, SegmentEnd:address)
 data_access_pattern_at_bin_end(Access, SegmentEnd) :-
@@ -606,15 +606,21 @@ opt_synchronous_access_barrier_after_access_in_bin(EA,Barrier,Bin) :-
     opt_data_access_pattern_start(EA,Bin),
     Barrier = min Barrier : {synchronous_access_barrier(Barrier,Bin), Barrier > EA}.
 
+.decl access_at_bin_end(EA:address)
+access_at_bin_end(EA) :-
+    opt_data_access_pattern(EA, Bin),
+    !opt_synchronous_access_barrier_after_access_in_bin(EA,_,Bin). // has no next
+
+.decl synchronous_access_barrier_not_at_bin_start(EA:address)
+synchronous_access_barrier_not_at_bin_start(EA) :-
+    synchronous_access_barrier(EA, Bin),
+    synchronous_access_barrier(EA2, Bin),
+    EA2 < EA.
+    
 .decl synchronous_access_barrier_at_bin_start(EA:address)
 synchronous_access_barrier_at_bin_start(EA) :-
     synchronous_access_barrier(EA, Bin),
-    !opt_synchronous_access_barrier_after_access_in_bin(_,EA,Bin). // has no previous
-
-.decl synchronous_access_barrier_at_bin_end(EA:address)
-synchronous_access_barrier_at_bin_end(EA) :-
-    synchronous_access_barrier(EA, Bin),
-    !opt_synchronous_access_barrier_after_access_in_bin(EA,_,Bin). // has no next
+    !synchronous_access_barrier_not_at_bin_start(EA).
 
 // Either we found a next inside the same bin ...
 synchronous_access_barrier_after_access(EA,Barrier):-
@@ -622,7 +628,7 @@ synchronous_access_barrier_after_access(EA,Barrier):-
 
 // Or we pick the minimum next that's after the access, among those first in their bins
 synchronous_access_barrier_after_access(EA,Barrier):-
-    synchronous_access_barrier_at_bin_end(EA),
+    access_at_bin_end(EA),
     Barrier = min Barrier : {synchronous_access_barrier_at_bin_start(Barrier), Barrier > EA}.
     
 
