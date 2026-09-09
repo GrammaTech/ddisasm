@@ -619,7 +619,7 @@ synchronous_access_barrier_not_at_bin_start(EA) :-
     
 .decl synchronous_access_barrier_at_bin_start(EA:address)
 synchronous_access_barrier_at_bin_start(EA) :-
-    synchronous_access_barrier(EA, Bin),
+    synchronous_access_barrier(EA, _),
     !synchronous_access_barrier_not_at_bin_start(EA).
 
 // Either we found a next inside the same bin ...

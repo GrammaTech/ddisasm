@@ -447,7 +447,7 @@ The address appearing at 'EA' is within a potential
 .decl address_in_data_is_printable(EA:address)
 
 address_in_data_is_printable(EA):-
-    opt_address_in_data(EA, Bin),
+    opt_address_in_data_address_binned(EA, Bin),
     opt_ascii_string(EAString, End, Bin),
     arch.pointer_size(Pt_size),
     EAString <= EA, EA <= End - Pt_size.
@@ -459,7 +459,7 @@ The address appearing at 'EA' overlaps with a potential
 .decl address_in_data_overlaps_string(EA:address, EAString:address)
 
 address_in_data_overlaps_string(EA, EAString):-
-    opt_address_in_data(EA, Bin),
+    opt_address_in_data_address_binned(EA, Bin),
     opt_ascii_string(EAString, End, Bin),
     (
         EAString <= EA, EA < End;
@@ -473,9 +473,9 @@ address_in_data_overlaps_string(EA, EAString):-
 
 address_in_data_refined(EA,Val):-
     binary_type("DYN"),
-    address_in_data(EA,Val),
+    opt_address_in_data_value_binned(EA,Val,Bin),
     relocation(EA,_,_,_,_,_,_),
-    data_segment(Beg,End),
+    opt_data_segment(Beg,End,Bin),
     Val >= Beg, Val <= End.
 
 address_in_data_refined(EA,Val):-
