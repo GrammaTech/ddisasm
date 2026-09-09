@@ -371,10 +371,18 @@ analysis for both registers and stack variables.
     */
     .decl return_block_end(Callee:address,CalleeEnd:address,Block:address,BlockEnd:address)
 
+    // Binning optimization to avoid the cartesian product
+    .decl opt_fde_addresses(Begin:address,End:address,Bin:unsigned)
+    opt_fde_addresses(Begin,End,Begin / BIN_SIZE) :-
+        fde_addresses(Begin,End).
+    opt_fde_addresses(Begin,End,Bin+1) :-
+        opt_fde_addresses(Begin,End,Bin),
+        Bin < End / BIN_SIZE.
+        
     .decl opt_return_in_fde_addresses(Callee:address,CalleeEnd:address,CalleeReturn:address)
     opt_return_in_fde_addresses(Callee,CalleeEnd,CalleeReturn) :-
-        fde_addresses(Callee,CalleeEnd),
-        arch.return(CalleeReturn),
+        opt_fde_addresses(Callee,CalleeEnd,Bin),
+        arch.opt_return(CalleeReturn,Bin),
         Callee <= CalleeReturn,
         CalleeReturn < CalleeEnd.
     

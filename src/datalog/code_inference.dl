@@ -256,6 +256,14 @@ max_instruction_size(MaxSize):-
         instruction(_,Size,_,_,_,_,_,_,_,_)
     }.
 
+.decl opt_defined_symbol(Start:address, End:address, Bin:unsigned)
+opt_defined_symbol(Start, Start+ObjSize, Start / BIN_SIZE) :-
+    defined_symbol(Start,ObjSize,"OBJECT",_,_,_,_,_,_).
+
+opt_defined_symbol(Start, End, Bin+1) :-
+    opt_defined_symbol(Start, End, Bin),
+    Bin < End / BIN_SIZE.
+
 invalid(Inst,"overlaps object") :-
     opt_instruction(EA, InstEnd, Inst, Bin),
     opt_defined_symbol(SymbolStart, SymbolEnd, Bin),
@@ -802,17 +810,16 @@ opt_block_candidate_boundaries_all_bins(Block,Type,BegAddr,EndAddr,Bin+1) :-
     Bin < EndAddr / BIN_SIZE.
 
 // Optimization predicate that associates with every block_candidate_boundaries entry only the beginning and ending bin
-.decl opt_block_candidate_boundaries_edge_bins(Block:address,Type:block_type,BegAddr:address,EndAddr:address,Bin:unsigned)
+.decl opt_block_candidate_boundaries_start_bin(Block:address,Type:block_type,BegAddr:address,EndAddr:address,Bin:unsigned)
 
-opt_block_candidate_boundaries_edge_bins(Block,Type,BegAddr,EndAddr,BegAddr / BIN_SIZE),
-opt_block_candidate_boundaries_edge_bins(Block,Type,BegAddr,EndAddr,EndAddr / BIN_SIZE):-
+opt_block_candidate_boundaries_start_bin(Block,Type,BegAddr,EndAddr,BegAddr / BIN_SIZE) :-
     block_candidate_boundaries(Block,Type,BegAddr,EndAddr).
 
 // Note the performance trick: for one block, we consider only the beginning and
 // ending bin. For the other, we consider all bins.
 block_overlap(Block1,Type1,Size1,Block2,Type2,Size2):-
-    opt_block_candidate_boundaries_edge_bins(Block1,Type1,BegAddr1,EndAddr1,Bin),
-    opt_block_candidate_boundaries_all_bins(Block2,Type2,BegAddr2,EndAddr2,Bin),
+    opt_block_candidate_boundaries_start_bin(Block2,Type2,BegAddr2,EndAddr2,Bin),
+    opt_block_candidate_boundaries_all_bins(Block1,Type1,BegAddr1,EndAddr1,Bin),
     (
         Block1 != Block2
         ;
@@ -1643,37 +1650,53 @@ block_heuristic(Block,"data",Size,0,"relative-jump-table-start"):-
 
 // REVIEW: I don't understand the / 8, but I'm keeping semantic equivalence with the original
 // code.
-.decl opt_relocation(Target:address,Size:unsigned,Bin:unsigned)
-opt_relocation(Target, Size, Target / BIN_SIZE) :-
+.decl opt_relocation_first_bin(Target:address,Size:unsigned,Bin:unsigned)
+.decl opt_relocation_all_bins(Target:address,Size:unsigned,Bin:unsigned)
+opt_relocation_first_bin(Target, Size, Target / BIN_SIZE),
+opt_relocation_all_bins(Target, Size, Target / BIN_SIZE) :-
     relocation_size(Type,Size),
     relocation(Target,Type,_,_,_,_,_).
-
-opt_relocation(Target,Size,Bin+1) :-
-    opt_relocation(Target,Size,Bin),
+opt_relocation_all_bins(Target,Size,Bin+1) :-
+    opt_relocation_all_bins(Target,Size,Bin),
     Bin < (Target+(Size/8)) / BIN_SIZE.
 
-.decl opt_code_in_block_candidate_refined(EA:address,Block:address,Bin:unsigned)
-opt_code_in_block_candidate_refined(EA,Block,EA / BIN_SIZE) :-
+.decl opt_code_in_block_candidate_refined_first_bin(EA:address,Block:address,Bin:unsigned)
+.decl opt_code_in_block_candidate_refined_all_bins(EA:address,Block:address,Bin:unsigned)
+opt_code_in_block_candidate_refined_first_bin(EA,Block,EA / BIN_SIZE),
+opt_code_in_block_candidate_refined_all_bins(EA,Block,EA / BIN_SIZE) :-
     code_in_block_candidate_refined(EA,Block).
+
+opt_code_in_block_candidate_refined_all_bins(EA,Block,Bin+1) :-
+    opt_code_in_block_candidate_refined_all_bins(EA,Block,Bin),
+    instruction(EA,Size,_,_,_,_,_,_,_,_),
+    Bin < (EA + (Size/8)) / BIN_SIZE.
+
+// Two versions of the final rule, different binning optimization because of the
+// logical conditions.
+block_heuristic(Block,"code",BlockSize,0,"overlaps with relocation"):-
+    (
+        binary_isa("X86");
+        binary_isa("X64")
+    ),
+    opt_code_in_block_candidate_refined_first_bin(EA,Block,Bin),
+    // Block beginning intersects relocation bytes:
+    opt_relocation_all_bins(Target,Size,Bin),
+    EA >= Target, EA < Target + (Size/8),
+    block_candidate_boundaries(Block,"code",Start,End),
+    BlockSize = End - Start.
 
 block_heuristic(Block,"code",BlockSize,0,"overlaps with relocation"):-
     (
         binary_isa("X86");
         binary_isa("X64")
     ),
-    opt_code_in_block_candidate_refined(EA,Block,Bin),
-    (
-        // Block beginning intersects relocation bytes:
-        opt_relocation(Target,Size,Bin),
-        EA >= Target, EA < Target + (Size/8) 
-        ;
-        // Relocation target is in block but not aligned with operand offsets.
-        instruction(EA,Size,_,_,_,_,_,_,_,_),
-        relocation(Target,_,_,_,_,_,_),
-        Target > EA, Target < EA + (Size/8),
-        !instruction_immediate_offset(EA,_,Target-EA,_),
-        !instruction_displacement_offset(EA,_,Target-EA,_)
-    ),
+    // Relocation target is in block but not aligned with operand offsets.
+    opt_relocation_first_bin(Target,_,Bin),
+    opt_code_in_block_candidate_refined_all_bins(EA,Block,Bin),
+    instruction(EA,Size,_,_,_,_,_,_,_,_),
+    Target > EA, Target < EA + (Size/8),
+    !instruction_immediate_offset(EA,_,Target-EA,_),
+    !instruction_displacement_offset(EA,_,Target-EA,_),
     block_candidate_boundaries(Block,"code",Start,End),
     BlockSize = End - Start.
 

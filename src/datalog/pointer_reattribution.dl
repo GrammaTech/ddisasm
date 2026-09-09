@@ -539,14 +539,24 @@ moved_label_candidate(EA,Op_index,Dest,Block,1):-
     overlapping_instruction(Dest,Block).
 
 // The destination is in the middle of a known symbol
+.decl opt_symbolic_operand(EA:address,Op_index:operand_index,Dest:address,Bin:unsigned)
+opt_symbolic_operand(EA,Op_index,Dest,Dest / BIN_SIZE) :-
+      symbolic_operand(EA,Op_index,Dest,"data");
+      got_relative_operand(EA,Op_index,Dest).
+
+.decl opt_defined_symbol2(Start:address, End:address, Name:symbol, Bin:unsigned)
+opt_defined_symbol2(Start, Start+ObjSize, Name, Start / BIN_SIZE) :-
+    defined_symbol(Start,ObjSize,_,_,_,_,_,_,Name).
+
+opt_defined_symbol2(Start, End, Name, Bin+1) :-
+    opt_defined_symbol2(Start, End, Name, Bin),
+    Bin < End / BIN_SIZE.
+
 moved_label_class(EA,Op_index,"middle of symbol"),
 moved_label_candidate(EA,Op_index,Dest,Address,2):-
-    defined_symbol(Address,Size,_,_,_,_,_,_,Name),
+    opt_defined_symbol2(Address,Size,Name,Bin),
     !function_symbol(Address,Name),
-    (
-      symbolic_operand(EA,Op_index,Dest,"data");
-      got_relative_operand(EA,Op_index,Dest)
-    ),
+    opt_symbolic_operand(EA,Op_index,Dest,Bin),
     Address < Dest,
     Dest < Address+Size.
 

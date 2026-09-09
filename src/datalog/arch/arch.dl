@@ -241,6 +241,10 @@ return(EA):-
     instruction_get_operation(EA,Operation),
     return_operation(Operation).
 
+.decl opt_return(Return:address,Bin:unsigned)
+opt_return(Return,Return / BIN_SIZE) :-
+    arch.return(Return).
+
 .decl jump(EA:address) overridable
 
 jump(EA):-

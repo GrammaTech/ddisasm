@@ -324,14 +324,6 @@ Possible null-terminated ASCII string of 'Size' bytes begins at address 'EA'.
 // We conservatively add rules, even for small objects (e.g., instructions) to extend the associated bin ids,
 // until we reach the object's end point. In most cases these rules will never fire.
 
-.decl opt_defined_symbol(Start:address, End:address, Bin:unsigned)
-opt_defined_symbol(Start, Start+ObjSize, Start / BIN_SIZE) :-
-    defined_symbol(Start,ObjSize,"OBJECT",_,_,_,_,_,_).
-
-opt_defined_symbol(Start, End, Bin+1) :-
-    opt_defined_symbol(Start, End, Bin),
-    Bin < End / BIN_SIZE.
-
 .decl opt_instruction(EA:address, InstEnd:address, Instruction:address, Bin:unsigned)
 opt_instruction(EA, EA+InstSize, Inst, EA / BIN_SIZE) :-
     arch.instruction_at(EA,Inst),

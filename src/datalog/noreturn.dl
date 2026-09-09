@@ -157,18 +157,28 @@ next_function_entry_initial(Func, NextFunc) :-
         F > Func
     }.
 
+// Also a version for binning optimization, all bins
+.decl opt_next_function_entry_initial(Func:address,NextFunc:address,Bin:unsigned)
+opt_next_function_entry_initial(Func,NextFunc,Func / BIN_SIZE) :-
+    next_function_entry_initial(Func, NextFunc).
+
+opt_next_function_entry_initial(Func,NextFunc,Bin+1) :-
+    opt_next_function_entry_initial(Func,NextFunc,Bin),
+    Bin < NextFunc / BIN_SIZE.
+
 /**
 An initial function (`function_entry_initial`, prior to use-def
 and value analysis) contains one or more `return` instructions.
 This is a heuristic and may generate false positives.
 */
+
 .decl initial_function_containing_return(Func:address,ReturnEA:address)
 
 initial_function_containing_return(Func,EA):-
-    next_function_entry_initial(Func, NextFunc),
+    opt_next_function_entry_initial(Func,NextFunc,Bin),
+    arch.opt_return(EA,Bin),
     EA >= Func,
-    EA < NextFunc,
-    arch.return(EA).
+    EA < NextFunc.
 
 /**
 Calls to known no return functions or their PLT blocks.
