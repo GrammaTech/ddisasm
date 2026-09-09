@@ -710,16 +710,19 @@ alignment_from_address(EA, AlignInBits):-
 Auxiliary predicate that builds initial alignments from `alignment_required`:
 the max alignment is picked for an EA later.
 */
-.decl alignment_candidate(EA:address,AlignInBits:unsigned)
+.decl alignment_candidate(EA:address,AlignInBits:unsigned,Reason:symbol)
 
 // Data in code needs to be aligned when referenced by instruction that
 // requires aligned memory: e.g., some SIMD instructions
-alignment_candidate(DataEA, AlignInBits):-
+alignment_candidate(DataEA, AlignInBits, Reason):-
     arch.alignment_required(EA,AlignInBits),
     code(EA),
     (
-        pc_relative_operand(EA,_,DataEA);
-        composite_data_access(_,EA,DataEA,AlignInBits)
+        pc_relative_operand(EA,_,DataEA),
+        Reason="pc_relative_operand"
+        ;
+        composite_data_access(_,EA,DataEA,AlignInBits),
+        Reason="composite_data_access"
     ),
     data_segment(Begin,End),
     DataEA >= Begin,
@@ -729,9 +732,10 @@ alignment_candidate(DataEA, AlignInBits):-
 // some local functions may need alignments: e.g., member function pointers
 // (https://itanium-cxx-abi.github.io/cxx-abi/abi.html#member-function-pointers)
 // As the simplest solution, add alignment to each function
-alignment_candidate(FuncEA,AlignInBits):-
+alignment_candidate(FuncEA,AlignInBits,Reason):-
     function_inference.function_entry(FuncEA),
-    alignment_from_address(FuncEA,AlignInBits).
+    alignment_from_address(FuncEA,AlignInBits),
+    Reason="function_entry".
 
 /**
 Information about alignment in bits for a given address
@@ -740,8 +744,8 @@ Information about alignment in bits for a given address
 .output alignment
 
 alignment(DataEA, AlignInBits):-
-    alignment_candidate(DataEA, AlignInBits),
-    AlignInBits = max X: {alignment_candidate(DataEA, X)}.
+    alignment_candidate(DataEA, AlignInBits, _),
+    AlignInBits = max X: {alignment_candidate(DataEA, X, _)}.
 
 //////////////////////////////////////////////////////////////////////////////////
 // Operations to abstract features of instructions
