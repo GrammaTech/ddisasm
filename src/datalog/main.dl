@@ -374,6 +374,14 @@ opt_unconditional_jump(n,n / BIN_SIZE) :-
 opt_direct_jump(src, dest, src / BIN_SIZE) :-
     direct_jump(src, dest).
 
+.decl opt_symbol(ea:address,size:unsigned,type:symbol,scope:symbol,visibility:symbol,sectionIndex:unsigned,originTable:symbol,tableIndex:unsigned,name:symbol,Bin:unsigned)
+opt_symbol(ea,size,type,scope,visibility,sectionIndex,originTable,tableIndex,name,ea / BIN_SIZE) :-
+    symbol(ea,size,type,scope,visibility,sectionIndex,originTable,tableIndex,name).
+
+opt_symbol(ea,size,type,scope,visibility,sectionIndex,originTable,tableIndex,name,Bin+1) :-
+    opt_symbol(ea,size,type,scope,visibility,sectionIndex,originTable,tableIndex,name,Bin),
+    Bin < (ea + size) / BIN_SIZE.
+
 ///////////////////////////////////////////////////////////////
 // Initialize components
 

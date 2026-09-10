@@ -269,7 +269,7 @@ moved_label_candidate(EA,OpIndex,as(Offset,address),TableStart,6):-
 // Discriminate against coincidental, valid addresses in non-destructive
 // padding bytes. We do not decode padding JMP instructions as code.
 data_object_point(EA,Size,"symbol",-5,"data object in padding"):-
-    data_object_candidate(EA,Size,"symbol"),
-    npad(PaddingEA,PaddingSize),
+    opt_data_object_candidate_first_bin(EA,Size,"symbol",Bin),
+    opt_npad(PaddingEA,PaddingSize,Bin),
     is_padding(PaddingEA),
     EA >= PaddingEA, EA < PaddingEA + PaddingSize.

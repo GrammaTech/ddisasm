@@ -560,11 +560,10 @@ string_candidate(EA,End,"ascii"):-
     EA >= DataBeg,
     End <= DataEnd.
 
-// This one doesn't seem to need optimization, but could use binning in the future
 string_candidate(EA,End,"ascii"):-
     string_candidate(_,EA,"ascii"),
-    ascii_string(EA,End),
-    data_segment(DataBeg,DataEnd),
+    opt_ascii_string(EA,End,Bin),  // We could have first-bin vs. all-bins predicates in the future
+    opt_data_segment(DataBeg,DataEnd,Bin),
     EA >= DataBeg,
     End <= DataEnd.
 
@@ -806,9 +805,9 @@ data_object_point(EA,Pt_size,Type,-2,"data object bias"):-
 // Exception sections are symbolized directly without heuristics.
 // Any candidates detected here are considered spurious.
 data_object_point(EA,Size,Type,-100,"in-exception-section"):-
-    data_object_candidate(EA,Size,Type),
+    opt_data_object_candidate_first_bin(EA,Size,Type,Bin),
     exception_section(Name),
-    loaded_section(Base,End,Name),
+    opt_loaded_section(Base,End,Name,Bin),
     EA >= Base, EA < End.
 
 data_object_point(EA,8,"symbol-symbol",5,"quad symbol-symbol"):-
@@ -1037,7 +1036,6 @@ symbol_minus_symbol(EA,Size,Symbol1,Symbol2,Scale,Offset):-
 code_pointer_in_data(EA,Val):-
     symbolic_data(EA,_,Val),
     block(Val).
-
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////

@@ -96,13 +96,17 @@ moved_data_label(EA,Size,Dest,NewDest):-
     address_in_data_refined_range.overlap(Dest,Pt_size,NewDest),
     symbolic_data(NewDest,Pt_size,_).
 
+.decl opt_symbolic_data1(EA:address,Size:unsigned,Value:address,Bin:unsigned)
+opt_symbolic_data1(EA,Size,Value,Value / BIN_SIZE) :-
+    symbolic_data(EA,Size,Value).
+
 //if something points to the middle of a known symbol we express it as symbol+constant
 //as long as it is not code
 moved_label_class(EA,0,"middle of symbol"),
 moved_data_label(EA,SizePointer,Dest,Address):-
-    symbolic_data(EA,SizePointer,Dest),
+    opt_symbolic_data1(EA,SizePointer,Dest,Bin),
     !code(Dest),
-    symbol(Address,Size,_,_,_,_,_,_,Name),
+    opt_symbol(Address,Size,_,_,_,_,_,_,Name,Bin),
     !function_symbol(Address,Name),
     Address < Dest,
     Dest < Address+Size.
