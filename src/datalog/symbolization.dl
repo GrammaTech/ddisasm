@@ -371,6 +371,10 @@ labeled_data_candidate(Val):-
     arch.pointer_size(Pt_size),
     EA % Pt_size = 0.
 
+.decl opt_labeled_data_candidate(EA:address,Bin:unsigned)
+opt_labeled_data_candidate(EA, EA / BIN_SIZE) :-
+    labeled_data_candidate(EA).
+
 // Detect symbol-symbol
 ////////////////////////////////////////////////////////////////////////
 
@@ -447,7 +451,7 @@ The address appearing at 'EA' is within a potential
 .decl address_in_data_is_printable(EA:address)
 
 address_in_data_is_printable(EA):-
-    opt_address_in_data_address_binned(EA, Bin),
+    opt_address_in_data_address_binned(EA, _, Bin),
     opt_ascii_string(EAString, End, Bin),
     arch.pointer_size(Pt_size),
     EAString <= EA, EA <= End - Pt_size.
@@ -459,7 +463,7 @@ The address appearing at 'EA' overlaps with a potential
 .decl address_in_data_overlaps_string(EA:address, EAString:address)
 
 address_in_data_overlaps_string(EA, EAString):-
-    opt_address_in_data_address_binned(EA, Bin),
+    opt_address_in_data_address_binned(EA, _, Bin),
     opt_ascii_string(EAString, End, Bin),
     (
         EAString <= EA, EA < End;
@@ -496,11 +500,12 @@ address_in_data_refined(EA,Val):-
         ;
         binary_type("EXEC")
     ),
-    address_in_data(EA,Val),
-    data_segment(Beg,End),
+    opt_address_in_data_value_binned(EA,Val,Bin),
+    opt_data_segment(Beg,End,Bin),
     Val >= Beg,
     Val <= End,
-    data_segment(Beg0,End0),
+    opt_address_in_data_address_binned(EA,Val,EABin),
+    opt_data_segment(Beg0,End0,EABin),
     arch.pointer_size(PtSize),
     EA >= Beg0,
     EA + PtSize <= End0.
@@ -517,9 +522,9 @@ address_in_data_refined(EA,Val):-
         ;
         binary_type("EXEC")
     ),
-    address_in_data(EA,Val),
+    opt_address_in_data_address_binned(EA,Val,Bin),
     block(Val),
-    data_segment(Beg0,End0),
+    opt_data_segment(Beg0,End0,Bin),
     arch.pointer_size(PtSize),
     EA >= Beg0,
     EA + PtSize <= End0.
@@ -661,6 +666,18 @@ data_object_candidate(EA,Size,"other"):-
     preferred_data_access(EA,Size,_),
     !address_in_data_refined(EA,_),
     !symbol_minus_symbol_candidate(EA,Size,_,_,_,_).
+
+// Also prepare binning optimization version
+.decl opt_data_object_candidate_first_bin(EA:address,Size:unsigned,Type:symbol,Bin:unsigned)
+opt_data_object_candidate_first_bin(EA,Size,Type,EA / BIN_SIZE) :-
+    data_object_candidate(EA,Size,Type).
+
+.decl opt_data_object_candidate_all_bins(EA:address,Size:unsigned,Type:symbol,Bin:unsigned)
+opt_data_object_candidate_all_bins(EA,Size,Type,Bin) :-
+    opt_data_object_candidate_first_bin(EA,Size,Type,Bin).
+opt_data_object_candidate_all_bins(EA,Size,Type,Bin+1) :-
+    opt_data_object_candidate_all_bins(EA,Size,Type,Bin),
+    Bin < (EA+Size) / BIN_SIZE.
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Heuristic: If there are at least 3 consecutive addresses
@@ -846,8 +863,8 @@ data_object_point(EA,Pt_size,"symbol",-2,"multiple conflict"):-
 .decl label_conflict(EA:address,Size:unsigned,Kind:symbol)
 
 label_conflict(EA,Pt_size,"symbol"):-
-    data_object_candidate(EA,Pt_size,"symbol"),
-    labeled_data_candidate(EA2),
+    opt_labeled_data_candidate(EA2,Bin),
+    opt_data_object_candidate_all_bins(EA,Pt_size,"symbol",Bin),
     EA2 > EA, EA2 < EA+Pt_size.
 
 data_object_point(EA,Pt_size,"symbol",1,"no label conflicts"):-
@@ -949,17 +966,6 @@ data_object_point(EA,Size,"other",4,"data access"):-
 data_object_point(EA,Size,"other",1,"data access xmm"):-
     data_object_candidate(EA,Size,"other"),
     Size >= 16.
-
-.decl opt_data_object_candidate_first_bin(EA:address,Size:unsigned,Type:symbol,Bin:unsigned)
-opt_data_object_candidate_first_bin(EA,Size,Type,EA / BIN_SIZE) :-
-    data_object_candidate(EA,Size,Type).
-
-.decl opt_data_object_candidate_all_bins(EA:address,Size:unsigned,Type:symbol,Bin:unsigned)
-opt_data_object_candidate_all_bins(EA,Size,Type,Bin) :-
-    opt_data_object_candidate_first_bin(EA,Size,Type,Bin).
-opt_data_object_candidate_all_bins(EA,Size,Type,Bin+1) :-
-    opt_data_object_candidate_all_bins(EA,Size,Type,Bin),
-    Bin < (EA+Size) / BIN_SIZE.
 
 //range mismatch: this is the expensive join, no matching ends
 data_object_conflict(EA,Size,Type,EA2,Size2,Type2):-

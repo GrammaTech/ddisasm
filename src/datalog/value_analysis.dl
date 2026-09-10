@@ -418,6 +418,7 @@ EARegDef: The address where Reg is defined as Value. Often EADef = EARegDef.
 const_value_reg_used(UsedEA,EADef,EARegDef,Reg,Value):-
     value_reg(EARegDef,Reg,EADef,"NONE",0,Value,_),
     reg_def_use.def_used(EARegDef,Reg,UsedEA,_).
+   .plan 1:(2,1)
 
 /**
 `AddrValue` represents the value of register `Reg` *before* `EA`.

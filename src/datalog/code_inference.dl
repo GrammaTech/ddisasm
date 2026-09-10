@@ -78,6 +78,10 @@ The last instruction of 'Block' is at address 'EA'
 */
 .decl block_last_instruction(Block:address,EA:address)
 
+.decl opt_block_last_instruction(Block:address,EA:address,Bin:unsigned)
+opt_block_last_instruction(Block,EA,EA / BIN_SIZE) :-
+    block_last_instruction(Block,EA).
+
 /**
 The block defined by address 'Block' extends from 'BegAddr' to 'EndAddr'.
 In most cases 'BegAddr' and 'Block' coincide, but there are exceptions such as
@@ -1936,8 +1940,8 @@ negative_block_heuristic(Block,"code",Size,0,"conditional jump/return: fallthrou
 
 
 negative_block_heuristic(Block,"code",Size,0,"jump to string"):-
-    ascii_string(Beg,End),
-    direct_jump(EA,Dest),
+    opt_direct_jump(EA,Dest,Bin),
+    opt_ascii_string(Beg,End,Bin),
     Dest >= Beg,
     Dest < End,
     (

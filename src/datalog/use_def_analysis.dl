@@ -54,6 +54,10 @@ block_instruction_next(Block,Before,After):-
 
 .decl inter_procedural_edge(Src:address,Dest:address)
 
+// (REVIEW) This can be a costly rule, but it's not realistic to mark all the bins between
+// the source and destination of a direct jump. Instead, there could be an assumption
+// about the max length of a function and search the bins within that distance from
+// the function entry. Leaving for future.
 inter_procedural_edge(Src,Dest):-
     unconditional_jump(Src),
     direct_jump(Src,Dest),
@@ -94,8 +98,8 @@ block_next(Block,EA,Dest):-
 
 // Path created by exception handling.
 block_next(Block,EA,Block2):-
-    lsda_callsite_addresses(Beg,End, Block2),
-    block_last_instruction(Block,EA),
+    opt_block_last_instruction(Block,EA,Bin),
+    opt_lsda_callsite_addresses(Beg,End, Block2,Bin),
     EA >= Beg, EA < End,
     block(Block2).
 
@@ -370,14 +374,6 @@ analysis for both registers and stack variables.
     the last instruction at BlockEnd.
     */
     .decl return_block_end(Callee:address,CalleeEnd:address,Block:address,BlockEnd:address)
-
-    // Binning optimization to avoid the cartesian product
-    .decl opt_fde_addresses(Begin:address,End:address,Bin:unsigned)
-    opt_fde_addresses(Begin,End,Begin / BIN_SIZE) :-
-        fde_addresses(Begin,End).
-    opt_fde_addresses(Begin,End,Bin+1) :-
-        opt_fde_addresses(Begin,End,Bin),
-        Bin < End / BIN_SIZE.
         
     .decl opt_return_in_fde_addresses(Callee:address,CalleeEnd:address,CalleeReturn:address)
     opt_return_in_fde_addresses(Callee,CalleeEnd,CalleeReturn) :-

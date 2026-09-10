@@ -73,14 +73,19 @@ reg_has_base_image(EA,Reg):-
 
 .decl possible_rva_operand(EA:address,Index:operand_index,Dest:address)
 
-possible_rva_operand(EA,Op_index,RVA):-
-    instruction_get_op(EA,Op_index,Op),
+// REVIEW: is this memory-costly to materialize? Doesn't seem to be enormous.
+.decl aux_possible_rva_operand(EA:address,Index:operand_index,Dest:address,PtrToCheck:address,Bin:unsigned)
+aux_possible_rva_operand(EA,Op_index,RVA,ImageBase + RVA, (ImageBase + RVA) / BIN_SIZE) :-
     op_indirect(Op,_,_,_,_,Value,_), Value >= 0,
+    instruction_get_op(EA,Op_index,Op),
     RVA = as(Value,address),
-    base_address(ImageBase),
-    loaded_section(Begin,End,_),
-    (ImageBase + RVA) >= Begin,
-    (ImageBase + RVA) < End.
+    base_address(ImageBase).
+
+possible_rva_operand(EA,Op_index,RVA):-
+    aux_possible_rva_operand(EA,Op_index,RVA,PtrToCheck,Bin),
+    opt_loaded_section(Begin,End,_,Bin),
+    PtrToCheck >= Begin,
+    PtrToCheck < End.
 
 .decl base_relative_operand(EA:address,Index:operand_index,Dest:address)
 

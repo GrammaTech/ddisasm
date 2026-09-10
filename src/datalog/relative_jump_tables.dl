@@ -97,37 +97,33 @@ relative_address(EA+Size,Size,TableStart,Ref,Dest,DestIsFirstOrSecond):-
 // auxiliary predicate for detecting accessing an element of a jump table.
 .decl jump_table_element_access(EA:address,Size:unsigned,TableStart:address,RegIndex:register)
 
-jump_table_element_access(EA,Size,TableStartAddr,RegIndex_nn):-
+// The next rules were slow, worth hand-optimizing
+
+.decl opt_data_access(EA:address,Size:unsigned,TableStart:address,RegIndex:register,Bin:unsigned)
+
+opt_data_access(EA, Size, TableStartAddr, RegIndex_nn, TableStartAddr / BIN_SIZE) :-
     data_access(EA,_,"NONE","NONE",RegIndex,as(Size,number),TableStart,Size),
     reg_nonnull(RegIndex,RegIndex_nn),
-    TableStartAddr = as(TableStart,address),
-    data_segment(Beg,End),
-    TableStartAddr >= Beg,
-    TableStartAddr <= End.
+    TableStartAddr = as(TableStart,address).
 
-jump_table_element_access(EA,1,TableStartAddr,RegBase_nn):-
+opt_data_access(EA, 1, TableStartAddr, RegBase_nn, TableStartAddr / BIN_SIZE) :-
     data_access(EA,_,"NONE",RegBase,"NONE",_,TableStart,1),
     reg_nonnull(RegBase,RegBase_nn),
-    TableStartAddr = as(TableStart,address),
-    data_segment(Beg,End),
-    TableStartAddr >= Beg,
-    TableStartAddr <= End.
+    TableStartAddr = as(TableStart,address).
 
-// The next rule was slow, worth hand-optimizing
-.decl opt_data_access(EA:address,RegIndex_nn:register,Size:unsigned,TableStartAddr:address,Bin:unsigned)
-
-opt_data_access(EA,RegIndex_nn,Size,TableStartAddr,TableStartAddr / BIN_SIZE) :-
+opt_data_access(EA, Size, TableStartAddr, RegIndex_nn, TableStartAddr / BIN_SIZE) :-
     const_value_reg_used(EA,_,_,RegBase_nn,Base),
     data_access(EA,_,"NONE",RegBase,RegIndex,as(Size,number),Offset,Size),
     reg_nonnull(RegBase,RegBase_nn),
     reg_nonnull(RegIndex,RegIndex_nn),
     TableStartAddr = as(Base+Offset,address).
-    
-jump_table_element_access(EA,Size,TableStartAddr,RegIndex_nn):-
-    opt_data_access(EA,RegIndex_nn,Size,TableStartAddr,Bin),
+
+jump_table_element_access(EA,Size,TableStartAddr,RegIndex_nn) :-
+    opt_data_access(EA, Size, TableStartAddr, RegIndex_nn, Bin),
     opt_data_segment(Beg,End,Bin),
     TableStartAddr >= Beg,
     TableStartAddr <= End.
+
 
 /**
 The following case was observed in libc.so (v2.36):
@@ -403,15 +399,26 @@ discarded_jump_table_entry(TableStart,TableRef1,TableStart):-
     TableRef1 != TableStart,
     TableRef2 = TableStart.
 
+.decl opt_relative_jump_table_entry_candidate(EA:address,TableStart:address,Size:unsigned,Reference:address,Dest:address,Scale:number,Offset:number,Bin:unsigned)
+
+opt_relative_jump_table_entry_candidate(EA,TableStart,Size,Reference,Dest,Scale,Offset,EA / BIN_SIZE) :-
+    relative_jump_table_entry_candidate(EA,TableStart,Size,Reference,Dest,Scale,Offset).
+
+opt_relative_jump_table_entry_candidate(EA,TableStart,Size,Reference,Dest,Scale,Offset,Bin+1) :-
+    opt_relative_jump_table_entry_candidate(EA,TableStart,Size,Reference,Dest,Scale,Offset,Bin),
+    Bin < (EA + Size) / BIN_SIZE.
+
+.decl aux_potential_limit_for_jump_table(Limit:address,Bin:unsigned)
+aux_potential_limit_for_jump_table(Limit,Limit / BIN_SIZE) :-
+    symbolic_operand(_,_,Limit,"data");
+    data_segment(Limit,_);
+    data_segment(_,Limit);
+    jump_table_start(_,_,Limit,_,_).
+
 // Truncate a jump table if a separate data access is encountered.
 discarded_jump_table_entry(TableStart,Ref,EA):-
-    relative_jump_table_entry_candidate(EA,TableStart,Size,Ref,_,_,_),
-    (
-        symbolic_operand(_,_,Limit,"data");
-        data_segment(Limit,_);
-        data_segment(_,Limit);
-        jump_table_start(_,_,Limit,_,_)
-    ),
+    aux_potential_limit_for_jump_table(Limit,Bin),
+    opt_relative_jump_table_entry_candidate(EA,TableStart,Size,Ref,_,_,_,Bin),
     EA <= Limit, Limit < EA+Size,
     EA != TableStart.
 
