@@ -44,11 +44,16 @@ other access.
 // auxiliary predicate to  compute the amount of read memory
 .decl instruction_memory_access_size(EA:address,Op_index:operand_index,Size:unsigned)
 
-instruction_memory_access_size(EA,Index,SizeAccess):-
-    !invalid(EA,_),
-    instruction_get_operation(EA,Operation),
+// Materialize intermediate join result
+.decl aux_instruction_get_op_indirect(EA:address,Index:operand_index,NBytes:unsigned)
+aux_instruction_get_op_indirect(EA,Index,NBytes) :-
     instruction_get_op(EA,Index,Op),
-    op_indirect(Op,_,_,_,_,_,NBytes),
+    op_indirect(Op,_,_,_,_,_,NBytes).
+
+instruction_memory_access_size(EA,Index,SizeAccess):-
+    aux_instruction_get_op_indirect(EA,Index,NBytes),
+    instruction_get_operation(EA,Operation),
+    !invalid(EA,_),
     (
         // If the dest op is a register, see if there is a corresponding
         // data_access_size available.
@@ -78,7 +83,7 @@ data_access(EA,Op_index,RegSegment,RegBase,RegIndex,Mult,Offset,Size):-
     instruction_get_op(EA,Op_index,Op),
     op_indirect_mapped(Op,RegSegment,RegBase,RegIndex,Mult,Offset,_),
     instruction_memory_access_size(EA,Op_index,Size).
-
+    
 // the register Reg has the given value at instruction EA and operand Op_index
 .decl value_reg_at_operand(EA:address,Op_index:operand_index,Reg:reg_nullable,EA_from:address,Mult:number,Offset:number,Type:symbol)
 
@@ -186,33 +191,32 @@ by propagating data accesses based on their multiplier.
 //////////////////////////////////////////////////
 
 
+.decl opt_simple_data_access_pattern(Address:address,Op_index:unsigned,Size:unsigned,FromWhere:address,Bin:unsigned)
+
 //single access
-simple_data_access_pattern(Address,Op_index,Size,EA):-
+opt_simple_data_access_pattern(Address,Op_index,Size,EA,Address / BIN_SIZE) :-
     data_access(EA,Op_index,"NONE","NONE","NONE",_,Offset,Size),
     !instruction_has_relocation(EA,_),
-    Address = as(Offset,address),
-    data_segment(Beg,End),
-    Address >= Beg,
-    Address <= End.
+    Address = as(Offset,address).
 
 // pc relative
-simple_data_access_pattern(Address,Op_index,Size,EA):-
-    code(EA),
+opt_simple_data_access_pattern(Address,Op_index,Size,EA,Address / BIN_SIZE) :-
     (
         pc_relative_operand(EA,Op_index,Address);
         split_load_operand(EA,Op_index,Address)
     ),
     instruction_memory_access_size(EA,Op_index,Size),
-    data_segment(Beg,End),
-    Address >= Beg,
-    Address <= End.
+    code(EA). // I think this is extraneous, but ok
 
 // Access using relocation
-simple_data_access_pattern(Address,Op_index,Size,EA):-
+opt_simple_data_access_pattern(Address,Op_index,Size,EA,Address / BIN_SIZE) :-
     data_access(EA,Op_index,_,_,_,_,_,Size),
     instruction_has_relocation(EA,EA_rel),
-    symbolic_expr_from_relocation(EA_rel,_,_,_,Address),
-    data_segment(Beg,End),
+    symbolic_expr_from_relocation(EA_rel,_,_,_,Address).
+
+simple_data_access_pattern(Address,Op_index,Size,EA) :-
+    opt_simple_data_access_pattern(Address,Op_index,Size,EA,Bin),
+    opt_data_segment(Beg,End,Bin),
     Address >= Beg,
     Address <= End.
 
@@ -220,14 +224,74 @@ simple_data_access_pattern(Address,Op_index,Size,EA):-
 data_access_pattern_candidate(Address,Size,0,EA):-
     simple_data_access_pattern(Address,_,Size,EA).
 
+///////////////////////////////////////////////////////////
+///// BEGIN BINNING OPTIMIZATION
+///////////////////////////////////////////////////////////
+
+/// Below, commented out, are the rules in their original form. They are too costly
+/// to evaluate like this, due to the cartesian product of data_segment with the earlier
+/// joins. Applying binning optimization.
+
+// // directly computed
+// data_access_pattern_candidate(Address,Size,Mult*Mult2,EA):-
+//     data_access(EA,Op_index,"NONE",RegBase,RegMult,Mult,Offset1,Size),
+//     !simple_data_access_pattern(_,Op_index,_,EA),
+//     RegMult != "NONE",
+//     RegMult != RegBase,
+//     value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,Offset2,_),
+//     value_reg_at_operand(EA,Op_index,RegBase,_,0,Offset3,"complete"),
+//     // the absolute value of the multiplier cannot be
+//     // smaller that the size (unless we have 0 multiplier)
+//     (
+//         Mult*Mult2 > 0, as(Size,number) <= Mult*Mult2;
+//         Mult*Mult2 = 0;
+//         Mult*Mult2 < 0, as(Size,number) <= -(Mult*Mult2)
+//     ),
+//     Address = as(Offset1+(Offset2*Mult)+Offset3,address),
+//     data_segment(Beg,End),
+//     Address >= Beg,
+//     Address <= End.
+
+// // indirectly computed
+// data_access_pattern_candidate(Address,Size,Mult,EA):-
+//     data_access(EA,Op_index,"NONE",RegBase,RegMult,Mult2,Offset1,Size),
+//     !simple_data_access_pattern(_,Op_index,_,EA),
+//     RegMult != RegBase,
+//     value_reg_at_operand(EA,Op_index,RegMult,_,0,Offset2,"complete"),
+//     value_reg_at_operand(EA,Op_index,RegBase,_,Mult,Offset3,_),
+//     // the absolute value of the multiplier cannot be
+//     // smaller that the size (unless we have 0 multiplier)
+//     (
+//         Mult > 0, as(Size,number) <= Mult;
+//         Mult = 0;
+//         Mult < 0, as(Size,number) <= -Mult
+//     ),
+//     Address = as(Offset1+Offset2*Mult2+Offset3,address),
+//     data_segment(Beg,End),
+//     Address >= Beg,
+//     Address <= End.
+
+// //repeated register
+// data_access_pattern_candidate(Address,Size,FinalMult,EA):-
+//     data_access(EA,Op_index,"NONE",Reg,Reg,Mult,Offset1,Size),
+//     Reg != "NONE",
+//     value_reg_at_operand(EA,Op_index,Reg,_,Mult2,Offset2,_),
+//     FinalMult = Mult*Mult2+Mult2,
+//     (as(Size,number) <= FinalMult; FinalMult = 0),
+//     Address = as(Offset1+(Offset2*Mult)+Offset2, address),
+//     data_segment(Beg,End),
+//     Address >= Beg,
+//     Address <= End.
+
 // directly computed
-data_access_pattern_candidate(Address,Size,Mult*Mult2,EA):-
+.decl opt_data_access_pattern_candidate(Address:address,Size:unsigned,Multiplier:number,FromWhere:address,Bin:unsigned)
+opt_data_access_pattern_candidate(Address,Size,Mult*Mult2,EA,Address / BIN_SIZE) :-
     data_access(EA,Op_index,"NONE",RegBase,RegMult,Mult,Offset1,Size),
     !simple_data_access_pattern(_,Op_index,_,EA),
     RegMult != "NONE",
     RegMult != RegBase,
-    value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,Offset2,_),
     value_reg_at_operand(EA,Op_index,RegBase,_,0,Offset3,"complete"),
+    value_reg_at_operand(EA,Op_index,RegMult,_,Mult2,Offset2,_),
     // the absolute value of the multiplier cannot be
     // smaller that the size (unless we have 0 multiplier)
     (
@@ -235,13 +299,10 @@ data_access_pattern_candidate(Address,Size,Mult*Mult2,EA):-
         Mult*Mult2 = 0;
         Mult*Mult2 < 0, as(Size,number) <= -(Mult*Mult2)
     ),
-    Address = as(Offset1+(Offset2*Mult)+Offset3,address),
-    data_segment(Beg,End),
-    Address >= Beg,
-    Address <= End.
+    Address = as(Offset1+(Offset2*Mult)+Offset3,address).
 
 // indirectly computed
-data_access_pattern_candidate(Address,Size,Mult,EA):-
+opt_data_access_pattern_candidate(Address,Size,Mult,EA,Address / BIN_SIZE) :-
     data_access(EA,Op_index,"NONE",RegBase,RegMult,Mult2,Offset1,Size),
     !simple_data_access_pattern(_,Op_index,_,EA),
     RegMult != RegBase,
@@ -254,22 +315,28 @@ data_access_pattern_candidate(Address,Size,Mult,EA):-
         Mult = 0;
         Mult < 0, as(Size,number) <= -Mult
     ),
-    Address = as(Offset1+Offset2*Mult2+Offset3,address),
-    data_segment(Beg,End),
-    Address >= Beg,
-    Address <= End.
+    Address = as(Offset1+Offset2*Mult2+Offset3,address).
 
 //repeated register
-data_access_pattern_candidate(Address,Size,FinalMult,EA):-
+opt_data_access_pattern_candidate(Address,Size,FinalMult,EA, Address / BIN_SIZE):-
     data_access(EA,Op_index,"NONE",Reg,Reg,Mult,Offset1,Size),
     Reg != "NONE",
     value_reg_at_operand(EA,Op_index,Reg,_,Mult2,Offset2,_),
     FinalMult = Mult*Mult2+Mult2,
     (as(Size,number) <= FinalMult; FinalMult = 0),
-    Address = as(Offset1+(Offset2*Mult)+Offset2, address),
-    data_segment(Beg,End),
+    Address = as(Offset1+(Offset2*Mult)+Offset2, address).
+
+// Use bins to get up to (#BIN)^2 speedup
+data_access_pattern_candidate(Address,Size,Multiplier,FromWhere) :-
+    opt_data_access_pattern_candidate(Address,Size,Multiplier,FromWhere,Bin),
+    opt_data_segment(Beg,End,Bin),
     Address >= Beg,
     Address <= End.
+
+///////////////////////////////////////////////////////////
+///// END BINNING OPTIMIZATION
+///////////////////////////////////////////////////////////
+
 
 /**
 Filter out some invalid DAP candidates before performing expensive aggregation
@@ -340,9 +407,24 @@ To avoid false positives here, only consider the case where
 the repeated value is 0, and the array is not singleton, and
 the array size is a multiple of the access size.
 */
+
+// Binning: otherwise the join is a cartesian product
+.decl opt_repeated_byte(EA:address, Value:unsigned, Count:unsigned, Bin:unsigned)
+opt_repeated_byte(EA, Value, Count, EA / BIN_SIZE) :-
+    repeated_byte(EA, Value, Count).
+
+opt_repeated_byte(EA, Value, Count, Bin + 1) :-
+    opt_repeated_byte(EA, Value, Count, Bin),
+    Bin < (EA + Count) / BIN_SIZE.
+
+// Optimization predicate specifically for the next rule, specializes the general relation.
+.decl opt_data_access_pattern_non_zero(Address:address,Size:unsigned,Bin:unsigned)
+opt_data_access_pattern_non_zero(Address,Size,Address / BIN_SIZE) :-
+    data_access_pattern_non_zero(Address,Size,Size,_).
+
 data_access_limit(EA):-
-    data_access_pattern_non_zero(EA_labeled,Size,Size,_),
-    repeated_byte(EA0,0,Count),
+    opt_data_access_pattern_non_zero(EA_labeled,Size,Bin),
+    opt_repeated_byte(EA0,0,Count,Bin),
     EA = EA0 + Count,
     EA_labeled >= EA0,
     EA_labeled < EA,
@@ -365,36 +447,130 @@ The next data limit after 'EA' is at 'Next'.
 */
 .decl next_data_limit(EA:address,Next:address)
 
-next_data_limit(EA,Next):-
-    data_limit(EA),
-    data_segment(Beg,End), EA >= Beg, EA < End,
-    Next = min Next : {data_limit(Next), Next > EA},
-    Next <= End.
+.decl opt_data_limit(EA:address,Bin:unsigned)
+opt_data_limit(EA, EA / BIN_SIZE) :-
+    data_limit(EA).
 
+.decl aux_data_limit_with_segment_end(EA:address, SegmentEnd:address, Bin:unsigned)
+aux_data_limit_with_segment_end(EA, SegmentEnd, Bin) :-
+    opt_data_limit(EA, Bin),
+    opt_data_segment(Beg, SegmentEnd, Bin),
+    EA >= Beg, EA < SegmentEnd.
+
+.decl next_data_limit_in_bin(EA:address,Next:address, Bin:unsigned)
+next_data_limit_in_bin(EA,Next,Bin) :-
+    aux_data_limit_with_segment_end(EA, SegmentEnd, Bin),
+    Next = min Next : {opt_data_limit(Next, Bin), Next > EA},
+    Next <= SegmentEnd.
+
+.decl data_limit_at_bin_start(EA:address)
+data_limit_at_bin_start(EA) :-
+    aux_data_limit_with_segment_end(EA, _, Bin),
+    !next_data_limit_in_bin(_, EA, Bin).
+
+.decl data_limit_at_bin_end(EA:address, SegmentEnd:address)
+data_limit_at_bin_end(EA, SegmentEnd) :-
+    aux_data_limit_with_segment_end(EA, SegmentEnd, Bin),
+    !next_data_limit_in_bin(EA, _, Bin).
+
+next_data_limit(EA,Next):-
+    next_data_limit_in_bin(EA,Next,_).
+
+next_data_limit(EA,Next):-
+    data_limit_at_bin_end(EA, SegmentEnd),
+    Next = min Next : {data_limit_at_bin_start(Next), Next > EA},
+    Next <= SegmentEnd.
+    
 /**
 The first data limit after the data access at address
 'Access' is at address 'DataLimit'.
 */
 .decl data_limit_after_access(Access:address,DataLimit:address)
 
+// Optimized specifically for this next use, also dropping unnecessary columns
+.decl opt_data_access_pattern(Address:address,Bin:unsigned)
+opt_data_access_pattern(Access,Access / BIN_SIZE) :-
+    data_access_pattern(Access,_,_,_).
 
-data_limit_after_access(Access,DataLimit):-
-    data_access_pattern(Access,_,_,_),
-    data_segment(Beg,End), Access >= Beg, Access < End,
-    DataLimit = min DataLimit : {data_access_limit(DataLimit), DataLimit > Access},
-    DataLimit <= End.
+.decl aux_data_access_pattern_with_segment_end(Access:address, SegmentEnd:address, Bin:unsigned)
+aux_data_access_pattern_with_segment_end(Access, SegmentEnd, Bin) :-
+    opt_data_access_pattern(Access,Bin),
+    opt_data_segment(Beg,SegmentEnd,Bin),
+    Access >= Beg, Access < SegmentEnd.
+
+.decl opt_data_access_limit(Address:address, Bin:unsigned)
+opt_data_access_limit(Address, Address / BIN_SIZE) :-
+    data_access_limit(Address).
+
+.decl data_limit_after_access_in_bin(Access:address,DataLimit:address,Bin:unsigned)
+data_limit_after_access_in_bin(Access,DataLimit,Bin) :-
+    aux_data_access_pattern_with_segment_end(Access, SegmentEnd, Bin),
+    DataLimit = min DataLimit : {opt_data_access_limit(DataLimit, Bin), DataLimit > Access},
+    DataLimit <= SegmentEnd.
+
+.decl data_limit_not_first_in_bin(DataLimit:address)
+data_limit_not_first_in_bin(DataLimit) :-
+    opt_data_access_limit(DataLimit, Bin),
+    opt_data_access_limit(Other, Bin),
+    Other < DataLimit.
+
+// This is probably replaceable by data_limit_at_bin_start, but I want the semantics-preserving optimizations to be trivial.
+.decl data_limit_first_in_bin(DataLimit:address)
+data_limit_first_in_bin(DataLimit) :-
+    opt_data_access_limit(DataLimit,_),
+    !data_limit_not_first_in_bin(DataLimit).
+
+.decl data_access_pattern_at_bin_end(Access:address, SegmentEnd:address)
+data_access_pattern_at_bin_end(Access, SegmentEnd) :-
+    aux_data_access_pattern_with_segment_end(Access, SegmentEnd, Bin),
+    !data_limit_after_access_in_bin(Access, _, Bin).
+    
+data_limit_after_access(Access,DataLimit) :-
+    data_limit_after_access_in_bin(Access,DataLimit,_).
+
+data_limit_after_access(Access,DataLimit) :-
+    data_access_pattern_at_bin_end(Access, SegmentEnd),
+    DataLimit = min DataLimit : {data_limit_first_in_bin(DataLimit), DataLimit > Access},
+    DataLimit <= SegmentEnd.
 
 /**
 The next data access after the one at 'EA' is at 'Next'.
 */
 .decl next_data_access(EA:address,Next:address)
 
-next_data_access(EA,Next):-
-    data_access_pattern(EA,_,_,_),
-    data_segment(Beg,End), EA >= Beg, EA < End,
-    Next = min Next : {data_access_pattern(Next,_,_,_), Next > EA},
-    Next <= End.
+.decl opt_data_access_pattern_start(EA:address,Bin:unsigned)
+opt_data_access_pattern_start(EA, EA / BIN_SIZE) :-
+    data_access_pattern(EA,_,_,_).
 
+.decl aux_next_data_access(EA:address,DataSegmentEnd:address,Bin:unsigned)
+aux_next_data_access(EA,End,Bin) :-
+    opt_data_access_pattern_start(EA,Bin),
+    opt_data_segment(Beg,End,Bin), EA >= Beg, EA < End.
+
+.decl next_data_access_in_bin(EA:address,Next:address,Bin:unsigned)
+next_data_access_in_bin(EA,Next,Bin) :-
+    aux_next_data_access(EA,DataSegmentEnd,Bin),
+    Next = min Next : {opt_data_access_pattern(Next,Bin), Next > EA},
+    Next <= DataSegmentEnd.
+
+.decl data_access_at_bin_start(EA:address)
+data_access_at_bin_start(EA) :-
+    aux_next_data_access(EA,_,Bin),
+    !next_data_access_in_bin(_,EA,Bin).
+
+.decl data_access_at_bin_end(EA:address,DataSegmentEnd:address)
+data_access_at_bin_end(EA,DataSegmentEnd) :-
+    aux_next_data_access(EA,DataSegmentEnd,Bin),
+    !next_data_access_in_bin(EA,_,Bin).
+
+next_data_access(EA,Next):-
+    next_data_access_in_bin(EA,Next,_).
+
+next_data_access(EA,Next):-
+    data_access_at_bin_end(EA,DataSegmentEnd),
+    Next = min Next : {data_access_at_bin_start(Next), Next > EA},
+    Next <= DataSegmentEnd.
+    
 
 // FIXME: This predicate has been added to avoid exceptions when mult is 0
 // due to https://github.com/souffle-lang/souffle/issues/1513
@@ -407,9 +583,9 @@ data_access_pattern_non_zero(Address,Size,as(Mult,unsigned),FromWhere):-
 /**
 Barriers are the candidates for limiting synchronous access pairing.
 */
-.decl synchronous_access_barrier(EA:address)
+.decl synchronous_access_barrier(EA:address,Bin:unsigned)
 
-synchronous_access_barrier(EA):-
+synchronous_access_barrier(EA, EA / BIN_SIZE):-
     symbol(EA,_,_,_,_,_,_,_,_);
     data_segment(_,EA);
     data_segment(EA,_).
@@ -420,10 +596,41 @@ address 'Barrier'.
 */
 .decl synchronous_access_barrier_after_access(EA:address,Barrier:address)
 
-synchronous_access_barrier_after_access(EA,Barrier):-
-    data_access_pattern(EA,_,_,_),
-    Barrier = min Barrier : {synchronous_access_barrier(Barrier), Barrier > EA}.
+//// Original rule was just this:
+// synchronous_access_barrier_after_access(EA,Barrier):-
+//     data_access_pattern(EA,_,_,_),
+//     Barrier = min Barrier : {synchronous_access_barrier(Barrier), Barrier > EA}.
 
+.decl opt_synchronous_access_barrier_after_access_in_bin(EA:address,Barrier:address,Bin:unsigned)
+opt_synchronous_access_barrier_after_access_in_bin(EA,Barrier,Bin) :-
+    opt_data_access_pattern_start(EA,Bin),
+    Barrier = min Barrier : {synchronous_access_barrier(Barrier,Bin), Barrier > EA}.
+
+.decl access_at_bin_end(EA:address)
+access_at_bin_end(EA) :-
+    opt_data_access_pattern(EA, Bin),
+    !opt_synchronous_access_barrier_after_access_in_bin(EA,_,Bin). // has no next
+
+.decl synchronous_access_barrier_not_at_bin_start(EA:address)
+synchronous_access_barrier_not_at_bin_start(EA) :-
+    synchronous_access_barrier(EA, Bin),
+    synchronous_access_barrier(EA2, Bin),
+    EA2 < EA.
+    
+.decl synchronous_access_barrier_at_bin_start(EA:address)
+synchronous_access_barrier_at_bin_start(EA) :-
+    synchronous_access_barrier(EA, _),
+    !synchronous_access_barrier_not_at_bin_start(EA).
+
+// Either we found a next inside the same bin ...
+synchronous_access_barrier_after_access(EA,Barrier):-
+    opt_synchronous_access_barrier_after_access_in_bin(EA,Barrier,_).
+
+// Or we pick the minimum next that's after the access, among those first in their bins
+synchronous_access_barrier_after_access(EA,Barrier):-
+    access_at_bin_end(EA),
+    Barrier = min Barrier : {synchronous_access_barrier_at_bin_start(Barrier), Barrier > EA}.
+    
 
 /**
 Two data accesses are synchronous if:

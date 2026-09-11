@@ -168,6 +168,14 @@ npad(EA,Size):-
     Size <= 15,
     npad(EA+2,_).
 
+.decl opt_npad(EA:address,Size:unsigned,Bin:unsigned)
+opt_npad(EA,Size,EA / BIN_SIZE) :-
+    npad(EA,Size).
+opt_npad(EA,Size,Bin+1) :-
+    opt_npad(EA,Size,Bin),
+    Bin < (EA + Size) / BIN_SIZE.
+
+
 is_padding(EA):-
     binary_format("PE"),
     npad(EA,_),

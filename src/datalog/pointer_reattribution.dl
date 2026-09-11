@@ -96,13 +96,17 @@ moved_data_label(EA,Size,Dest,NewDest):-
     address_in_data_refined_range.overlap(Dest,Pt_size,NewDest),
     symbolic_data(NewDest,Pt_size,_).
 
+.decl opt_symbolic_data1(EA:address,Size:unsigned,Value:address,Bin:unsigned)
+opt_symbolic_data1(EA,Size,Value,Value / BIN_SIZE) :-
+    symbolic_data(EA,Size,Value).
+
 //if something points to the middle of a known symbol we express it as symbol+constant
 //as long as it is not code
 moved_label_class(EA,0,"middle of symbol"),
 moved_data_label(EA,SizePointer,Dest,Address):-
-    symbolic_data(EA,SizePointer,Dest),
+    opt_symbolic_data1(EA,SizePointer,Dest,Bin),
     !code(Dest),
-    symbol(Address,Size,_,_,_,_,_,_,Name),
+    opt_symbol(Address,Size,_,_,_,_,_,_,Name,Bin),
     !function_symbol(Address,Name),
     Address < Dest,
     Dest < Address+Size.
@@ -539,16 +543,26 @@ moved_label_candidate(EA,Op_index,Dest,Block,1):-
     overlapping_instruction(Dest,Block).
 
 // The destination is in the middle of a known symbol
+.decl opt_symbolic_operand(EA:address,Op_index:operand_index,Dest:address,Bin:unsigned)
+opt_symbolic_operand(EA,Op_index,Dest,Dest / BIN_SIZE) :-
+      symbolic_operand(EA,Op_index,Dest,"data");
+      got_relative_operand(EA,Op_index,Dest).
+
+.decl opt_defined_symbol2(Start:address, End:address, Name:symbol, Bin:unsigned)
+opt_defined_symbol2(Start, Start+ObjSize, Name, Start / BIN_SIZE) :-
+    defined_symbol(Start,ObjSize,_,_,_,_,_,_,Name).
+
+opt_defined_symbol2(Start, End, Name, Bin+1) :-
+    opt_defined_symbol2(Start, End, Name, Bin),
+    Bin < End / BIN_SIZE.
+
 moved_label_class(EA,Op_index,"middle of symbol"),
 moved_label_candidate(EA,Op_index,Dest,Address,2):-
-    defined_symbol(Address,Size,_,_,_,_,_,_,Name),
+    opt_defined_symbol2(Address,End,Name,Bin),
     !function_symbol(Address,Name),
-    (
-      symbolic_operand(EA,Op_index,Dest,"data");
-      got_relative_operand(EA,Op_index,Dest)
-    ),
+    opt_symbolic_operand(EA,Op_index,Dest,Bin),
     Address < Dest,
-    Dest < Address+Size.
+    Dest < End.
 
 // The destination is in the middle of a pointer
 moved_label_class(EA,Op_index,"collides with pointer"),

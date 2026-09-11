@@ -293,6 +293,14 @@ This address does not set the low bit for Thumb functions.
 fde_addresses(Start,End):-
     fde_entry(_,_,_,Start,End,_).
 
+// Binning optimization to make cartesian products cheaper
+.decl opt_fde_addresses(Begin:address,End:address,Bin:unsigned)
+opt_fde_addresses(Begin,End,Begin / BIN_SIZE) :-
+    fde_addresses(Begin,End).
+opt_fde_addresses(Begin,End,Bin+1) :-
+    opt_fde_addresses(Begin,End,Bin),
+    Bin < End / BIN_SIZE.
+
 /**
 FDE start points can on occasion be misaligned with the actual start
 of the function. This has been seen on glibc restore_rt which generates
@@ -322,6 +330,14 @@ misaligned_fde_start(Start,EA):-
 
 lsda_callsite_addresses(Start,End,LandingPad):-
     lsda_callsite(_,_,Start,_,End,_,LandingPad,_).
+
+.decl opt_lsda_callsite_addresses(Start:address,End:address,LandingPad:address,Bin:unsigned)
+opt_lsda_callsite_addresses(Start,End,LandingPad,Start / BIN_SIZE):-
+    lsda_callsite_addresses(Start,End,LandingPad).
+
+opt_lsda_callsite_addresses(Start,End,LandingPad,Bin+1):-
+    opt_lsda_callsite_addresses(Start,End,LandingPad,Bin),
+    Bin < End / BIN_SIZE.
 
 .decl special_encoding(Code:unsigned,Name:symbol)
 
