@@ -57,6 +57,11 @@ This module:
 #define SIMPLE_WEIGHT "simple"
 #define PROPORTIONAL_WEIGHT "proportional"
 
+// Use IMPOSSIBLE_CONDITION for a clause that can never be satisfied.
+.decl dummy_condition(x:number)
+dummy_condition(42).
+#define IMPOSSIBLE_CONDITION dummy_condition(0)
+
 #define BIN_SIZE 8192
 
 /**

@@ -908,6 +908,13 @@ block_implies_block(BlockA,TypeA,SizeA,BlockC,TypeC,SizeC):-
     !overlapping_instruction(BlockA, BlockC).
    .plan 1:(2,1)
 
+//// ENSURE PLAN HACK: force block_candidate_dependency_edge to be recursive with block_implies_block
+//// on all architectures. (It isn't on MIPS_32, making the above .plan invalid.)
+block_candidate_dependency_edge(Block,"",0,Block,"",0) :-
+   IMPOSSIBLE_CONDITION,
+   block_implies_block(Block,"",0,Block,"",0).
+//// END ENSURE PLAN HACK
+
 /**
 Known blocks are blocks that must exist due to metadata.
 */

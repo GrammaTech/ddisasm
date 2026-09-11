@@ -415,6 +415,14 @@ last_value_reg_limit(BlockEnd,BlockNext,PropagatedReg,PropagatedVal,PropagatedTy
     ).
    .plan 1:(2,1,3), 2:(3,2,1)
 
+
+//// ENSURE PLAN HACK: force value_reg_limit to be recursive with last_value_reg_limit. For AMD_64 it
+//// is anyway, for MIPS 32 it's not. But we need a single plan.
+value_reg_limit(Block,Block,"",0,"") :-
+    IMPOSSIBLE_CONDITION,
+    last_value_reg_limit(Block,Block,"",0,"",0).
+//// END ENSURE PLAN HACK
+
 /**
 Move or arithmetic operation on a limited register
 */
