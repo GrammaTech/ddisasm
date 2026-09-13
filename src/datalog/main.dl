@@ -376,7 +376,7 @@ opt_unconditional_jump(n,n / BIN_SIZE) :-
 
 // Only destination binned!
 .decl opt_direct_jump(src:address,dest:address,Bin:unsigned)
-opt_direct_jump(src, dest, src / BIN_SIZE) :-
+opt_direct_jump(src, dest, dest / BIN_SIZE) :-
     direct_jump(src, dest).
 
 .decl opt_symbol(ea:address,size:unsigned,type:symbol,scope:symbol,visibility:symbol,sectionIndex:unsigned,originTable:symbol,tableIndex:unsigned,name:symbol,Bin:unsigned)
