@@ -471,11 +471,10 @@ aligned_address_in_data(EA,Value):-
     arch.pointer_size(Pt_size),
     EA % Pt_size = 0.
 
-.decl opt_aligned_address_in_data(EA:address,Value:address,Bin:unsigned)
-opt_aligned_address_in_data(EA,Value,EA / BIN_SIZE),
-opt_aligned_address_in_data(EA,Value,EA / BIN_SIZE + 1) :-
+.decl opt_aligned_address_in_data_dual_binned(EA:address,Value:address,EABin:unsigned,ValueBin:unsigned)
+opt_aligned_address_in_data_dual_binned(EA,Value,EA / BIN_SIZE,Value / BIN_SIZE) :-
     aligned_address_in_data(EA,Value).
-    
+
 // start a new block given a possible target
 code_in_block_candidate(EA,EA):-
     possible_target(EA),
@@ -753,11 +752,11 @@ data_block_candidate(RefAddr,Size):-
 
 // Pointer to a string
 data_block_candidate(Addr,Pt_size):-
-    opt_loaded_section(BegSect,EndSect,Name,Bin),
+    opt_loaded_section(BegSect,EndSect,Name,EABin),
     code_section(Name),
     BegSect <= Addr, Addr < EndSect,
-    opt_aligned_address_in_data(Addr,Dest,Bin),
-    opt_ascii_string(StrBeg,StrEnd,Bin),
+    opt_aligned_address_in_data_dual_binned(Addr,Dest,EABin,DestBin),
+    opt_ascii_string(StrBeg,StrEnd,DestBin),
     StrBeg <= Dest, Dest < StrEnd,
     arch.pointer_size(Pt_size).
 /**
