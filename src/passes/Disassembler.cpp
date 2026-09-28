@@ -355,8 +355,50 @@ void removeSymbolVersionsFromNames(gtirb::Module &Module)
     }
 }
 
+namespace
+{
+    /// Where an inferred symbol located on a section boundary should be
+    /// attached. Mirrors the last column of the `inferred_symbol` relation.
+    enum class SymbolPosition
+    {
+        Beg, ///< Attach to the block starting at the symbol's address.
+        End  ///< Attach AtEnd of the last block of the section ending there.
+    };
+
+    using SymbolPositionMap = std::map<gtirb::UUID, SymbolPosition>;
+
+    std::optional<SymbolPosition> parseSymbolPosition(std::string_view Position)
+    {
+        if(Position == "Beg")
+        {
+            return SymbolPosition::Beg;
+        }
+        if(Position == "End")
+        {
+            return SymbolPosition::End;
+        }
+        return std::nullopt;
+    }
+
+    /// A `Beg` request is honored only if some section contains `Addr`;
+    /// otherwise fall back to AtEnd so the symbol is not left dangling.
+    bool preferAtEndOfPreviousSection(const gtirb::Module &Module, gtirb::Addr Addr,
+                                      SymbolPosition Position)
+    {
+        switch(Position)
+        {
+            case SymbolPosition::End:
+                return true;
+            case SymbolPosition::Beg:
+                return Module.findSectionsOn(Addr).empty();
+        }
+        return true;
+    }
+} // namespace
+
 void buildInferredSymbols(gtirb::Context &Context, gtirb::Module &Module,
-                          souffle::SouffleProgram &Program)
+                          souffle::SouffleProgram &Program,
+                          SymbolPositionMap &SymbolPositions)
 {
     auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
     auto *SymbolTabIdxInfo = Module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfo>();
@@ -364,11 +406,21 @@ void buildInferredSymbols(gtirb::Context &Context, gtirb::Module &Module,
     {
         gtirb::Addr Addr;
         std::string Name;
-        std::string Scope, Visibility, Type;
-        T >> Addr >> Name >> Scope >> Visibility >> Type;
+        std::string Scope, Visibility, Type, Position;
+        T >> Addr >> Name >> Scope >> Visibility >> Type >> Position;
         if(!Module.findSymbols(Name))
         {
             gtirb::Symbol *Symbol = Module.addSymbol(Context, Addr, Name);
+            if(std::optional<SymbolPosition> P = parseSymbolPosition(Position))
+            {
+                SymbolPositions[Symbol->getUUID()] = *P;
+            }
+            else
+            {
+                std::cerr << "WARNING: unknown position '" << Position
+                          << "' for inferred symbol " << Name
+                          << "; defaulting to End\n";
+            }
             if(SymbolInfo)
             {
                 auxdata::ElfSymbolInfo Info = {0, Type, Scope, Visibility, 0};
@@ -876,7 +928,8 @@ void buildAlignments(gtirb::Module &Module, souffle::SouffleProgram &Program)
 }
 
 void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
-                            souffle::SouffleProgram &Program)
+                            souffle::SouffleProgram &Program,
+                            const SymbolPositionMap &SymbolPositions)
 {
     auto *Alignment = Module.getAuxData<gtirb::schema::Alignment>();
     auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
@@ -984,7 +1037,16 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
                     continue;
                 }
             }
-            if(auto It = Module.findSectionsOn(Addr - 1); !It.empty())
+
+            SymbolPosition Position = SymbolPosition::End;
+            if(auto PosIt = SymbolPositions.find(Symbol.getUUID());
+               PosIt != SymbolPositions.end())
+            {
+                Position = PosIt->second;
+            }
+            if(auto It = Module.findSectionsOn(Addr - 1);
+               !It.empty() && preferAtEndOfPreviousSection(Module, Addr, Position))
+
             {
                 if(gtirb::Section &Section = It.front(); Section.getAddress() && Section.getSize())
                 {
@@ -1681,18 +1743,21 @@ void disassembleModule(gtirb::Context &Context, gtirb::Module &Module,
     removeSectionSymbols(Context, Module);
     removeEntryPoint(Module);
     removePreviousModuleContent(Module);
-    buildInferredSymbols(Context, Module, Program);
+    SymbolPositionMap InferredSymbolPositions;
+    buildInferredSymbols(Context, Module, Program, InferredSymbolPositions);
     buildSymbolForwarding(Context, Module, Program);
     buildCodeBlocks(Context, Module, Program);
     buildDataBlocks(Context, Module, Program);
+
     buildAlignments(Module, Program);
     buildCodeSymbolicInformation(Module, Program);
     buildCfiDirectives(Module, Program);
     buildSehTable(Module, Program);
     expandSymbolForwarding(Module, Program);
+
     buildFunctions(Module, Program);
     // This should be done after creating all the symbols.
-    connectSymbolsToBlocks(Context, Module, Program);
+    connectSymbolsToBlocks(Context, Module, Program, InferredSymbolPositions);
     // These functions should not create additional symbols.
     buildCFG(Context, Module, Program);
     buildPadding(Module, Program);
