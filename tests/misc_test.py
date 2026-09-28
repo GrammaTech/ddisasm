@@ -810,7 +810,9 @@ class SymbolSelectionTests(unittest.TestCase):
             self.assertEqual(len(symbols), 1)
             sym = symbols[0]
 
-            self.assertFalse(sym.at_end, "_DYNAMIC must not be an AtEnd symbol")
+            self.assertFalse(
+                sym.at_end, "_DYNAMIC must not be an AtEnd symbol"
+            )
             if isinstance(sym.referent, gtirb.Block):
                 self.assertEqual(sym.referent.section.name, ".dynamic")
             else:
@@ -821,10 +823,18 @@ class SymbolSelectionTests(unittest.TestCase):
             binary_print(ir_path, binary_rw_path)
             out = subprocess.run(
                 ["readelf", "-sW", binary_rw_path],
-                check=True, capture_output=True, text=True,
+                check=True,
+                capture_output=True,
+                text=True,
             ).stdout
-            count = sum(1 for line in out.splitlines() if line.split()[-1:] == ["_DYNAMIC"])
-            self.assertEqual(count, 1, "rewritten binary should have exactly one _DYNAMIC")
+            count = sum(
+                1
+                for line in out.splitlines()
+                if line.split()[-1:] == ["_DYNAMIC"]
+            )
+            self.assertEqual(
+                count, 1, "rewritten binary should have exactly one _DYNAMIC"
+            )
 
 
 class ElfSymbolAuxdataTests(unittest.TestCase):

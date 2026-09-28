@@ -397,8 +397,7 @@ namespace
 } // namespace
 
 void buildInferredSymbols(gtirb::Context &Context, gtirb::Module &Module,
-                          souffle::SouffleProgram &Program,
-                          SymbolPositionMap &SymbolPositions)
+                          souffle::SouffleProgram &Program, SymbolPositionMap &SymbolPositions)
 {
     auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
     auto *SymbolTabIdxInfo = Module.getAuxData<gtirb::schema::ElfSymbolTabIdxInfo>();
@@ -417,9 +416,8 @@ void buildInferredSymbols(gtirb::Context &Context, gtirb::Module &Module,
             }
             else
             {
-                std::cerr << "WARNING: unknown position '" << Position
-                          << "' for inferred symbol " << Name
-                          << "; defaulting to End\n";
+                std::cerr << "WARNING: unknown position '" << Position << "' for inferred symbol "
+                          << Name << "; defaulting to End\n";
             }
             if(SymbolInfo)
             {
@@ -1039,8 +1037,7 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
             }
 
             SymbolPosition Position = SymbolPosition::End;
-            if(auto PosIt = SymbolPositions.find(Symbol.getUUID());
-               PosIt != SymbolPositions.end())
+            if(auto PosIt = SymbolPositions.find(Symbol.getUUID()); PosIt != SymbolPositions.end())
             {
                 Position = PosIt->second;
             }
