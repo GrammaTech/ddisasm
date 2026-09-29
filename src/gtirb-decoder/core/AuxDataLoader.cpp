@@ -22,6 +22,8 @@
 //===----------------------------------------------------------------------===//
 #include "AuxDataLoader.h"
 
+#include <iostream>
+
 #include "../../AuxDataSchema.h"
 #include "../Relations.h"
 
@@ -77,15 +79,21 @@ void FdeEntriesLoader::operator()(const gtirb::Module& Module, souffle::SouffleP
         }
     }
 
-    assert(FdeStart.size() == FdeEnd.size() && "Malformed CFI directives");
-
     std::vector<std::pair<gtirb::Addr, gtirb::Addr>> FdeAddresses;
 
-    auto StartIt = FdeStart.begin();
-    auto EndIt = FdeEnd.begin();
-    for(; StartIt != FdeStart.end(); ++StartIt, ++EndIt)
+    if(FdeStart.size() != FdeEnd.size())
     {
-        FdeAddresses.push_back({*StartIt, *EndIt});
+        std::cerr << "WARNING: Malformed CFI directives (start=" << FdeStart.size()
+                  << " end=" << FdeEnd.size() << "), skipping FDE addresses\n";
+    }
+    else
+    {
+        auto StartIt = FdeStart.begin();
+        auto EndIt = FdeEnd.begin();
+        for(; StartIt != FdeStart.end(); ++StartIt, ++EndIt)
+        {
+            FdeAddresses.push_back({*StartIt, *EndIt});
+        }
     }
 
     relations::insert(Program, "fde_addresses", std::move(FdeAddresses));

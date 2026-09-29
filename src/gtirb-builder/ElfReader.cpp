@@ -738,6 +738,7 @@ void ElfReader::buildSections()
 
                     uint64_t SectAddr = tlsBaseAddress() + Offset;
                     SectionRelocations[Section.name()] = SectAddr;
+                    OriginalTlsStart = TlsBegin;
 
                     Addr = gtirb::Addr(SectAddr);
                 }
@@ -1324,6 +1325,13 @@ void ElfReader::addAuxData()
                 continue;
         }
     }
+
+    // Store original TLS base address so the pprinter can reverse the rebasing.
+    if(OriginalTlsStart)
+    {
+        Module->addAuxData<gtirb::provisional_schema::ElfTlsBaseAddress>(
+            std::make_tuple(*OriginalTlsStart, tlsBaseAddress()));
+    }
 }
 
 std::string ElfReader::getRelocationType(const LIEF::ELF::Relocation &Entry)
@@ -1368,9 +1376,10 @@ std::string ElfReader::getRelocationType(const LIEF::ELF::Relocation &Entry)
     }
     else
     {
-        std::string Msg("Unsupported Relocation Type: ");
-        Msg += RawType;
-        assert(false && Msg.c_str());
+        // LIEF may not recognize certain architecture-specific relocation types
+        // (e.g., PPC relocations with flag bits set like 0x40000000).
+        // Fall back to the raw numeric value so we don't crash.
+        Type = std::to_string(static_cast<uint32_t>(Entry.type()));
     }
 
     // If it starts with number, prepend "R"
