@@ -1,0 +1,94 @@
+general_purpose_reg("R0").
+general_purpose_reg("R1").
+general_purpose_reg("R2").
+general_purpose_reg("R3").
+general_purpose_reg("R4").
+general_purpose_reg("R5").
+general_purpose_reg("R6").
+general_purpose_reg("R7").
+general_purpose_reg("R8").
+general_purpose_reg("R9").
+general_purpose_reg("R10").
+general_purpose_reg("R11").
+general_purpose_reg("R12").
+general_purpose_reg("R13").
+general_purpose_reg("R14").
+general_purpose_reg("R15").
+general_purpose_reg("R16").
+general_purpose_reg("R17").
+general_purpose_reg("R18").
+general_purpose_reg("R19").
+general_purpose_reg("R20").
+general_purpose_reg("R21").
+general_purpose_reg("R22").
+general_purpose_reg("R23").
+general_purpose_reg("R24").
+general_purpose_reg("R25").
+general_purpose_reg("R26").
+general_purpose_reg("R27").
+general_purpose_reg("R28").
+general_purpose_reg("R29").
+general_purpose_reg("R30").
+general_purpose_reg("R31").
+
+stack_pointer("R1").
+frame_pointer("R31").
+return_reg("R3").
+
+// ELFv2 ABI: R3-R10 for integer arguments
+integer_reg_param("R3",0).
+integer_reg_param("R4",1).
+integer_reg_param("R5",2).
+integer_reg_param("R6",3).
+integer_reg_param("R7",4).
+integer_reg_param("R8",5).
+integer_reg_param("R9",6).
+integer_reg_param("R10",7).
+
+// Volatile (caller-saved) registers
+function_non_maintained_reg("R0").
+function_non_maintained_reg("R3").
+function_non_maintained_reg("R4").
+function_non_maintained_reg("R5").
+function_non_maintained_reg("R6").
+function_non_maintained_reg("R7").
+function_non_maintained_reg("R8").
+function_non_maintained_reg("R9").
+function_non_maintained_reg("R10").
+function_non_maintained_reg("R11").
+function_non_maintained_reg("R12").
+function_non_maintained_reg("LR").
+function_non_maintained_reg("CTR").
+function_non_maintained_reg("CR0").
+function_non_maintained_reg("CR1").
+function_non_maintained_reg("CR5").
+function_non_maintained_reg("CR6").
+function_non_maintained_reg("CR7").
+
+// No PC register accessible on PPC
+pc_reg("NONE").
+
+condition_flags_reg("CR0").
+
+// Register sizes (all 64-bit GPRs)
+register_size_bytes("R0",8). register_size_bytes("R1",8). register_size_bytes("R2",8). register_size_bytes("R3",8).
+register_size_bytes("R4",8). register_size_bytes("R5",8). register_size_bytes("R6",8). register_size_bytes("R7",8).
+register_size_bytes("R8",8). register_size_bytes("R9",8). register_size_bytes("R10",8). register_size_bytes("R11",8).
+register_size_bytes("R12",8). register_size_bytes("R13",8). register_size_bytes("R14",8). register_size_bytes("R15",8).
+register_size_bytes("R16",8). register_size_bytes("R17",8). register_size_bytes("R18",8). register_size_bytes("R19",8).
+register_size_bytes("R20",8). register_size_bytes("R21",8). register_size_bytes("R22",8). register_size_bytes("R23",8).
+register_size_bytes("R24",8). register_size_bytes("R25",8). register_size_bytes("R26",8). register_size_bytes("R27",8).
+register_size_bytes("R28",8). register_size_bytes("R29",8). register_size_bytes("R30",8). register_size_bytes("R31",8).
+register_size_bytes("LR",8). register_size_bytes("CTR",8).
+register_size_bytes("CR0",4). register_size_bytes("CR1",4). register_size_bytes("CR2",4). register_size_bytes("CR3",4).
+register_size_bytes("CR4",4). register_size_bytes("CR5",4). register_size_bytes("CR6",4). register_size_bytes("CR7",4).
+
+// Floating-point registers
+float_reg("F0",8). float_reg("F1",8). float_reg("F2",8). float_reg("F3",8).
+float_reg("F4",8). float_reg("F5",8). float_reg("F6",8). float_reg("F7",8).
+float_reg("F8",8). float_reg("F9",8). float_reg("F10",8). float_reg("F11",8).
+float_reg("F12",8). float_reg("F13",8). float_reg("F14",8). float_reg("F15",8).
+float_reg("F16",8). float_reg("F17",8). float_reg("F18",8). float_reg("F19",8).
+float_reg("F20",8). float_reg("F21",8). float_reg("F22",8). float_reg("F23",8).
+float_reg("F24",8). float_reg("F25",8). float_reg("F26",8). float_reg("F27",8).
+float_reg("F28",8). float_reg("F29",8). float_reg("F30",8). float_reg("F31",8).

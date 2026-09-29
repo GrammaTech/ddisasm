@@ -1,0 +1,12 @@
+#include "../ppc/arch_ppc.dl"
+
+.comp PPC32 : PPC {
+
+#include "registers.dl"
+#include "elf_relocations.dl"
+
+arch("PPC32").
+
+pointer_size(4).
+
+} // end .comp PPC32

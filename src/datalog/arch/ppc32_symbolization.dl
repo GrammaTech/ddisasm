@@ -1,0 +1,61 @@
+// PPC32 symbolization: includes shared split-load patterns plus PPC32-specific rules
+
+#include "ppc_symbolization.dl"
+
+// --------------------------------------------------------------------------
+// PPC32 split_load destination validation
+// Excludes addresses in .plt/.got/.got.plt sections (BSS-PLT ABI).
+// --------------------------------------------------------------------------
+
+// Dest is OK if it's a valid address not in any PLT/GOT section
+split_load_dest_ok(Dest):-
+    split_load_candidate(_,_,Dest,_),
+    valid_address(Dest),
+    !loaded_section(_,_,".plt"),
+    !loaded_section(_,_,".got"),
+    !loaded_section(_,_,".got.plt").
+
+split_load_dest_ok(Dest):-
+    split_load_candidate(_,_,Dest,_),
+    valid_address(Dest),
+    // Check each dynamic section: if it exists, Dest must be outside it
+    (
+        !loaded_section(_,_,".plt")
+        ;
+        loaded_section(PBeg,PEnd,".plt"), (Dest < PBeg ; Dest >= PEnd)
+    ),
+    (
+        !loaded_section(_,_,".got")
+        ;
+        loaded_section(GBeg,GEnd,".got"), (Dest < GBeg ; Dest >= GEnd)
+    ),
+    (
+        !loaded_section(_,_,".got.plt")
+        ;
+        loaded_section(GPBeg,GPEnd,".got.plt"), (Dest < GPBeg ; Dest >= GPEnd)
+    ).
+
+// --------------------------------------------------------------------------
+// PPC32 PLT entry detection
+// PPC32 BSS-PLT stubs: lis r11, HI; lwz r11, LO(r11); mtctr r11; bctr
+// These load a function pointer from the GOT and branch to it.
+// Without PLT detection, calls through PLT stubs look like noreturn calls.
+//
+// We detect these using instruction patterns in .plt, NOT split_load
+// (to avoid Souffle stratification cycles).
+// --------------------------------------------------------------------------
+
+// PPC32 BSS-PLT: stubs are in .text (not .plt!) with pattern:
+//   lis r11, GOT_HI; lwz r11, GOT_LO(r11); mtctr r11; bctr
+// Detect by: lis -> lwz -> the loaded GOT address has a JMP_SLOT relocation.
+plt_entry(EA_lis, Function):-
+    // LIS instruction loading upper half
+    hi_load(EA_lis,Reg,Upper),
+    // Next instruction is a load using that register
+    next(EA_lis,EA_lwz),
+    arch.memory_access("LOAD",EA_lwz,_,_,_,Reg,"NONE",1,Offset),
+    // Compute the GOT entry address
+    Got_entry = as(Upper*2^16+Offset,address),
+    // Match to a JMP_SLOT relocation
+    relocation(Got_entry,"JMP_SLOT",Function,_,_,_,_),
+    Function != "".

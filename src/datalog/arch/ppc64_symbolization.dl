@@ -1,0 +1,24 @@
+// PPC64 symbolization: includes shared split-load patterns plus PPC64-specific rules
+//
+// PPC64 ELFv1/v2 uses R2 as the TOC (Table of Contents) pointer.
+// Address patterns:
+//   addis rN, r2, sym@toc@ha    ; rN = R2 + (upper << 16)
+//   ld    rN, sym@toc@l(rN)     ; load 64-bit value from TOC entry
+//   addi  rN, rN, sym@toc@l     ; compute address relative to TOC
+//
+// PPC64 also uses absolute lis/addi like PPC32 for some patterns:
+//   lis  rN, sym@ha
+//   addi rN, rN, sym@l
+//
+// The absolute patterns are handled by the shared ppc_symbolization.dl.
+
+#include "ppc_symbolization.dl"
+
+// --------------------------------------------------------------------------
+// PPC64 split_load destination validation
+// PPC64 does not need PLT/GOT section filtering (no BSS-PLT ABI).
+// --------------------------------------------------------------------------
+
+split_load_dest_ok(Dest):-
+    split_load_candidate(_,_,Dest,_),
+    valid_address(Dest).

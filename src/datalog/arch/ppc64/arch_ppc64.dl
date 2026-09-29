@@ -1,0 +1,80 @@
+#include "../ppc/arch_ppc.dl"
+
+.comp PPC64 : PPC {
+
+#include "registers.dl"
+#include "elf_relocations.dl"
+
+arch("PPC64").
+
+pointer_size(8).
+
+// 64-bit load operations
+load_operation("LD").
+load_operation("LDU").
+load_operation("LDX").
+load_operation("LDUX").
+load_operation("LDARX").
+
+// 64-bit store operations
+store_operation("STD").
+store_operation("STDU").
+store_operation("STDX").
+store_operation("STDUX").
+store_operation("STDCX.").
+
+// 64-bit arithmetic operations
+arithmetic_operation("EXTSW").
+arithmetic_operation("EXTSW.").
+
+// 64-bit multiplication/division operations
+multiplication_operation("MULLD").
+multiplication_operation("MULLD.").
+multiplication_operation("MULLDO").
+multiplication_operation("MULLDO.").
+multiplication_operation("MULHD").
+multiplication_operation("MULHD.").
+multiplication_operation("MULHDU").
+multiplication_operation("MULHDU.").
+multiplication_operation("DIVD").
+multiplication_operation("DIVD.").
+multiplication_operation("DIVDO").
+multiplication_operation("DIVDO.").
+multiplication_operation("DIVDU").
+multiplication_operation("DIVDU.").
+multiplication_operation("DIVDUO").
+multiplication_operation("DIVDUO.").
+
+// 64-bit shift/rotate operations
+shift_rotate_operation("SLD").
+shift_rotate_operation("SLD.").
+shift_rotate_operation("SRD").
+shift_rotate_operation("SRD.").
+shift_rotate_operation("SRAD").
+shift_rotate_operation("SRAD.").
+shift_rotate_operation("SRADI").
+shift_rotate_operation("SRADI.").
+shift_rotate_operation("RLDICL").
+shift_rotate_operation("RLDICL.").
+shift_rotate_operation("RLDICR").
+shift_rotate_operation("RLDICR.").
+shift_rotate_operation("RLDIC").
+shift_rotate_operation("RLDIC.").
+shift_rotate_operation("RLDIMI").
+shift_rotate_operation("RLDIMI.").
+shift_rotate_operation("RLDCL").
+shift_rotate_operation("RLDCL.").
+shift_rotate_operation("RLDCR").
+shift_rotate_operation("RLDCR.").
+
+// 64-bit logic operations
+logic_operation("CNTLZD").
+logic_operation("CNTLZD.").
+
+// 64-bit compare operations
+cmp_operation("CMPD").
+cmp_operation("CMPDI").
+cmp_operation("CMPLD").
+cmp_operation("CMPLDI").
+
+} // end .comp PPC64

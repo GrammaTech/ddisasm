@@ -1,0 +1,33 @@
+// D-form loads: OP RT, D(RA) -> base + offset
+memory_access("LOAD",EA,1,2,DstReg,BaseReg,IndexReg,Mult,Offset):-
+    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
+    load_operation(Operation),
+    !arch.float_operation(Operation),
+    op_indirect_mapped(Op1,"NONE",BaseReg,IndexReg,Mult,Offset,_),
+    op_regdirect_contains_reg(Op2,DstReg).
+
+// X-form loads: OP RT, RA, RB -> base + index
+memory_access("LOAD",EA,1,3,DstReg,as(BaseReg,reg_nullable),as(IndexReg,reg_nullable),1,0):-
+    instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
+    load_operation(Operation),
+    !arch.float_operation(Operation),
+    op_regdirect_contains_reg(Op1,BaseReg),
+    op_regdirect_contains_reg(Op2,IndexReg),
+    op_regdirect_contains_reg(Op3,DstReg).
+
+// D-form stores: OP RS, D(RA) -> base + offset
+memory_access("STORE",EA,2,1,SrcReg,BaseReg,IndexReg,Mult,Offset):-
+    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
+    store_operation(Operation),
+    !arch.float_operation(Operation),
+    op_indirect_mapped(Op1,"NONE",BaseReg,IndexReg,Mult,Offset,_),
+    op_regdirect_contains_reg(Op2,SrcReg).
+
+// X-form stores: OP RS, RA, RB -> base + index
+memory_access("STORE",EA,1,3,SrcReg,as(BaseReg,reg_nullable),as(IndexReg,reg_nullable),1,0):-
+    instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
+    store_operation(Operation),
+    !arch.float_operation(Operation),
+    op_regdirect_contains_reg(Op1,BaseReg),
+    op_regdirect_contains_reg(Op2,IndexReg),
+    op_regdirect_contains_reg(Op3,SrcReg).
