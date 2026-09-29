@@ -42,6 +42,9 @@ of them.
 #elif defined(ARCH_MIPS32)
     #include "mips32/arch_mips32.dl"
     .init arch = MIPS32
+#elif defined(ARCH_MIPS64)
+    #include "mips64/arch_mips64.dl"
+    .init arch = MIPS64
 #else
     #error "Undefined architecture"
 #endif

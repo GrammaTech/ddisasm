@@ -42,6 +42,8 @@ Table maps ELF relocation types to a size in bits.
     #include "../../arch/intel/elf_relocations_x86_64.dl"
 #elif defined(ARCH_MIPS32)
     #include "../../arch/mips32/elf_relocations.dl"
+#elif defined(ARCH_MIPS64)
+    #include "../../arch/mips64/elf_relocations.dl"
 #endif
 
 relocation_size(Type,Size):-

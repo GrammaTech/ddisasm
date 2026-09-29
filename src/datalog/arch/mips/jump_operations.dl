@@ -21,7 +21,7 @@
 //
 //===----------------------------------------------------------------------===//
 /**
-The set of jump operations in MIPS32
+The set of jump operations in MIPS
 */
 
 /**

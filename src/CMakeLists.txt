@@ -354,10 +354,12 @@ if(DDISASM_MIPS_32)
   add_definitions(-DDDISASM_MIPS_32)
 
   set(DATALOG_MIPS32_SOURCES
+      datalog/arch/mips/arch_mips.dl
+      datalog/arch/mips/float_operations.dl
+      datalog/arch/mips/jump_operations.dl
+      datalog/arch/mips/memory_access.dl
+      datalog/arch/mips/interrupt_operations.dl
       datalog/arch/mips32/arch_mips32.dl
-      datalog/arch/mips32/float_operations.dl
-      datalog/arch/mips32/jump_operations.dl
-      datalog/arch/mips32/memory_access.dl
       datalog/arch/mips32/registers.dl
       datalog/arch/mips32/elf_relocations.dl
       datalog/arch/mips_symbolization.dl
@@ -372,6 +374,32 @@ if(DDISASM_MIPS_32)
     ${DATALOG_MIPS32_SOURCES}
     PATH
     souffle_disasm_mips32)
+endif()
+
+if(DDISASM_MIPS_64)
+  add_definitions(-DDDISASM_MIPS_64)
+
+  set(DATALOG_MIPS64_SOURCES
+      datalog/arch/mips/arch_mips.dl
+      datalog/arch/mips/float_operations.dl
+      datalog/arch/mips/jump_operations.dl
+      datalog/arch/mips/memory_access.dl
+      datalog/arch/mips/interrupt_operations.dl
+      datalog/arch/mips64/arch_mips64.dl
+      datalog/arch/mips64/registers.dl
+      datalog/arch/mips64/elf_relocations.dl
+      datalog/arch/mips_symbolization.dl
+      datalog/arch/mips_tls.dl)
+
+  generate_arch_static_lib(
+    ARCH
+    MIPS64
+    MARCH
+    MIPS64
+    DATALOG_SOURCES
+    ${DATALOG_MIPS64_SOURCES}
+    PATH
+    souffle_disasm_mips64)
 endif()
 
 if(DDISASM_X86_32)

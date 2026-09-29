@@ -1,0 +1,58 @@
+//===- elf_relocations.dl ----------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2019-2025 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===---------------------------------------------------------------------===//
+
+/**
+Table maps MIPS64 ELF relocation types to a size in bits.
+*/
+
+elf_relocation_size("MIPS64", "NONE", 0).
+elf_relocation_size("MIPS64", "16", 16).
+elf_relocation_size("MIPS64", "32", 32).
+elf_relocation_size("MIPS64", "REL32", 32).
+elf_relocation_size("MIPS64", "26", 28).
+elf_relocation_size("MIPS64", "HI16", 16).
+elf_relocation_size("MIPS64", "LO16", 16).
+elf_relocation_size("MIPS64", "GPREL16", 16).
+elf_relocation_size("MIPS64", "LITERAL", 16).
+elf_relocation_size("MIPS64", "GOT16", 16).
+elf_relocation_size("MIPS64", "PC16", 16).
+elf_relocation_size("MIPS64", "CALL16", 16).
+elf_relocation_size("MIPS64", "GPREL32", 32).
+elf_relocation_size("MIPS64", "64", 64).
+elf_relocation_size("MIPS64", "GOT_DISP", 16).
+elf_relocation_size("MIPS64", "GOT_PAGE", 16).
+elf_relocation_size("MIPS64", "GOT_OFST", 16).
+elf_relocation_size("MIPS64", "GOT_HI16", 16).
+elf_relocation_size("MIPS64", "GOT_LO16", 16).
+elf_relocation_size("MIPS64", "SUB", 64).
+elf_relocation_size("MIPS64", "HIGHER", 16).
+elf_relocation_size("MIPS64", "HIGHEST", 16).
+elf_relocation_size("MIPS64", "CALL_HI16", 16).
+elf_relocation_size("MIPS64", "CALL_LO16", 16).
+elf_relocation_size("MIPS64", "PC18_S3", 18).
+elf_relocation_size("MIPS64", "PC19_S2", 19).
+elf_relocation_size("MIPS64", "PC21_S2", 21).
+elf_relocation_size("MIPS64", "PC26_S2", 26).
+elf_relocation_size("MIPS64", "PCHI16", 16).
+elf_relocation_size("MIPS64", "PCLO16", 16).
+elf_relocation_size("MIPS64", "IRELATIVE", 64).

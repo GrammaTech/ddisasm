@@ -1,0 +1,30 @@
+#include "../mips/arch_mips.dl"
+
+.comp MIPS64 : MIPS {
+
+#include "registers.dl"
+#include "elf_relocations.dl"
+
+arch("MIPS64").
+
+pointer_size(8).
+
+// MIPS64 extends reg_arithmetic_operation to include DADDI/DADDIU
+reg_arithmetic_operation(EA,Dst,Src,1,Immediate):-
+    instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
+    (
+        Operation = "DADDI";
+        Operation = "DADDIU"
+    ),
+    op_regdirect_contains_reg(Op3,Dst),
+    op_regdirect_contains_reg(Op1,Src),
+    op_immediate(Op2,Immediate,_).
+
+// MIPS64 extends reg_reg_arithmetic_operation to include DADDU
+reg_reg_arithmetic_operation(EA,Reg,Reg1,Reg2,1,0):-
+    instruction(EA,_,_,"DADDU",SrcOp1,SrcOp2,DestOp,0,_,_),
+    op_regdirect_contains_reg(DestOp,Reg),
+    op_regdirect_contains_reg(SrcOp1,Reg1),
+    op_regdirect_contains_reg(SrcOp2,Reg2).
+
+} // end .comp MIPS64

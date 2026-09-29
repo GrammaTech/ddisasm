@@ -26,6 +26,7 @@
 #include "gtirb-decoder/target/ElfArm32Loader.h"
 #include "gtirb-decoder/target/ElfArm64Loader.h"
 #include "gtirb-decoder/target/ElfMips32Loader.h"
+#include "gtirb-decoder/target/ElfMips64Loader.h"
 #include "gtirb-decoder/target/ElfX64Loader.h"
 #include "gtirb-decoder/target/ElfX86Loader.h"
 #include "gtirb-decoder/target/PeX64Loader.h"
@@ -33,6 +34,7 @@
 #include "gtirb-decoder/target/RawArm32Loader.h"
 #include "gtirb-decoder/target/RawArm64Loader.h"
 #include "gtirb-decoder/target/RawMips32Loader.h"
+#include "gtirb-decoder/target/RawMips64Loader.h"
 #include "gtirb-decoder/target/RawX64Loader.h"
 #include "gtirb-decoder/target/RawX86Loader.h"
 #include "passes/DisassemblyPass.h"
@@ -123,6 +125,24 @@ void registerDatalogLoaders()
     // Register RAW-MIPS32-LE target.
     DisassemblyPass::registerLoader(
         {gtirb::FileFormat::RAW, gtirb::ISA::MIPS32, gtirb::ByteOrder::Little}, RawMips32LELoader);
+#endif
+
+#if defined(DDISASM_MIPS_64)
+    // Register ELF-MIPS64-BE target.
+    DisassemblyPass::registerLoader(
+        {gtirb::FileFormat::ELF, gtirb::ISA::MIPS64, gtirb::ByteOrder::Big}, ElfMips64BELoader);
+
+    // Register ELF-MIPS64-LE target.
+    DisassemblyPass::registerLoader(
+        {gtirb::FileFormat::ELF, gtirb::ISA::MIPS64, gtirb::ByteOrder::Little}, ElfMips64LELoader);
+
+    // Register RAW-MIPS64-BE target.
+    DisassemblyPass::registerLoader(
+        {gtirb::FileFormat::RAW, gtirb::ISA::MIPS64, gtirb::ByteOrder::Big}, RawMips64BELoader);
+
+    // Register RAW-MIPS64-LE target.
+    DisassemblyPass::registerLoader(
+        {gtirb::FileFormat::RAW, gtirb::ISA::MIPS64, gtirb::ByteOrder::Little}, RawMips64LELoader);
 #endif
 
 #if defined(DDISASM_X86_32)

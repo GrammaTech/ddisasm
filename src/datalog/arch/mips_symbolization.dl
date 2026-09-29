@@ -77,6 +77,14 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     gp_relative_operand(EA,1,Offset_addr),
     data_word(Offset_addr, 4, Val).
 
+// MIPS64: load doubleword from GOT: e.g., ld v0, -32696(gp)
+value_reg(EA,Reg,EA,"NONE",0,Val,1):-
+    instruction(EA,_,_,"LD",_,Op2,0,0,_,_),
+    op_regdirect_contains_reg(Op2,Reg),
+    track_register(Reg),
+    gp_relative_operand(EA,1,Offset_addr),
+    data_word(Offset_addr, 8, Val).
+
 // lui reg3, hi(xxx)
 // addiu reg2, reg3, lo(xxx)
 // addu reg, reg2, t9 <--- (A)
@@ -87,7 +95,8 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
 value_reg_edge(EA,Reg,PrevEA1,Reg,1,as(PrevEA0,number)):-
     split_load_candidate(PrevEA0, PrevEA1, _, "ADDU"), // check on the idiom
     next(PrevEA1,EA),
-    instruction_get_operation(EA, "ADDU"),
+    instruction_get_operation(EA, Operation),
+    (Operation = "ADDU" ; Operation = "DADDU"),
     instruction_get_dest_op(EA,_,DestOp),
     op_regdirect_contains_reg(DestOp,Reg),
     track_register(Reg).
@@ -138,18 +147,20 @@ got_reference_mips_global(GotEntry,Symbol):-
     dynamic_entry("MIPS_LOCAL_GOTNO",NumLocalEntries),
     Index >= FirstIndex,
     loaded_section(Beg,_,".got"),
-    GotEntry = Beg + NumLocalEntries*4 + (Index-FirstIndex)*4.
+    arch.pointer_size(PtrSize),
+    GotEntry = Beg + NumLocalEntries*PtrSize + (Index-FirstIndex)*PtrSize.
 
 got_reference(GotEntry,Symbol):-
     got_reference_mips_global(GotEntry,Symbol).
 
 // Local entries
 got_reference(Got_entry,SymbolName):-
-    symbolic_expr(Got_entry,4,SymbolName,0),
+    arch.pointer_size(PtrSize),
+    symbolic_expr(Got_entry,PtrSize,SymbolName,0),
     loaded_section(Beg,_,".got"),
     Got_entry >= Beg,
     dynamic_entry("MIPS_LOCAL_GOTNO",NumLocalEntries),
-    Got_entry < Beg+4*NumLocalEntries.
+    Got_entry < Beg+PtrSize*NumLocalEntries.
 
 .decl hi_load(ea:address, reg:register, upper:number)
 
@@ -230,20 +241,21 @@ valid_address(EA):-
 split_load_candidate(EA_hi, EA_lo, Dest_addr, "ADDIU") :-
     hi_load_prop(RegRestoreEA,EA_hi,Reg2,Upper,_),
     reg_def_use.def_used(RegRestoreEA,Reg2,EA_lo,_),
-    instruction_get_operation(EA_lo, "ADDIU"),
+    instruction_get_operation(EA_lo, Operation_lo),
+    (Operation_lo = "ADDIU" ; Operation_lo = "DADDIU"),
     arch.reg_arithmetic_operation(EA_lo,Reg3,Reg2,_,Offset),
     (
         !straight_line_def_used(EA_lo,Reg3,_,_)
         ;
-        // Skip in case of split_load_candidate(EA_hi, EA_log, _, "ADDU"):
+        // Skip in case of split_load_candidate(EA_hi, EA_log, _, "ADDU"/"DADDU"):
         // Exclude the PIC case: e.g.,
         //   lui reg, hi(xxx)
-        //   addiu reg2, reg, lo(xxx)
-        //   addu $gp, reg2, $t9
+        //   addiu/daddiu reg2, reg, lo(xxx)
+        //   addu/daddu $gp, reg2, $t9
         straight_line_def_used(EA_lo,Reg3,EA,_),
         instruction_get_operation(EA,Operation),
         !(
-            Operation = "ADDU",
+            (Operation = "ADDU" ; Operation = "DADDU"),
             arch.reg_reg_arithmetic_operation(EA,"GP",Reg2,"T9",1,0),
             code_in_block(EA_hi, EA_hi)
         ),
@@ -256,8 +268,8 @@ split_load_candidate(EA_hi, EA_lo, Dest_addr, "ADDIU") :-
 
 // PIC
 // E.g., lui reg, hi(xxx)
-//       addiu reg2, reg, lo(xxx)
-//       addu $gp, reg2, $t9
+//       addiu/daddiu reg2, reg, lo(xxx)
+//       addu/daddu $gp, reg2, $t9
 split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset+T9Value,address), "ADDU") :-
     // lui reg, hi(xxx)
     hi_load(EA_hi,Reg,Upper),
@@ -270,15 +282,17 @@ split_load_candidate(EA_hi, EA_lo, as(Upper*2^16+Offset+T9Value,address), "ADDU"
 
     reg_def_use.def_used(EA_hi,Reg,EA_lo,_),
     EA_hi != EA_lo,
-    // addiu reg2, reg, lo(xxx)
-    instruction_get_operation(EA_lo, "ADDIU"),
+    // addiu/daddiu reg2, reg, lo(xxx)
+    instruction_get_operation(EA_lo, Operation_lo),
+    (Operation_lo = "ADDIU" ; Operation_lo = "DADDIU"),
     arch.reg_arithmetic_operation(EA_lo,Reg2,Reg,_,Offset),
 
     reg_def_use.def_used(EA_lo,Reg2,EA_addu,_),
     EA_lo != EA_addu,
 
-    // addu $gp, reg2, t9
-    instruction_get_operation(EA_addu, "ADDU"),
+    // addu/daddu $gp, reg2, t9
+    instruction_get_operation(EA_addu, Operation_addu),
+    (Operation_addu = "ADDU" ; Operation_addu = "DADDU"),
     arch.reg_reg_arithmetic_operation(EA_addu,"GP",Reg2,"T9",1,0),
     T9Value = as(EA_hi, number).
 
@@ -324,12 +338,13 @@ split_load_point(EA_hi,EA_lo,Dest_addr,Type,-5,"maybe-in-different-function"):-
 
 split_load_point(EA_hi,EA_lo,Dest_addr,"ADDU",-1,"t9 cannot have a function pointer"):-
 //  lui reg, hi(xxx)
-//  addiu reg2, reg, lo(xxx)
+//  addiu/daddiu reg2, reg, lo(xxx)
     split_load_candidate(EA_hi,EA_lo,Dest_addr,"ADDU"),
     reg_def_use.def_used(EA_lo,Reg,EA_addu,_),
     EA_lo != EA_addu,
-    // addu reg3, reg2, t9
-    instruction_get_operation(EA_addu, "ADDU"),
+    // addu/daddu reg3, reg2, t9
+    instruction_get_operation(EA_addu, Operation_addu),
+    (Operation_addu = "ADDU" ; Operation_addu = "DADDU"),
     arch.reg_reg_arithmetic_operation(EA_addu,_,Reg,"T9",1,0),
     // t9 cannot be a function pointer if it is
     // the result of a product.
@@ -1023,16 +1038,18 @@ plt_entry(EA_JR,Function):-
 
 // FIXME: This rule might be subsumed by the general rules
 // lui reg1, hi(XXX)
-// lw reg2, lo(XXX)(reg1)
+// lw/ld reg2, lo(XXX)(reg1)
 // jr reg2
 resolved_transfer(EA,DestAddr,"branch"):-
     code(EA),
     instruction(EA,_,_,"JR",Op,0,0,0,_,_),
     op_regdirect_contains_reg(Op,Reg),
     reg_def_use.def_used(EA_def,Reg,EA,_),
-    instruction_get_operation(EA_def, "LW"),
+    instruction_get_operation(EA_def, Operation),
+    (Operation = "LW" ; Operation = "LD"),
     split_load_candidate(_,EA_def,Addr,_),
-    symbolic_data(Addr,4,Dest),
+    arch.pointer_size(PtrSize),
+    symbolic_data(Addr,PtrSize,Dest),
     DestAddr = as(Dest,address),
     code(DestAddr).
 

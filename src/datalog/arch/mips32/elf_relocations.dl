@@ -83,3 +83,4 @@ elf_relocation_size("MIPS", "PC18_S3",              18).
 elf_relocation_size("MIPS", "PC19_S2",              19).
 elf_relocation_size("MIPS", "PCHI16",               16).
 elf_relocation_size("MIPS", "PCLO16",               16).
+elf_relocation_size("MIPS", "IRELATIVE",            32).

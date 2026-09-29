@@ -20,51 +20,11 @@
 //  endorsement should be inferred.
 //
 //===----------------------------------------------------------------------===//
+// Backward-compatibility header. The implementation has been consolidated
+// into MipsLoader.h / MipsLoader.cpp.
 #ifndef SRC_GTIRB_DECODER_ARCH_MIPS32DECODER_H_
 #define SRC_GTIRB_DECODER_ARCH_MIPS32DECODER_H_
 
-#include <capstone/capstone.h>
-
-#include <optional>
-#include <string>
-#include <tuple>
-
-#include "../Relations.h"
-#include "../core/InstructionLoader.h"
-
-class Mips32Loader : public InstructionLoader
-{
-public:
-    enum class Endian
-    {
-        LITTLE,
-        BIG
-    };
-
-    Mips32Loader(Endian E = Endian::BIG) : InstructionLoader{4}
-    {
-        // Setup Capstone engine.
-        unsigned int Mode0 = CS_MODE_MIPS32;
-        if(E == Endian::BIG)
-            Mode0 |= CS_MODE_BIG_ENDIAN;
-        else if(E == Endian::LITTLE)
-            Mode0 |= CS_MODE_LITTLE_ENDIAN;
-
-        cs_mode Mode = (cs_mode)Mode0;
-        [[maybe_unused]] cs_err Err = cs_open(CS_ARCH_MIPS, Mode, CsHandle.get());
-        assert(Err == CS_ERR_OK && "Failed to initialize MIPS32 disassembler.");
-        cs_option(*CsHandle, CS_OPT_DETAIL, CS_OPT_ON);
-    }
-
-protected:
-    void decode(BinaryFacts& Facts, const uint8_t* Bytes, uint64_t Size, uint64_t Addr) override;
-    uint8_t operandCount(const cs_insn& CsInstruction) override;
-    uint8_t operandAccess(const cs_insn& CsInstruction, uint64_t Index) override;
-
-private:
-    std::optional<relations::Operand> build(const cs_mips_op& CsOp);
-    std::optional<relations::Instruction> build(BinaryFacts& Facts, const cs_insn& CsInstruction);
-    std::tuple<std::string, std::string> splitMnemonic(const cs_insn& CsInstruction);
-};
+#include "MipsLoader.h"
 
 #endif // SRC_GTIRB_DECODER_ARCH_MIPS32DECODER_H_

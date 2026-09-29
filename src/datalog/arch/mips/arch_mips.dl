@@ -1,0 +1,538 @@
+//===- arch_mips.dl -----------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2020 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+
+// Define a common set of predicates for MIPS instructions and characteristics.
+// Shared between MIPS32 and MIPS64.
+.comp MIPS : Arch {
+
+#include "jump_operations.dl"
+#include "interrupt_operations.dl"
+#include "float_operations.dl"
+#include "memory_access.dl"
+
+move_operation("MOV").
+move_operation("MOVE").
+move_operation("MOVEP").
+move_operation("MOVF").
+move_operation("MOVN").
+move_operation("MOVT").
+move_operation("MOVZ").
+
+move_reg_imm(EA,Reg,Value,1):-
+    instruction(EA,_,_,"LUI",Op1,Op2,0,0,_,_),
+    op_immediate(Op1,Immediate,_),
+    Value = Immediate bshl 16,
+    op_regdirect_contains_reg(Op2,Reg).
+
+move_reg_imm(EA,Reg,0,1):-
+    zero_reg(Zero),
+    move_reg_reg(EA,Reg,Zero).
+
+move_reg_imm(EA,Reg,Immediate,1):-
+    zero_reg(Zero),
+    reg_arithmetic_operation(EA,Reg,Zero,_,Immediate).
+
+store_operation("ST").
+store_operation("ST.B").
+store_operation("ST.H").
+store_operation("ST.W").
+store_operation("ST.D").
+store_operation("SW").
+store_operation("SW16").
+store_operation("SWC1").
+store_operation("SWC2").
+store_operation("SWC3").
+store_operation("SWL").
+store_operation("SWM16").
+store_operation("SWM32").
+store_operation("SWP").
+store_operation("SWR").
+store_operation("SWXC1").
+store_operation("SH").
+store_operation("SH16").
+store_operation("SB").
+store_operation("SB16").
+store_operation("SC").
+store_operation("SCD").
+store_operation("SD").
+store_operation("SDBBP").
+store_operation("SDBBP16").
+store_operation("SDC1").
+store_operation("SDC2").
+store_operation("SDC3").
+store_operation("SDL").
+store_operation("SDR").
+store_operation("SDXC1").
+
+load_operation("LB").
+load_operation("LBU16").
+load_operation("LBUX").
+load_operation("LBU").
+load_operation("LD").
+load_operation("LD.B").
+load_operation("LD.H").
+load_operation("LD.W").
+load_operation("LD.D").
+load_operation("LDC1").
+load_operation("LDC2").
+load_operation("LDC3").
+load_operation("LDI").
+load_operation("LDL").
+load_operation("LDPC").
+load_operation("LDR").
+load_operation("LDXC1").
+load_operation("LH").
+load_operation("LHU16").
+load_operation("LHX").
+load_operation("LHU").
+load_operation("LI16").
+load_operation("LL").
+load_operation("LLD").
+load_operation("LUXC1").
+load_operation("LW").
+load_operation("LW16").
+load_operation("LWC1").
+load_operation("LWC2").
+load_operation("LWC3").
+load_operation("LWL").
+load_operation("LWM16").
+load_operation("LWM32").
+load_operation("LWPC").
+load_operation("LWP").
+load_operation("LWR").
+load_operation("LWUPC").
+load_operation("LWU").
+load_operation("LWX").
+load_operation("LWXC1").
+load_operation("LWXS").
+load_operation("LI").
+
+data_access_size("LB",as(DestReg,register),1):-
+    op_regdirect(_,DestReg).
+data_access_size("LBU",as(DestReg,register),1):-
+    op_regdirect(_,DestReg).
+
+data_access_size("LH",as(DestReg,register),2):-
+    op_regdirect(_,DestReg).
+data_access_size("LHU",as(DestReg,register),2):-
+    op_regdirect(_,DestReg).
+
+data_access_size("SB",as(DestReg,register),1):-
+    op_regdirect(_,DestReg).
+
+data_access_size("SH",as(DestReg,register),2):-
+    op_regdirect(_,DestReg).
+
+// Do not treat nop in delay_slot as padding:
+// see the usage of is_nop in code_inference*.dl
+is_nop(EA):-
+    instruction_get_operation(EA,"NOP"),
+    !delay_slot(_,EA).
+
+return(EA):-
+    arch.return_operation(Operation),
+    instruction(EA,_,_,Operation,Op,_,_,_,_,_),
+    op_regdirect_contains_reg(Op,"RA").
+
+// TODO: condition codes on these instructions are not populated, as nothing
+// would use them right now.
+// Conditional moves
+conditional_operation("MOVZ","?").
+conditional_operation("MOVN","?").
+// Conditional stores
+conditional_operation("SC","?").
+conditional_operation("SCD","?").
+// Conditional traps
+conditional_operation("TGE","?").
+conditional_operation("TGEU","?").
+conditional_operation("TLT","?").
+conditional_operation("TLTU","?").
+conditional_operation("TEQ","?").
+conditional_operation("TNE","?").
+conditional_operation("TGEI","?").
+conditional_operation("TGEIU","?").
+conditional_operation("TLTI","?").
+conditional_operation("TLTIU","?").
+conditional_operation("TEQI","?").
+conditional_operation("TNEI","?").
+
+// Extend jump - don't override.
+jump(EA):-
+    instruction_get_operation(EA,Operation),
+    // JR and JR16 are returns only if the target register is RA.
+    // Otherwise, it's a jump.
+    return_operation(Operation),
+    !return(EA).
+
+delay_slot(BranchEA,EA):-
+    next(BranchEA, EA),
+    instruction_get_operation(BranchEA,Operation),
+    return_operation(Operation),
+    !compact_branch_operation(Operation).
+
+delay_slot(BranchEA,EA):-
+    next(BranchEA, EA),
+    instruction_get_operation(BranchEA,Operation),
+    (
+        jump_operation(Operation);
+        call_operation(Operation)
+    ),
+    !compact_branch_operation(Operation),
+    // indirect jump or indirect call
+    !direct_jump(BranchEA,_),
+    !direct_call(BranchEA,_).
+
+delay_slot(BranchEA,EA):-
+    // direct jump or direct call
+    (
+        direct_jump(BranchEA,Dest);
+        direct_call(BranchEA,Dest)
+    ),
+    instruction_get_operation(BranchEA,Operation),
+    !compact_branch_operation(Operation),
+    // Filter invalid BranchEA ----------------------------
+    (
+        instruction(Dest,_,_,_,_,_,_,_,_,_)
+        ;
+        Dest = 0, !binary_type("EXEC")
+    ),
+    next(BranchEA, EA),
+    Dest != EA.
+
+arithmetic_operation("ADD").
+arithmetic_operation("ADDIUPC").
+arithmetic_operation("ADDIUR1SP").
+arithmetic_operation("ADDIUR2").
+arithmetic_operation("ADDIUS5").
+arithmetic_operation("ADDIUSP").
+arithmetic_operation("ADDQH").
+arithmetic_operation("ADDQH_R").
+arithmetic_operation("ADDQ").
+arithmetic_operation("ADDQ_S").
+arithmetic_operation("ADDSC").
+arithmetic_operation("ADDS_A").
+arithmetic_operation("ADDS_S").
+arithmetic_operation("ADDS_U").
+arithmetic_operation("ADDU16").
+arithmetic_operation("ADDUH").
+arithmetic_operation("ADDUH_R").
+arithmetic_operation("ADDU").
+arithmetic_operation("ADDU_S").
+arithmetic_operation("ADDVI").
+arithmetic_operation("ADDV").
+arithmetic_operation("ADDWC").
+arithmetic_operation("ADD_A").
+arithmetic_operation("ADDI").
+arithmetic_operation("ADDIU").
+arithmetic_operation("ALUIPC").
+arithmetic_operation("AUI").
+arithmetic_operation("AUIPC").
+
+arithmetic_operation("DADD").
+arithmetic_operation("DADDI").
+arithmetic_operation("DADDIU").
+arithmetic_operation("DADDU").
+arithmetic_operation("DSUB").
+arithmetic_operation("DSUBU").
+
+arithmetic_operation("LSA").
+arithmetic_operation("DAUI").
+arithmetic_operation("DAHI").
+arithmetic_operation("DATI").
+arithmetic_operation("SUB").
+arithmetic_operation("SUBU").
+
+// shift/rotate
+shift_rotate_operation("SLL").
+shift_rotate_operation("SLL16").
+shift_rotate_operation("SLLI").
+shift_rotate_operation("SLLV").
+shift_rotate_operation("SRA").
+shift_rotate_operation("SRAI").
+shift_rotate_operation("SRARI").
+shift_rotate_operation("SRAR").
+shift_rotate_operation("SRAV").
+shift_rotate_operation("SRL").
+shift_rotate_operation("SRL16").
+shift_rotate_operation("SRLI").
+shift_rotate_operation("SRLRI").
+shift_rotate_operation("SRLR").
+shift_rotate_operation("SRLV").
+shift_rotate_operation("ROTR").
+shift_rotate_operation("ROTRV").
+shift_rotate_operation("DSLL").
+shift_rotate_operation("DSLL32").
+shift_rotate_operation("DSLLV").
+shift_rotate_operation("DSRA").
+shift_rotate_operation("DSRA32").
+shift_rotate_operation("DSRAv").
+shift_rotate_operation("DSRL").
+shift_rotate_operation("DSRL32").
+shift_rotate_operation("DSRV").
+shift_rotate_operation("DROTR").
+shift_rotate_operation("DROTR32").
+shift_rotate_operation("DROTRV").
+
+arithmetic_operation(Operation):-
+   shift_rotate_operation(Operation).
+
+multiplication_operation("MUL").
+multiplication_operation("MULEQ_S").
+multiplication_operation("MULEU_S").
+multiplication_operation("MULQ_RS").
+multiplication_operation("MULQ_S").
+multiplication_operation("MULR_Q").
+multiplication_operation("MULSAQ_S").
+multiplication_operation("MULSA").
+multiplication_operation("MULT").
+multiplication_operation("MULTU").
+multiplication_operation("MULU").
+multiplication_operation("MULV").
+multiplication_operation("MUL_Q").
+multiplication_operation("MUL_S").
+multiplication_operation("DMUH").
+multiplication_operation("DMUHU").
+multiplication_operation("DMUL").
+multiplication_operation("DMULT").
+multiplication_operation("DMULTU").
+multiplication_operation("DMULU").
+
+multiplication_operation("MADD").
+multiplication_operation("MADD.S").
+multiplication_operation("MADDU").
+multiplication_operation("MSUB").
+multiplication_operation("MSUBU").
+multiplication_operation("MSUBV").
+multiplication_operation("MSUBV.H").
+
+arithmetic_operation("DIV").
+arithmetic_operation("DDIV").
+arithmetic_operation("DIVU").
+arithmetic_operation("DDIVU").
+
+arithmetic_operation("MOD").
+arithmetic_operation("DMOD").
+arithmetic_operation("MODU").
+arithmetic_operation("DMODU").
+
+
+logic_operation("AND").
+logic_operation("AND16").
+logic_operation("ANDI16").
+logic_operation("ANDI").
+logic_operation("ANDI.B").
+logic_operation("OR").
+logic_operation("OR.V").
+logic_operation("OR16").
+logic_operation("ORI").
+logic_operation("ORI.B").
+logic_operation("NOR").
+logic_operation("NOR.V").
+logic_operation("NORI").
+logic_operation("NORI.B").
+logic_operation("NOT16").
+logic_operation("NOT").
+logic_operation("XOR").
+logic_operation("XOR16").
+logic_operation("XORI").
+logic_operation("EXT").
+logic_operation("EXTP").
+logic_operation("EXTPDP").
+logic_operation("EXTPDPV").
+logic_operation("EXTPV").
+logic_operation("EXTRV_RS").
+logic_operation("EXTRV_R").
+logic_operation("EXTRV_S").
+logic_operation("EXTRV").
+logic_operation("EXTR_RS").
+logic_operation("EXTR_R").
+logic_operation("EXTR_S").
+logic_operation("EXTR").
+logic_operation("EXTS").
+logic_operation("EXTS32").
+logic_operation("DEXT").
+logic_operation("DEXTM").
+logic_operation("DEXTU").
+logic_operation("NEGU").
+
+call_operation(Operation):-
+    call_operation_1op(Operation);
+    call_operation_2op(Operation).
+
+.decl call_operation_1op(operation:symbol)
+
+call_operation_1op("JAL").
+call_operation_1op("JALC").
+call_operation_1op("JALRC").
+call_operation_1op("JALR").
+call_operation_1op("JALRS16").
+call_operation_1op("JALRS").
+call_operation_1op("JALS").
+call_operation_1op("JALX").
+call_operation_1op("JIALC").
+call_operation_1op("BAL").
+call_operation_1op("BALC").
+
+.decl call_operation_2op(operation:symbol)
+
+call_operation_2op("BEQZALC").
+call_operation_2op("BGEZAL").
+call_operation_2op("BGEZALC").
+call_operation_2op("BGEZALL").
+call_operation_2op("BGEZALS").
+call_operation_2op("BGTZALC").
+call_operation_2op("BLEZALC").
+call_operation_2op("BLTZAL").
+call_operation_2op("BLTZALC").
+call_operation_2op("BLTZALL").
+call_operation_2op("BLTZALS").
+call_operation_2op("BNEZALC").
+
+syscall_operation("SYSCALL").
+
+return_operation("JR").
+return_operation("JR16").
+return_operation("JRC").
+return_operation("JRADDIUSP").
+
+// No cmp operation.
+cmp_operation(""):-
+    false.
+
+cmp_zero_operation("BLEZ").
+cmp_zero_operation("BLEZL").
+cmp_zero_operation("BLEZC").
+cmp_zero_operation("BGTZ").
+cmp_zero_operation("BGTZL").
+cmp_zero_operation("BGTZC").
+cmp_zero_operation("BLTZ").
+cmp_zero_operation("BLTZL").
+cmp_zero_operation("BLTZC").
+cmp_zero_operation("BGEZ").
+cmp_zero_operation("BGEZC").
+cmp_zero_operation("BGEZL").
+cmp_zero_operation("BLTZAL").
+cmp_zero_operation("BGEZAL").
+cmp_zero_operation("BLTZALL").
+cmp_zero_operation("BGEZALL").
+cmp_zero_operation("BEQZ").
+cmp_zero_operation("BEQZC").
+cmp_zero_operation("BNEZ").
+cmp_zero_operation("BNEZC").
+
+// ADDI/ADDIU <Register> <Register> <Immediate>
+reg_arithmetic_operation(EA,Dst,Src,1,Immediate):-
+    instruction(EA,_,_,Operation,Op1,Op2,Op3,0,_,_),
+    (
+        Operation = "ADDI";
+        Operation = "ADDIU"
+    ),
+    op_regdirect_contains_reg(Op3,Dst),
+    op_regdirect_contains_reg(Op1,Src),
+    op_immediate(Op2,Immediate,_).
+
+reg_arithmetic_operation(EA,Dst,Src,2^Immediate,0):-
+    instruction(EA,_,_,"SLL",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op3,Dst),
+    op_regdirect_contains_reg(Op1,Src),
+    op_immediate(Op2,Immediate,_).
+
+// ADD/ADDU <Register> <Register> <Register>
+reg_reg_arithmetic_operation(EA,Reg,Reg1,Reg2,1,0):-
+    instruction(EA,_,_,Operation,SrcOp1,SrcOp2,DestOp,0,_,_),
+    (
+        Operation = "ADD";
+        Operation = "ADDU"
+    ),
+    op_regdirect_contains_reg(DestOp,Reg),
+    op_regdirect_contains_reg(SrcOp1,Reg1),
+    op_regdirect_contains_reg(SrcOp2,Reg2).
+
+// capstone does not support register/operand access metadata on MIPS, so we
+// have to emulate it.
+
+// Reads
+op_access_override(EA,Index,"R",1):-
+    arch.memory_access(_,EA,Index,_,_,_,_,_,_).
+
+// NOTE: For jump instructions, treat all ops as src.
+// E.g., bne $v0, $v1, L_xxx
+//       Both v0 and v1 are sources.
+op_access_override(EA,Index,"R",1):-
+    instruction_get_operation(EA,Operation),
+    arch.jump_operation(Operation),
+    instruction_get_op(EA,Index,_).
+
+op_access_override(EA,Index,"R",1):-
+    (
+        instruction(EA,_,_,Operation,Op,_,_,_,_,_), Op != 0, Index = 1;
+        instruction(EA,_,_,Operation,_,Op,Op3,_,_,_), Op != 0, Op3 != 0, Index = 2;
+        instruction(EA,_,_,Operation,_,_,Op,Op4,_,_), Op != 0, Op4 != 0, Index = 3
+    ),
+    !arch.memory_access(_,EA,_,_,_,_,_,_,_),
+    !arch.jump_operation(Operation).
+
+// Writes
+op_access_override(EA,DstIndex,"W",1):-
+    arch.memory_access(_,EA,_,DstIndex,_,_,_,_,_).
+
+op_access_override(EA,Index,"W",1):-
+    instruction(EA,_,_,Operation,_,Op2,Op3,Op4,_,_),
+    !arch.memory_access(_,EA,_,_,_,_,_,_,_),
+    !arch.jump_operation(Operation),
+    (
+        Op4 = 0,
+        Op3 = 0,
+        Op2 != 0,
+        Index = 2
+        ;
+        Op4 = 0,
+        Op3 != 0,
+        Index = 3,
+        UNUSED(Op2)
+        ;
+        Op4 != 0,
+        Index = 4,
+        UNUSED(Op2), UNUSED(Op3)
+    ).
+
+op_access_override(EA,1,"W",1):-
+    instruction_get_operation(EA,Operation),
+    (
+        // Move the result of a multiplication into the first operand (register)
+        // Capstone marks reg as used incorrectly.
+        Operation = "MFHI"; // mfhi reg # reg <- Hi register
+        Operation = "MFLO"  // mflo reg # reg <- Lo register
+    ).
+
+// Generate register access information from the operand information
+register_access_override(EA,Reg,Access,1):-
+    op_access_override(EA,Index,Access,1),
+    instruction_get_op(EA,Index,Op),
+    op_regdirect_contains_reg(Op,Reg).
+
+register_access_override(EA,Reg,"R",1):-
+    instruction_get_op(EA,_,Op),
+    op_indirect_contains_reg(Op,Reg).
+
+} // end .comp MIPS
