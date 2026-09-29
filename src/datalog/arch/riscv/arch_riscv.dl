@@ -1,0 +1,337 @@
+//===- arch_riscv.dl ----------------------------------------*- datalog -*-===//
+//
+//  Copyright (C) 2024 GrammaTech, Inc.
+//
+//  This code is licensed under the GNU Affero General Public License
+//  as published by the Free Software Foundation, either version 3 of
+//  the License, or (at your option) any later version. See the
+//  LICENSE.txt file in the project root for license terms or visit
+//  https://www.gnu.org/licenses/agpl.txt.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  GNU Affero General Public License for more details.
+//
+//  This project is sponsored by the Office of Naval Research, One Liberty
+//  Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #
+//  N68335-17-C-0700.  The content of the information does not necessarily
+//  reflect the position or policy of the Government and no official
+//  endorsement should be inferred.
+//
+//===----------------------------------------------------------------------===//
+
+// Define a common set of predicates for RISC-V instructions and characteristics.
+// Shared between RISCV32 and RISCV64.
+.comp RISCV : Arch {
+
+#include "jump_operations.dl"
+#include "interrupt_operations.dl"
+#include "memory_access.dl"
+
+// Operand access overrides: Capstone doesn't provide register access info
+// for RISC-V. The C++ loader rotates operands so the destination is last.
+// For most 2-operand instructions: Op1=src(R), Op2=dest(W)
+// For most 3-operand instructions: Op1=src(R), Op2=src(R), Op3=dest(W)
+// For stores: all operands are reads (the "dest" is memory via Op1 indirect)
+// For branches/jumps: all register operands are reads
+
+// 2-operand: Op1 is read
+op_access_override(EA,1,"R",1):-
+    instruction(EA,_,_,_,Op1,_,0,0,_,_),
+    Op1 != 0.
+
+// 2-operand: Op2 is write (for non-stores/non-branches)
+op_access_override(EA,2,"W",1):-
+    instruction(EA,_,_,Operation,_,Op2,0,0,_,_),
+    Op2 != 0,
+    !store_operation(Operation),
+    !jump_operation(Operation).
+
+// 2-operand compressed read-modify-write: Op2 is also read
+// These all have form rd = rd OP src, so the destination register is also a source.
+.decl compressed_read_modify_write(op:symbol)
+compressed_read_modify_write("C.ADD").
+compressed_read_modify_write("C.SUB").
+compressed_read_modify_write("C.ADDI").
+compressed_read_modify_write("C.ADDI16SP").
+compressed_read_modify_write("C.SLLI"). compressed_read_modify_write("C.SRLI").
+compressed_read_modify_write("C.SRAI"). compressed_read_modify_write("C.ANDI").
+compressed_read_modify_write("C.AND"). compressed_read_modify_write("C.OR").
+compressed_read_modify_write("C.XOR").
+
+op_access_override(EA,2,"R",1):-
+    instruction(EA,_,_,Operation,_,Op2,0,0,_,_),
+    Op2 != 0,
+    compressed_read_modify_write(Operation).
+
+register_access_override(EA,Reg,"R",1):-
+    instruction(EA,_,_,Operation,_,Op2,0,0,_,_),
+    Op2 != 0,
+    compressed_read_modify_write(Operation),
+    op_regdirect_contains_reg(Op2,Reg).
+
+// 2-operand stores: Op2 is read (source register being stored)
+op_access_override(EA,2,"R",1):-
+    instruction(EA,_,_,Operation,_,Op2,0,0,_,_),
+    Op2 != 0,
+    store_operation(Operation).
+
+// 3-operand: Op1 is read, Op2 is read
+op_access_override(EA,1,"R",1):-
+    instruction(EA,_,_,_,Op1,_,Op3,0,_,_),
+    Op1 != 0, Op3 != 0.
+
+op_access_override(EA,2,"R",1):-
+    instruction(EA,_,_,_,_,Op2,Op3,0,_,_),
+    Op2 != 0, Op3 != 0.
+
+// 3-operand: Op3 is write (destination) for non-stores/non-branches
+op_access_override(EA,3,"W",1):-
+    instruction(EA,_,_,Operation,_,_,Op3,0,_,_),
+    Op3 != 0,
+    !store_operation(Operation),
+    !jump_operation(Operation).
+
+// 3-operand stores: Op3 is read (source register being stored)
+op_access_override(EA,3,"R",1):-
+    instruction(EA,_,_,Operation,_,_,Op3,0,_,_),
+    Op3 != 0,
+    store_operation(Operation).
+
+// 1-operand jumps: Op1 is read (C.JR, C.J, etc.)
+op_access_override(EA,1,"R",1):-
+    instruction(EA,_,_,Operation,Op1,0,0,0,_,_),
+    Op1 != 0,
+    jump_operation(Operation).
+
+// register_access_override: needed for def() in BasicRegDefUse since
+// Capstone doesn't provide register_access for RISC-V.
+// Destination register (last operand) of non-store/non-branch instructions is written.
+register_access_override(EA,Reg,"W",1):-
+    instruction(EA,_,_,Operation,_,Op2,0,0,_,_),
+    Op2 != 0,
+    op_regdirect_contains_reg(Op2,Reg),
+    !store_operation(Operation),
+    !jump_operation(Operation).
+
+register_access_override(EA,Reg,"W",1):-
+    instruction(EA,_,_,Operation,_,_,Op3,0,_,_),
+    Op3 != 0,
+    op_regdirect_contains_reg(Op3,Reg),
+    !store_operation(Operation),
+    !jump_operation(Operation).
+
+// Move operations
+move_operation("MV").
+move_operation("C.MV").
+move_operation("LUI").
+move_operation("AUIPC").
+move_operation("LI").
+move_operation("C.LI").
+
+move_reg_imm(EA,Reg,Value,1):-
+    instruction(EA,_,_,"LUI",Op1,Op2,0,0,_,_),
+    op_immediate(Op1,Immediate,_),
+    Value = Immediate bshl 12,
+    op_regdirect_contains_reg(Op2,Reg).
+
+move_reg_imm(EA,Reg,0,1):-
+    zero_reg(Zero),
+    move_reg_reg(EA,Reg,Zero).
+
+// AUIPC produces a known PC-relative constant.
+// This feeds value analysis so that jump table detection can track
+// the base address through SLLI/ADD/LW chains.
+move_reg_imm(EA,Reg,Value,1):-
+    instruction(EA,_,_,"AUIPC",Op1,Op2,0,0,_,_),
+    op_immediate(Op1,Offset,_),
+    op_regdirect_contains_reg(Op2,Reg),
+    Value = as(EA,number) + (Offset bshl 12).
+
+// Load operations (base set shared by RV32 and RV64)
+load_operation("LB"). load_operation("LH"). load_operation("LW").
+load_operation("LBU"). load_operation("LHU").
+load_operation("C.LW"). load_operation("C.LWSP").
+load_operation("FLW").
+load_operation("C.FLW"). load_operation("C.FLWSP").
+
+load_word_operation("LW").
+
+// Store operations (base set shared by RV32 and RV64)
+store_operation("SB"). store_operation("SH"). store_operation("SW").
+store_operation("C.SW"). store_operation("C.SWSP").
+store_operation("FSW").
+store_operation("C.FSW"). store_operation("C.FSWSP").
+
+// Arithmetic operations (base set shared by RV32 and RV64)
+arithmetic_operation("ADD"). arithmetic_operation("ADDI").
+arithmetic_operation("SUB").
+arithmetic_operation("NEG").
+arithmetic_operation("SEXT.B"). arithmetic_operation("SEXT.H").
+arithmetic_operation("ZEXT.B"). arithmetic_operation("ZEXT.H").
+arithmetic_operation("C.ADD"). arithmetic_operation("C.ADDI"). arithmetic_operation("C.ADDI4SPN").
+arithmetic_operation("C.ADDI16SP"). arithmetic_operation("C.SUB").
+
+reg_arithmetic_operation(EA,Dst,Src,1,Offset):-
+    instruction(EA,_,_,"ADDI",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src),
+    op_immediate(Op2,Offset,_),
+    op_regdirect_contains_reg(Op3,Dst).
+
+// Compressed C.ADDI: 2-operand (rd = rd + imm)
+reg_arithmetic_operation(EA,Dst,Dst,1,Offset):-
+    instruction(EA,_,_,"C.ADDI",Op1,Op2,0,0,_,_),
+    op_immediate(Op1,Offset,_),
+    op_regdirect_contains_reg(Op2,Dst).
+
+// C.ADDI16SP: sp = sp + imm
+reg_arithmetic_operation(EA,Dst,Dst,1,Offset):-
+    instruction(EA,_,_,"C.ADDI16SP",Op1,Op2,0,0,_,_),
+    op_immediate(Op1,Offset,_),
+    op_regdirect_contains_reg(Op2,Dst).
+
+reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,1,0):-
+    instruction(EA,_,_,"ADD",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src1),
+    op_regdirect_contains_reg(Op2,Src2),
+    op_regdirect_contains_reg(Op3,Dst).
+
+// Compressed C.ADD: 2-operand (rd = rd + rs2)
+reg_reg_arithmetic_operation(EA,Dst,Dst,Src2,1,0):-
+    instruction(EA,_,_,"C.ADD",Op1,Op2,0,0,_,_),
+    op_regdirect_contains_reg(Op1,Src2),
+    op_regdirect_contains_reg(Op2,Dst).
+
+reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,-1,0):-
+    instruction(EA,_,_,"SUB",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src1),
+    op_regdirect_contains_reg(Op2,Src2),
+    op_regdirect_contains_reg(Op3,Dst).
+
+// Compressed C.SUB: 2-operand (rd = rd - rs2)
+reg_reg_arithmetic_operation(EA,Dst,Dst,Src2,-1,0):-
+    instruction(EA,_,_,"C.SUB",Op1,Op2,0,0,_,_),
+    op_regdirect_contains_reg(Op1,Src2),
+    op_regdirect_contains_reg(Op2,Dst).
+
+// Multiplication operations (M extension)
+multiplication_operation("MUL"). multiplication_operation("MULH"). multiplication_operation("MULHSU").
+multiplication_operation("MULHU"). multiplication_operation("DIV").
+multiplication_operation("DIVU").
+multiplication_operation("REM"). multiplication_operation("REMU").
+multiplication_operation("C.MUL").
+
+// Shift/rotate operations (base set shared by RV32 and RV64)
+shift_rotate_operation("SLL"). shift_rotate_operation("SLLI").
+shift_rotate_operation("SRL"). shift_rotate_operation("SRLI").
+shift_rotate_operation("SRA"). shift_rotate_operation("SRAI").
+shift_rotate_operation("C.SLLI"). shift_rotate_operation("C.SRLI"). shift_rotate_operation("C.SRAI").
+
+// Logic operations
+logic_operation("AND"). logic_operation("ANDI"). logic_operation("OR"). logic_operation("ORI").
+logic_operation("XOR"). logic_operation("XORI"). logic_operation("NOT").
+logic_operation("C.AND"). logic_operation("C.ANDI"). logic_operation("C.OR"). logic_operation("C.XOR").
+
+reg_reg_bitwise_binary_op(EA,Dst,Src1,Src2,"AND"):-
+    instruction(EA,_,_,"AND",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src1), op_regdirect_contains_reg(Op2,Src2), op_regdirect_contains_reg(Op3,Dst).
+reg_reg_bitwise_binary_op(EA,Dst,Dst,Src2,"AND"):-
+    instruction(EA,_,_,"C.AND",Op1,Op2,0,0,_,_),
+    op_regdirect_contains_reg(Op1,Src2), op_regdirect_contains_reg(Op2,Dst).
+reg_imm_bitwise_binary_op(EA,Dst,Src,Imm,"AND"):-
+    instruction(EA,_,_,"ANDI",Op1,Op2,Op3,0,_,_),
+    op_immediate(Op1,Imm,_), op_regdirect_contains_reg(Op2,Src), op_regdirect_contains_reg(Op3,Dst).
+reg_imm_bitwise_binary_op(EA,Dst,Dst,Imm,"AND"):-
+    instruction(EA,_,_,"C.ANDI",Op1,Op2,0,0,_,_),
+    op_immediate(Op1,Imm,_), op_regdirect_contains_reg(Op2,Dst).
+reg_reg_bitwise_binary_op(EA,Dst,Src1,Src2,"OR"):-
+    instruction(EA,_,_,"OR",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src1), op_regdirect_contains_reg(Op2,Src2), op_regdirect_contains_reg(Op3,Dst).
+reg_reg_bitwise_binary_op(EA,Dst,Dst,Src2,"OR"):-
+    instruction(EA,_,_,"C.OR",Op1,Op2,0,0,_,_),
+    op_regdirect_contains_reg(Op1,Src2), op_regdirect_contains_reg(Op2,Dst).
+reg_imm_bitwise_binary_op(EA,Dst,Src,Imm,"OR"):-
+    instruction(EA,_,_,"ORI",Op1,Op2,Op3,0,_,_),
+    op_immediate(Op1,Imm,_), op_regdirect_contains_reg(Op2,Src), op_regdirect_contains_reg(Op3,Dst).
+reg_reg_bitwise_binary_op(EA,Dst,Src1,Src2,"XOR"):-
+    instruction(EA,_,_,"XOR",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src1), op_regdirect_contains_reg(Op2,Src2), op_regdirect_contains_reg(Op3,Dst).
+reg_reg_bitwise_binary_op(EA,Dst,Dst,Src2,"XOR"):-
+    instruction(EA,_,_,"C.XOR",Op1,Op2,0,0,_,_),
+    op_regdirect_contains_reg(Op1,Src2), op_regdirect_contains_reg(Op2,Dst).
+reg_imm_bitwise_binary_op(EA,Dst,Src,Imm,"XOR"):-
+    instruction(EA,_,_,"XORI",Op1,Op2,Op3,0,_,_),
+    op_immediate(Op1,Imm,_), op_regdirect_contains_reg(Op2,Src), op_regdirect_contains_reg(Op3,Dst).
+reg_reg_bitwise_binary_op(EA,Dst,Src1,Src2,"LSL"):-
+    instruction(EA,_,_,"SLL",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src1), op_regdirect_contains_reg(Op2,Src2), op_regdirect_contains_reg(Op3,Dst).
+reg_imm_bitwise_binary_op(EA,Dst,Src,Imm,"LSL"):-
+    instruction(EA,_,_,"SLLI",Op1,Op2,Op3,0,_,_),
+    op_immediate(Op1,Imm,_), op_regdirect_contains_reg(Op2,Src), op_regdirect_contains_reg(Op3,Dst).
+reg_imm_bitwise_binary_op(EA,Dst,Dst,Imm,"LSL"):-
+    instruction(EA,_,_,"C.SLLI",Op1,Op2,0,0,_,_),
+    op_immediate(Op1,Imm,_), op_regdirect_contains_reg(Op2,Dst).
+reg_reg_bitwise_binary_op(EA,Dst,Src1,Src2,"LSR"):-
+    instruction(EA,_,_,"SRL",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src1), op_regdirect_contains_reg(Op2,Src2), op_regdirect_contains_reg(Op3,Dst).
+reg_imm_bitwise_binary_op(EA,Dst,Src,Imm,"LSR"):-
+    instruction(EA,_,_,"SRLI",Op1,Op2,Op3,0,_,_),
+    op_immediate(Op1,Imm,_), op_regdirect_contains_reg(Op2,Src), op_regdirect_contains_reg(Op3,Dst).
+reg_imm_bitwise_binary_op(EA,Dst,Dst,Imm,"LSR"):-
+    instruction(EA,_,_,"C.SRLI",Op1,Op2,0,0,_,_),
+    op_immediate(Op1,Imm,_), op_regdirect_contains_reg(Op2,Dst).
+reg_reg_bitwise_binary_op(EA,Dst,Src1,Src2,"ASR"):-
+    instruction(EA,_,_,"SRA",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src1), op_regdirect_contains_reg(Op2,Src2), op_regdirect_contains_reg(Op3,Dst).
+reg_imm_bitwise_binary_op(EA,Dst,Src,Imm,"ASR"):-
+    instruction(EA,_,_,"SRAI",Op1,Op2,Op3,0,_,_),
+    op_immediate(Op1,Imm,_), op_regdirect_contains_reg(Op2,Src), op_regdirect_contains_reg(Op3,Dst).
+reg_imm_bitwise_binary_op(EA,Dst,Dst,Imm,"ASR"):-
+    instruction(EA,_,_,"C.SRAI",Op1,Op2,0,0,_,_),
+    op_immediate(Op1,Imm,_), op_regdirect_contains_reg(Op2,Dst).
+
+// Compare operations
+cmp_operation("BEQ"). cmp_operation("BNE"). cmp_operation("BLT"). cmp_operation("BGE").
+cmp_operation("BLTU"). cmp_operation("BGEU").
+cmp_operation("SLT"). cmp_operation("SLTI"). cmp_operation("SLTU"). cmp_operation("SLTIU").
+cmp_zero_operation("BEQZ"). cmp_zero_operation("BNEZ").
+
+// Conditional operations
+conditional_operation("BEQ","E"). conditional_operation("BNE","NE").
+conditional_operation("BLT","L"). conditional_operation("BGE","GE").
+conditional_operation("BLTU","B"). conditional_operation("BGEU","AE").
+conditional_operation("BEQZ","E"). conditional_operation("BNEZ","NE").
+conditional_operation("BLEZ","LE"). conditional_operation("BGEZ","GE").
+conditional_operation("BLTZ","L"). conditional_operation("BGTZ","G").
+conditional_operation("C.BEQZ","E"). conditional_operation("C.BNEZ","NE").
+
+// PC-relative address loading via AUIPC
+pc_relative_addr(EA,Reg,Target):-
+    instruction(EA,_,_,"AUIPC",Op1,Op2,0,0,_,_),
+    op_immediate(Op1,Offset,_),
+    op_regdirect_contains_reg(Op2,Reg),
+    Target = as(as(EA,number) + (Offset bshl 12), address).
+
+// Override return: In RISC-V, C.JR and JR are only returns when the register
+// is RA (X1). C.JR a5 is an indirect jump (e.g., jump table dispatch), not a
+// return. The default return_operation("C.JR") would mark ALL C.JR as returns,
+// hiding them from reg_jump and breaking jump table detection.
+return_operation(""):-
+    false.
+
+.override return
+return(EA):-
+    instruction_get_operation(EA,"RET").
+
+return(EA):-
+    instruction_get_operation(EA,Operation),
+    (Operation = "C.JR" ; Operation = "JR"),
+    instruction_get_op(EA,1,Op),
+    op_regdirect_contains_reg(Op,"X1").
+
+// NOP
+is_nop(EA):- instruction(EA,_,_,"NOP",0,0,0,0,_,_).
+is_nop(EA):- instruction(EA,_,_,"C.NOP",0,0,0,0,_,_).
+
+} // end .comp RISCV

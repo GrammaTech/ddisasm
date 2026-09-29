@@ -1,0 +1,15 @@
+// RISC-V: all loads/stores use base+offset (I-type and S-type encodings).
+// Compressed load/store operands are merged into IndirectOp by the C++ loader
+// so this single rule handles both compressed and non-compressed instructions
+// uniformly.
+memory_access("LOAD",EA,1,2,DstReg,BaseReg,"NONE",0,Offset):-
+    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
+    load_operation(Operation),
+    op_indirect_mapped(Op1,_,BaseReg,"NONE",_,Offset,_),
+    op_regdirect_contains_reg(Op2,DstReg).
+
+memory_access("STORE",EA,1,2,SrcReg,BaseReg,"NONE",0,Offset):-
+    instruction(EA,_,_,Operation,Op1,Op2,0,0,_,_),
+    store_operation(Operation),
+    op_indirect_mapped(Op1,_,BaseReg,"NONE",_,Offset,_),
+    op_regdirect_contains_reg(Op2,SrcReg).

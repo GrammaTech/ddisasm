@@ -1,0 +1,54 @@
+general_purpose_reg("X0"). general_purpose_reg("X1"). general_purpose_reg("X2"). general_purpose_reg("X3").
+general_purpose_reg("X4"). general_purpose_reg("X5"). general_purpose_reg("X6"). general_purpose_reg("X7").
+general_purpose_reg("X8"). general_purpose_reg("X9"). general_purpose_reg("X10"). general_purpose_reg("X11").
+general_purpose_reg("X12"). general_purpose_reg("X13"). general_purpose_reg("X14"). general_purpose_reg("X15").
+general_purpose_reg("X16"). general_purpose_reg("X17"). general_purpose_reg("X18"). general_purpose_reg("X19").
+general_purpose_reg("X20"). general_purpose_reg("X21"). general_purpose_reg("X22"). general_purpose_reg("X23").
+general_purpose_reg("X24"). general_purpose_reg("X25"). general_purpose_reg("X26"). general_purpose_reg("X27").
+general_purpose_reg("X28"). general_purpose_reg("X29"). general_purpose_reg("X30"). general_purpose_reg("X31").
+
+zero_reg("X0").
+stack_pointer("X2").
+frame_pointer("X8").
+return_reg("X10").
+pc_reg("NONE").
+condition_flags_reg("NONE").
+
+integer_reg_param("X10",0). integer_reg_param("X11",1). integer_reg_param("X12",2). integer_reg_param("X13",3).
+integer_reg_param("X14",4). integer_reg_param("X15",5). integer_reg_param("X16",6). integer_reg_param("X17",7).
+
+function_non_maintained_reg("X1"). function_non_maintained_reg("X5"). function_non_maintained_reg("X6").
+function_non_maintained_reg("X7"). function_non_maintained_reg("X10"). function_non_maintained_reg("X11").
+function_non_maintained_reg("X12"). function_non_maintained_reg("X13"). function_non_maintained_reg("X14").
+function_non_maintained_reg("X15"). function_non_maintained_reg("X16"). function_non_maintained_reg("X17").
+function_non_maintained_reg("X28"). function_non_maintained_reg("X29"). function_non_maintained_reg("X30").
+function_non_maintained_reg("X31").
+
+register_size_bytes("X0",8). register_size_bytes("X1",8). register_size_bytes("X2",8). register_size_bytes("X3",8).
+register_size_bytes("X4",8). register_size_bytes("X5",8). register_size_bytes("X6",8). register_size_bytes("X7",8).
+register_size_bytes("X8",8). register_size_bytes("X9",8). register_size_bytes("X10",8). register_size_bytes("X11",8).
+register_size_bytes("X12",8). register_size_bytes("X13",8). register_size_bytes("X14",8). register_size_bytes("X15",8).
+register_size_bytes("X16",8). register_size_bytes("X17",8). register_size_bytes("X18",8). register_size_bytes("X19",8).
+register_size_bytes("X20",8). register_size_bytes("X21",8). register_size_bytes("X22",8). register_size_bytes("X23",8).
+register_size_bytes("X24",8). register_size_bytes("X25",8). register_size_bytes("X26",8). register_size_bytes("X27",8).
+register_size_bytes("X28",8). register_size_bytes("X29",8). register_size_bytes("X30",8). register_size_bytes("X31",8).
+
+// ABI name mappings
+reg_map_rule("ZERO","X0"). reg_map_rule("RA","X1"). reg_map_rule("SP","X2"). reg_map_rule("GP","X3").
+reg_map_rule("TP","X4"). reg_map_rule("T0","X5"). reg_map_rule("T1","X6"). reg_map_rule("T2","X7").
+reg_map_rule("S0","X8"). reg_map_rule("FP","X8"). reg_map_rule("S1","X9").
+reg_map_rule("A0","X10"). reg_map_rule("A1","X11"). reg_map_rule("A2","X12"). reg_map_rule("A3","X13").
+reg_map_rule("A4","X14"). reg_map_rule("A5","X15"). reg_map_rule("A6","X16"). reg_map_rule("A7","X17").
+reg_map_rule("S2","X18"). reg_map_rule("S3","X19"). reg_map_rule("S4","X20"). reg_map_rule("S5","X21").
+reg_map_rule("S6","X22"). reg_map_rule("S7","X23"). reg_map_rule("S8","X24"). reg_map_rule("S9","X25").
+reg_map_rule("S10","X26"). reg_map_rule("S11","X27").
+reg_map_rule("T3","X28"). reg_map_rule("T4","X29"). reg_map_rule("T5","X30"). reg_map_rule("T6","X31").
+
+float_reg("F0",8). float_reg("F1",8). float_reg("F2",8). float_reg("F3",8).
+float_reg("F4",8). float_reg("F5",8). float_reg("F6",8). float_reg("F7",8).
+float_reg("F8",8). float_reg("F9",8). float_reg("F10",8). float_reg("F11",8).
+float_reg("F12",8). float_reg("F13",8). float_reg("F14",8). float_reg("F15",8).
+float_reg("F16",8). float_reg("F17",8). float_reg("F18",8). float_reg("F19",8).
+float_reg("F20",8). float_reg("F21",8). float_reg("F22",8). float_reg("F23",8).
+float_reg("F24",8). float_reg("F25",8). float_reg("F26",8). float_reg("F27",8).
+float_reg("F28",8). float_reg("F29",8). float_reg("F30",8). float_reg("F31",8).

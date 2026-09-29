@@ -1,0 +1,25 @@
+elf_relocation_size("RISCV64", "NONE", 0).
+elf_relocation_size("RISCV64", "32", 32). elf_relocation_size("RISCV64", "64", 64).
+elf_relocation_size("RISCV64", "RELATIVE", 64). elf_relocation_size("RISCV64", "COPY", 0).
+elf_relocation_size("RISCV64", "JUMP_SLOT", 64).
+elf_relocation_size("RISCV64", "TLS_DTPMOD32", 32). elf_relocation_size("RISCV64", "TLS_DTPMOD64", 64).
+elf_relocation_size("RISCV64", "TLS_DTPREL32", 32). elf_relocation_size("RISCV64", "TLS_DTPREL64", 64).
+elf_relocation_size("RISCV64", "TLS_TPREL32", 32). elf_relocation_size("RISCV64", "TLS_TPREL64", 64).
+elf_relocation_size("RISCV64", "BRANCH", 32). elf_relocation_size("RISCV64", "JAL", 32).
+elf_relocation_size("RISCV64", "CALL", 64). elf_relocation_size("RISCV64", "CALL_PLT", 64).
+elf_relocation_size("RISCV64", "GOT_HI20", 32). elf_relocation_size("RISCV64", "TLS_GOT_HI20", 32).
+elf_relocation_size("RISCV64", "TLS_GD_HI20", 32). elf_relocation_size("RISCV64", "PCREL_HI20", 32).
+elf_relocation_size("RISCV64", "PCREL_LO12_I", 32). elf_relocation_size("RISCV64", "PCREL_LO12_S", 32).
+elf_relocation_size("RISCV64", "HI20", 32). elf_relocation_size("RISCV64", "LO12_I", 32).
+elf_relocation_size("RISCV64", "LO12_S", 32). elf_relocation_size("RISCV64", "TPREL_HI20", 32).
+elf_relocation_size("RISCV64", "TPREL_LO12_I", 32). elf_relocation_size("RISCV64", "TPREL_LO12_S", 32).
+elf_relocation_size("RISCV64", "TPREL_ADD", 0). elf_relocation_size("RISCV64", "ADD8", 8).
+elf_relocation_size("RISCV64", "ADD16", 16). elf_relocation_size("RISCV64", "ADD32", 32).
+elf_relocation_size("RISCV64", "ADD64", 64). elf_relocation_size("RISCV64", "SUB8", 8).
+elf_relocation_size("RISCV64", "SUB16", 16). elf_relocation_size("RISCV64", "SUB32", 32).
+elf_relocation_size("RISCV64", "SUB64", 64). elf_relocation_size("RISCV64", "ALIGN", 0).
+elf_relocation_size("RISCV64", "RVC_BRANCH", 16). elf_relocation_size("RISCV64", "RVC_JUMP", 16).
+elf_relocation_size("RISCV64", "RELAX", 0). elf_relocation_size("RISCV64", "SET6", 6).
+elf_relocation_size("RISCV64", "SET8", 8). elf_relocation_size("RISCV64", "SET16", 16).
+elf_relocation_size("RISCV64", "SET32", 32). elf_relocation_size("RISCV64", "32_PCREL", 32).
+elf_relocation_size("RISCV64", "IRELATIVE", 64).

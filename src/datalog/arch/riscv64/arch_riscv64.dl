@@ -1,0 +1,130 @@
+#include "../riscv/arch_riscv.dl"
+
+.comp RISCV64 : RISCV {
+
+#include "float_operations.dl"
+#include "registers.dl"
+#include "elf_relocations.dl"
+
+arch("RISCV64").
+
+pointer_size(8).
+
+// RV64-only compressed read-modify-write operations
+compressed_read_modify_write("C.ADDW").
+compressed_read_modify_write("C.SUBW").
+compressed_read_modify_write("C.ADDIW").
+
+// RV64-only load operations
+load_operation("LD"). load_operation("LWU").
+load_operation("C.LD"). load_operation("C.LDSP").
+load_operation("FLD").
+load_operation("C.FLD"). load_operation("C.FLDSP").
+
+load_word_operation("LWU"). load_word_operation("LD").
+load_word_operation("C.LW"). load_word_operation("C.LWSP").
+
+// extend_load: LW/C.LW sign-extend 32-bit to 64-bit, LWU zero-extends.
+// Needed for jump_table_signed detection.
+extend_load(EA,1,32):-
+    instruction_get_operation(EA,Op),
+    (Op = "LW" ; Op = "C.LW" ; Op = "C.LWSP").
+
+extend_load(EA,0,32):-
+    instruction_get_operation(EA,"LWU").
+
+extend_load(EA,1,16):-
+    instruction_get_operation(EA,Op),
+    (Op = "LH" ; Op = "C.LH").
+
+extend_load(EA,0,16):-
+    instruction_get_operation(EA,Op),
+    (Op = "LHU" ; Op = "C.LHU").
+
+extend_load(EA,1,8):-
+    instruction_get_operation(EA,"LB").
+
+extend_load(EA,0,8):-
+    instruction_get_operation(EA,"LBU").
+
+// RV64-only store operations
+store_operation("SD").
+store_operation("C.SD"). store_operation("C.SDSP").
+store_operation("FSD").
+store_operation("C.FSD"). store_operation("C.FSDSP").
+
+// RV64-only arithmetic operations
+arithmetic_operation("ADDIW"). arithmetic_operation("ADDW").
+arithmetic_operation("SUBW"). arithmetic_operation("NEGW").
+arithmetic_operation("SEXT.W"). arithmetic_operation("ZEXT.W").
+arithmetic_operation("C.ADDW"). arithmetic_operation("C.SUBW").
+
+// ADDIW: 3-operand form
+reg_arithmetic_operation(EA,Dst,Src,1,Offset):-
+    instruction(EA,_,_,"ADDIW",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src),
+    op_immediate(Op2,Offset,_),
+    op_regdirect_contains_reg(Op3,Dst).
+
+// Compressed C.ADDIW: 2-operand form (rd = rd + imm)
+reg_arithmetic_operation(EA,Dst,Dst,1,Offset):-
+    instruction(EA,_,_,"C.ADDIW",Op1,Op2,0,0,_,_),
+    op_immediate(Op1,Offset,_),
+    op_regdirect_contains_reg(Op2,Dst).
+
+// ADDW: 3-operand form
+reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,1,0):-
+    instruction(EA,_,_,"ADDW",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src1),
+    op_regdirect_contains_reg(Op2,Src2),
+    op_regdirect_contains_reg(Op3,Dst).
+
+// Compressed C.ADDW: 2-operand form (rd = rd + rs2)
+reg_reg_arithmetic_operation(EA,Dst,Dst,Src2,1,0):-
+    instruction(EA,_,_,"C.ADDW",Op1,Op2,0,0,_,_),
+    op_regdirect_contains_reg(Op1,Src2),
+    op_regdirect_contains_reg(Op2,Dst).
+
+// SUBW: 3-operand form
+reg_reg_arithmetic_operation(EA,Dst,Src1,Src2,-1,0):-
+    instruction(EA,_,_,"SUBW",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src1),
+    op_regdirect_contains_reg(Op2,Src2),
+    op_regdirect_contains_reg(Op3,Dst).
+
+// Compressed C.SUBW: 2-operand form (rd = rd - rs2)
+reg_reg_arithmetic_operation(EA,Dst,Dst,Src2,-1,0):-
+    instruction(EA,_,_,"C.SUBW",Op1,Op2,0,0,_,_),
+    op_regdirect_contains_reg(Op1,Src2),
+    op_regdirect_contains_reg(Op2,Dst).
+
+// RV64-only multiplication operations
+multiplication_operation("MULW"). multiplication_operation("DIVW"). multiplication_operation("DIVUW").
+multiplication_operation("REMW"). multiplication_operation("REMUW").
+
+// RV64-only shift/rotate operations (W-suffix variants)
+shift_rotate_operation("SLLIW"). shift_rotate_operation("SLLW").
+shift_rotate_operation("SRLIW"). shift_rotate_operation("SRLW").
+shift_rotate_operation("SRAIW"). shift_rotate_operation("SRAW").
+
+// RV64-only bitwise operations with W-suffix variants
+reg_reg_bitwise_binary_op(EA,Dst,Src1,Src2,"LSL"):-
+    instruction(EA,_,_,"SLLW",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src1), op_regdirect_contains_reg(Op2,Src2), op_regdirect_contains_reg(Op3,Dst).
+reg_imm_bitwise_binary_op(EA,Dst,Src,Imm,"LSL"):-
+    instruction(EA,_,_,"SLLIW",Op1,Op2,Op3,0,_,_),
+    op_immediate(Op1,Imm,_), op_regdirect_contains_reg(Op2,Src), op_regdirect_contains_reg(Op3,Dst).
+reg_reg_bitwise_binary_op(EA,Dst,Src1,Src2,"LSR"):-
+    instruction(EA,_,_,"SRLW",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src1), op_regdirect_contains_reg(Op2,Src2), op_regdirect_contains_reg(Op3,Dst).
+reg_imm_bitwise_binary_op(EA,Dst,Src,Imm,"LSR"):-
+    instruction(EA,_,_,"SRLIW",Op1,Op2,Op3,0,_,_),
+    op_immediate(Op1,Imm,_), op_regdirect_contains_reg(Op2,Src), op_regdirect_contains_reg(Op3,Dst).
+reg_reg_bitwise_binary_op(EA,Dst,Src1,Src2,"ASR"):-
+    instruction(EA,_,_,"SRAW",Op1,Op2,Op3,0,_,_),
+    op_regdirect_contains_reg(Op1,Src1), op_regdirect_contains_reg(Op2,Src2), op_regdirect_contains_reg(Op3,Dst).
+reg_imm_bitwise_binary_op(EA,Dst,Src,Imm,"ASR"):-
+    instruction(EA,_,_,"SRAIW",Op1,Op2,Op3,0,_,_),
+    op_immediate(Op1,Imm,_), op_regdirect_contains_reg(Op2,Src), op_regdirect_contains_reg(Op3,Dst).
+
+} // end .comp RISCV64

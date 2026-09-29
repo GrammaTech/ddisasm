@@ -1,0 +1,18 @@
+float_operation("FLW"). float_operation("FSW"). float_operation("FLD"). float_operation("FSD").
+float_operation("FADD.S"). float_operation("FSUB.S"). float_operation("FMUL.S"). float_operation("FDIV.S").
+float_operation("FSQRT.S"). float_operation("FMIN.S"). float_operation("FMAX.S").
+float_operation("FMADD.S"). float_operation("FMSUB.S"). float_operation("FNMADD.S"). float_operation("FNMSUB.S").
+float_operation("FCVT.W.S"). float_operation("FCVT.WU.S"). float_operation("FCVT.S.W"). float_operation("FCVT.S.WU").
+float_operation("FCVT.L.S"). float_operation("FCVT.LU.S"). float_operation("FCVT.S.L"). float_operation("FCVT.S.LU").
+float_operation("FMV.X.W"). float_operation("FMV.W.X"). float_operation("FEQ.S"). float_operation("FLT.S"). float_operation("FLE.S").
+float_operation("FCLASS.S"). float_operation("FSGNJ.S"). float_operation("FSGNJN.S"). float_operation("FSGNJX.S").
+float_operation("FADD.D"). float_operation("FSUB.D"). float_operation("FMUL.D"). float_operation("FDIV.D").
+float_operation("FSQRT.D"). float_operation("FMIN.D"). float_operation("FMAX.D").
+float_operation("FMADD.D"). float_operation("FMSUB.D"). float_operation("FNMADD.D"). float_operation("FNMSUB.D").
+float_operation("FCVT.W.D"). float_operation("FCVT.WU.D"). float_operation("FCVT.D.W"). float_operation("FCVT.D.WU").
+float_operation("FCVT.L.D"). float_operation("FCVT.LU.D"). float_operation("FCVT.D.L"). float_operation("FCVT.D.LU").
+float_operation("FCVT.S.D"). float_operation("FCVT.D.S"). float_operation("FMV.X.D"). float_operation("FMV.D.X").
+float_operation("FEQ.D"). float_operation("FLT.D"). float_operation("FLE.D").
+float_operation("FCLASS.D"). float_operation("FSGNJ.D"). float_operation("FSGNJN.D"). float_operation("FSGNJX.D").
+float_operation("C.FLD"). float_operation("C.FSD"). float_operation("C.FLDSP"). float_operation("C.FSDSP").
+float_operation("C.FLW"). float_operation("C.FSW"). float_operation("C.FLWSP"). float_operation("C.FSWSP").
