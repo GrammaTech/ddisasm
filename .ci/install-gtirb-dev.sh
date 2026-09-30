@@ -54,8 +54,7 @@ else
     -DGTIRB_JAVA_API=OFF \
     -DGTIRB_DOCUMENTATION=OFF \
     -DGTIRB_RUN_CLANG_TIDY=OFF
-  build_and_stage gtirb-pprinter "$GTIRB_PPRINTER_DEV_BRANCH" \
-    -DGTIRB_PPRINTER_ENABLE_TESTS=OFF
+  build_and_stage gtirb-pprinter "$GTIRB_PPRINTER_DEV_BRANCH"
 fi
 
 ldconfig
