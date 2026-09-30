@@ -1,5 +1,8 @@
 variables:
   GTIRB_VERSION: ""
+  # GTIRB branch built from source on non-release branches.
+  # reaffirm/provisional_tls_schema provides the ElfTlsBaseAddress schema.
+  GTIRB_DEV_BRANCH: "reaffirm/provisional_tls_schema"
   GTIRB_PPRINTER_VERSION: ""
   CAPSTONE_VERSION: ""
   # The IMAGE_TAG is derived from the branch name so that if a branch modifies
@@ -62,13 +65,20 @@ default:
   - mv /var/cache/apt/archives/*.deb .
 
 .install-deps:
-  # Use aptitude to make sure gtirb-pprinter is installed even if that means installing an old gtirb
-  - >-
-    aptitude install -y -o "Aptitude::ProblemResolver::Hints::=reject gtirb-pprinter :UNINST"
-    libcapstone-dev${CAPSTONE_VERSION:+=1:$CAPSTONE_VERSION}
-    libgtirb-dev${GTIRB_VERSION:+=$GTIRB_VERSION-$(lsb_release -sc)}
-    libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+=$GTIRB_PPRINTER_VERSION-$(lsb_release -sc)}
-    gtirb-pprinter${GTIRB_PPRINTER_VERSION:+=$GTIRB_PPRINTER_VERSION-$(lsb_release -sc)}
+  # Release branches install GTIRB from APT. Other branches build GTIRB from
+  # $GTIRB_DEV_BRANCH, since the APT packages are built from GTIRB master.
+  - |
+    if [[ $CI_COMMIT_REF_NAME =~ ^release-.* ]]; then
+      # Use aptitude to make sure gtirb-pprinter is installed even if that means installing an old gtirb
+      aptitude install -y -o "Aptitude::ProblemResolver::Hints::=reject gtirb-pprinter :UNINST" \
+        libcapstone-dev${CAPSTONE_VERSION:+=1:$CAPSTONE_VERSION} \
+        libgtirb-dev${GTIRB_VERSION:+=$GTIRB_VERSION-$(lsb_release -sc)} \
+        libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+=$GTIRB_PPRINTER_VERSION-$(lsb_release -sc)} \
+        gtirb-pprinter${GTIRB_PPRINTER_VERSION:+=$GTIRB_PPRINTER_VERSION-$(lsb_release -sc)}
+    else
+      apt-get install -y libcapstone-dev${CAPSTONE_VERSION:+=1:$CAPSTONE_VERSION}
+      .ci/install-gtirb-dev.sh
+    fi
 
 .install-capstone:
   - apt-get install -y libcapstone-dev${CAPSTONE_VERSION:+=1:$CAPSTONE_VERSION}
@@ -457,14 +467,16 @@ conan-windows-release-package:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - build
+      # GTIRB built from $GTIRB_DEV_BRANCH, reused by downstream jobs.
+      - gtirb-dev-staging
   cache:
     paths: [ccache]
   tags: [bigmem]
   script:
     - !reference [.setup-apt]
-    - !reference [.install-deps]
-    # set up ccache
+    # set up ccache (before deps, so a source-built GTIRB is cached too)
     - !reference [.setup-ccache]
+    - !reference [.install-deps]
     # Build ddisasm
     - mkdir build
     - cd build
@@ -541,7 +553,7 @@ build-static:
     # upgrade pip
     - python3 -m pip install pip --upgrade
     # build GTIRB
-    - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
+    - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_VERSION" || echo "$GTIRB_DEV_BRANCH")
     - git clone https://git.grammatech.com/rewriting/gtirb.git -b $GTIRB_BRANCH
     - mkdir gtirb/build
     - cd gtirb/build
@@ -627,7 +639,7 @@ static-drivers:
     # upgrade pip
     - python3 -m pip install pip --upgrade
     # build GTIRB
-    - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
+    - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_VERSION" || echo "$GTIRB_DEV_BRANCH")
     - git clone https://git.grammatech.com/rewriting/gtirb.git -b $GTIRB_BRANCH
     - cd gtirb
     - mkdir build && cd build
