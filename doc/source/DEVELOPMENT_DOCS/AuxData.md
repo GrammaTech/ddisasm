@@ -540,3 +540,15 @@ of fields and [The Load Configuration Structure][LOADCONFIG] for additional info
 |  Name | **overlay**                                                        |
 |  Type | `std::vector<uint8_t>`                                             |
 | Value | List of bytes appended to the binary that are not loaded to memory.|
+
+## elfTlsBaseAddress
+
+`provisional`
+
+|       |                                                                                                                 |
+|------:|-----------------------------------------------------------------------------------------------------------------|
+|  Name | **elfTlsBaseAddress**                                                                                           |
+|  Type | `std::tuple<uint64_t, uint64_t>`                                                                                |
+| Value | The original start address of the PT_TLS segment, and the address ddisasm rebased TLS sections to.              |
+
+Used to reverse the TLS rebasing when printing.

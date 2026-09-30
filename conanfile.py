@@ -89,12 +89,13 @@ class DdisasmConan(Properties, ConanFile):
             self.build_requires("ninja/1.10.2")
 
     boost_version = "1.69.0"
-    # gtirb_version = "dev"
+    gtirb_version = "2.3.3"
     gtirb_pprinter_version = "dev"
     capstone_version = "dev"
     requires = (
         "boost/%s" % (boost_version),
-        "gtirb/2.3.3@rewriting+gtirb/reaffirm+provisional_tls_schema:8c47",
+        "gtirb/%s@rewriting+gtirb/reaffirm+provisional_tls_schema"
+        % (gtirb_version),
         "gtirb-pprinter/%s@rewriting+gtirb-pprinter/master"
         % (gtirb_pprinter_version),
         "capstone/%s@rewriting+extra-packages/next" % (capstone_version),
