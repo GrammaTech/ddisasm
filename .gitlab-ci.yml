@@ -304,6 +304,9 @@ python-manylinux-2010-publish-external:
     - pip3 install --upgrade conan~=$CONAN_VERSION
     # Build conan packages in a known location
     - export CONAN_USER_HOME=$(cygpath -w $(pwd))
+    # gtirb-pprinter is built from source and its build tree exceeds MAX_PATH;
+    # force conan short_paths so builds live under C:\.conan.
+    - export CONAN_USE_ALWAYS_SHORT_PATHS=True
     # Set up user and remote
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
     - conan user ci_user -r gitlab -p
@@ -330,7 +333,10 @@ python-manylinux-2010-publish-external:
     - export CONAN_USER_HOME=$(cygpath -w $(pwd))
     - export CONAN_REF=$(python -c 'print(__import__("conanfile").Properties().conan_recipe, end="")')
     # Change directory to the conan build directory
-    - cd $(find . -type d -path '*.conan/data/ddisasm/dev/rewriting+ddisasm/*/build/*' -print -quit)
+    - BUILD_DIR=$(find . -type d -path '*.conan/data/ddisasm/dev/rewriting+ddisasm/*/build/*' -print -quit)
+    # With short_paths the build tree lives under C:\.conan; follow the link if present.
+    - if [ -f "$BUILD_DIR/.conan_link" ]; then BUILD_DIR=$(cygpath -u "$(tr -d '\r\n' < "$BUILD_DIR/.conan_link")"); fi
+    - cd "$BUILD_DIR"
     # Create virtualrunenv script (activate_run.bat)
     - conan install ${CONAN_REF} -g virtualrunenv
     # Run the tests
