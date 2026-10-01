@@ -13,7 +13,12 @@ def run_conan(args):
 
 def build(argv):
     props = conanfile.Properties()
-    run_conan(["create", "--keep-source", ".", props.conan_ref] + argv)
+    # Dependencies built against a non-default gtirb (e.g. gtirb-pprinter)
+    # may have no prebuilt binary on the remote, so build them from source.
+    build_args = ["--build=missing", "-o", "gtirb-pprinter:run_tests=False"]
+    run_conan(
+        ["create", "--keep-source", ".", props.conan_ref] + build_args + argv
+    )
 
 
 def upload():

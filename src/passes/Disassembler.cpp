@@ -1118,6 +1118,30 @@ std::map<gtirb::Addr, std::string> getPltBlocks(gtirb::Module &Module,
     return Res;
 }
 
+/**
+ * needsPltReturnEdges
+ * Determine whether PLT blocks of the given ISA need an explicit return edge.
+ * Only the newly supported ISAs (e.g. PPC BSS-PLT stubs ending in bctr) need
+ * it; x86 and ARM PLT stubs already end in a branch to the external symbol,
+ * and a return edge there would not match their jump instructions.
+ * Input:  ISA - the module's instruction set architecture
+ * Output: true if return edges should be added to PLT blocks
+ */
+bool needsPltReturnEdges(gtirb::ISA ISA)
+{
+    switch(ISA)
+    {
+        case gtirb::ISA::PPC32:
+        case gtirb::ISA::PPC64:
+        case gtirb::ISA::MIPS64:
+        case gtirb::ISA::RISCV32:
+        case gtirb::ISA::RISCV64:
+            return true;
+        default:
+            return false;
+    }
+}
+
 void buildCFG(gtirb::Context &Context, gtirb::Module &Module, souffle::SouffleProgram &Program)
 {
     auto &Cfg = Module.getIR()->getCFG();
@@ -1221,6 +1245,10 @@ void buildCFG(gtirb::Context &Context, gtirb::Module &Module, souffle::SoufflePr
     // functions that typically return. Without an explicit return edge, the
     // NoReturnPass treats PLT blocks as noreturn and removes fallthrough edges
     // from callers, breaking inter-procedural control flow.
+    if(!needsPltReturnEdges(Module.getISA()))
+    {
+        return;
+    }
     for(auto &Output : *Program.getRelation("plt_block"))
     {
         gtirb::Addr BlockAddr;
