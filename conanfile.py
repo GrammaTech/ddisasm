@@ -96,7 +96,7 @@ class DdisasmConan(Properties, ConanFile):
         "boost/%s" % (boost_version),
         "gtirb/%s@rewriting+gtirb/reaffirm+provisional_tls_schema"
         % (gtirb_version),
-        "gtirb-pprinter/%s@rewriting+gtirb-pprinter/master"
+        "gtirb-pprinter/%s@rewriting+gtirb-pprinter/reaffirm+experimental-isas"
         % (gtirb_pprinter_version),
         "capstone/%s@rewriting+extra-packages/next" % (capstone_version),
     )

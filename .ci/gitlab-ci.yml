@@ -3,6 +3,8 @@ variables:
   # GTIRB branch built from source on non-release branches.
   # reaffirm/provisional_tls_schema provides the ElfTlsBaseAddress schema.
   GTIRB_DEV_BRANCH: "reaffirm/provisional_tls_schema"
+  # gtirb-pprinter branch built from source on non-release branches.
+  GTIRB_PPRINTER_DEV_BRANCH: "reaffirm/experimental-isas"
   GTIRB_PPRINTER_VERSION: ""
   CAPSTONE_VERSION: ""
   # The IMAGE_TAG is derived from the branch name so that if a branch modifies
@@ -314,6 +316,9 @@ python-manylinux-2010-publish-external:
     - pip3 install --upgrade conan~=$CONAN_VERSION
     # Build conan packages in a known location
     - export CONAN_USER_HOME=$(cygpath -w $(pwd))
+    # gtirb-pprinter is built from source and its build tree exceeds MAX_PATH;
+    # force conan short_paths so builds live under C:\.conan.
+    - export CONAN_USE_ALWAYS_SHORT_PATHS=True
     # Set up user and remote
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
     - conan user ci_user -r gitlab -p
@@ -340,7 +345,10 @@ python-manylinux-2010-publish-external:
     - export CONAN_USER_HOME=$(cygpath -w $(pwd))
     - export CONAN_REF=$(python -c 'print(__import__("conanfile").Properties().conan_recipe, end="")')
     # Change directory to the conan build directory
-    - cd $(find . -type d -path '*.conan/data/ddisasm/dev/rewriting+ddisasm/*/build/*' -print -quit)
+    - BUILD_DIR=$(find . -type d -path '*.conan/data/ddisasm/dev/rewriting+ddisasm/*/build/*' -print -quit)
+    # With short_paths the build tree lives under C:\.conan; follow the link if present.
+    - if [ -f "$BUILD_DIR/.conan_link" ]; then BUILD_DIR=$(cygpath -u "$(tr -d '\r\n' < "$BUILD_DIR/.conan_link")"); fi
+    - cd "$BUILD_DIR"
     # Create virtualrunenv script (activate_run.bat)
     - conan install ${CONAN_REF} -g virtualrunenv
     # Run the tests
@@ -562,7 +570,7 @@ build-static:
     - cd python; python3 -m pip install .; cd ..
     - cd ../..
     # build gtirb-pprinter
-    - GTIRB_PPRINTER_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_PPRINTER_VERSION" || echo "master")
+    - GTIRB_PPRINTER_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_PPRINTER_VERSION" || echo "$GTIRB_PPRINTER_DEV_BRANCH")
     - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b $GTIRB_PPRINTER_BRANCH
     - mkdir gtirb-pprinter/build
     - cd gtirb-pprinter/build
@@ -648,7 +656,7 @@ static-drivers:
     - cd python; python3 -m pip install .; cd ..
     - cd ../..
     # build gtirb-pprinter
-    - GTIRB_PPRINTER_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_PPRINTER_VERSION" || echo "master")
+    - GTIRB_PPRINTER_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_PPRINTER_VERSION" || echo "$GTIRB_PPRINTER_DEV_BRANCH")
     - git clone https://git.grammatech.com/rewriting/gtirb-pprinter.git -b $GTIRB_PPRINTER_BRANCH
     - cd gtirb-pprinter
     - mkdir build && cd build
@@ -834,8 +842,8 @@ docker-image:
   rules:
     *run-only-main
   script:
-    - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
-    - GTIRB_PPRINTER_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_PPRINTER_VERSION" || echo "master")
+    - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_VERSION" || echo "$GTIRB_DEV_BRANCH")
+    - GTIRB_PPRINTER_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_PPRINTER_VERSION" || echo "$GTIRB_PPRINTER_DEV_BRANCH")
     - VERSION=$(awk '{s=(NR==1?s:s".")$2}END{print s}' version.txt)
     - GTIRB_COMMIT=$(git ls-remote https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/rewriting/gtirb | grep "refs/heads/$GTIRB_BRANCH\$" | awk '{print $1}')
     - GTIRB_PPRINTER_COMMIT=$(git ls-remote https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/rewriting/gtirb-pprinter | grep "refs/heads/$GTIRB_PPRINTER_BRANCH\$" | awk '{print $1}')

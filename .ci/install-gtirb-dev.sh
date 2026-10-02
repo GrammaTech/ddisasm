@@ -1,5 +1,6 @@
 #!/bin/bash
-# Build GTIRB from $GTIRB_DEV_BRANCH and gtirb-pprinter (master) against it,
+# Build GTIRB from $GTIRB_DEV_BRANCH and gtirb-pprinter from
+# $GTIRB_PPRINTER_DEV_BRANCH against it,
 # then install both into /usr/local.
 #
 # The APT "unstable" packages are built from GTIRB master, which lacks schema
@@ -12,7 +13,7 @@
 set -euo pipefail
 
 GTIRB_DEV_STAGING="${CI_PROJECT_DIR:-$(pwd)}/gtirb-dev-staging"
-GTIRB_PPRINTER_DEV_BRANCH="${GTIRB_PPRINTER_DEV_BRANCH:-master}"
+GTIRB_PPRINTER_DEV_BRANCH="${GTIRB_PPRINTER_DEV_BRANCH:-reaffirm/experimental-isas}"
 SOURCE_ROOT="$(mktemp -d)"
 
 # build_and_stage
