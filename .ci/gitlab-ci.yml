@@ -51,7 +51,10 @@ default:
 .setup-apt:
   # Configure GTIRB APT repository.
   - DIST_NAME="$(lsb_release -sc)"
-  - wget -O - https://download.grammatech.com/gtirb/files/apt-repo/conf/apt.gpg.key | apt-key add -
+  # Fail fast on a stalled TLS connection instead of wget's 15 minute default
+  # read timeout, and never pipe a partial download into apt-key.
+  - wget --timeout=30 --tries=5 --retry-connrefused -O /tmp/gtirb-apt.gpg.key https://download.grammatech.com/gtirb/files/apt-repo/conf/apt.gpg.key
+  - apt-key add /tmp/gtirb-apt.gpg.key
   - COMPONENT=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "stable" || echo "unstable")
   - echo "deb https://download.grammatech.com/gtirb/files/apt-repo $DIST_NAME $COMPONENT" | tee -a /etc/apt/sources.list.d/gtirb.list
   - apt-get update -y
@@ -317,8 +320,11 @@ python-manylinux-2010-publish-external:
     # Build conan packages in a known location
     - export CONAN_USER_HOME=$(cygpath -w $(pwd))
     # gtirb-pprinter is built from source and its build tree exceeds MAX_PATH;
-    # force conan short_paths so builds live under C:\.conan.
+    # force conan short_paths so builds live under C:\.conan. Persist it in
+    # conan.conf (shipped in conan_home.tar.gz) so the test, publish and
+    # package jobs also follow the .conan_link package folders.
     - export CONAN_USE_ALWAYS_SHORT_PATHS=True
+    - conan config set general.use_always_short_paths=True
     # Set up user and remote
     - conan remote add gitlab ${CI_API_V4_URL}/packages/conan
     - conan user ci_user -r gitlab -p
@@ -337,6 +343,8 @@ python-manylinux-2010-publish-external:
   stage: test-and-tag
   tags: [ddisasm-windows]
   script:
+    # Packages were built with short_paths; follow their .conan_link folders.
+    - export CONAN_USE_ALWAYS_SHORT_PATHS=True
     - tar -xf conan_home.tar.gz
     - tar -xf conan_aux.tar.gz -C $(cygpath -u C:\\)
     # Install packages needed for the tests
@@ -361,6 +369,7 @@ python-manylinux-2010-publish-external:
     *publish-rules
   script:
     - export CONAN_USER_HOME=$(cygpath -w $(pwd))
+    - export CONAN_USE_ALWAYS_SHORT_PATHS=True
     - pip3 install --upgrade conan~=$CONAN_VERSION
     - tar -xf conan_home.tar.gz
     - tar -xf conan_aux.tar.gz -C $(cygpath -u C:\\)
@@ -376,6 +385,7 @@ python-manylinux-2010-publish-external:
       - ddisasm*.zip
   script:
     # Initialize
+    - export CONAN_USE_ALWAYS_SHORT_PATHS=True
     - tar -xf conan_home.tar.gz
     - tar -xf conan_aux.tar.gz -C $(cygpath -u C:\\)
     # Setting CI_PROJECT_DIR to the PWD because GitLab Runner sets a relative path for CI_PROJECT_DIR with VirtualBox runners.
@@ -552,11 +562,18 @@ build-static:
   cache:
     paths: [ccache]
   tags: [bigmem]
+  # Retry transient runner/network failures (e.g. a stalled apt key download).
+  retry:
+    max: 2
+    when: [script_failure, runner_system_failure]
   artifacts:
     when: on_failure
     paths: [ci-logs]
     expire_in: 1 week
   script:
+    # Create the log directory up front so the on-failure artifact upload
+    # always has something to collect.
+    - mkdir -p ci-logs
     # install capstone
     - !reference [.setup-apt]
     - !reference [.install-capstone]
@@ -640,6 +657,10 @@ static-drivers:
   cache:
     paths: [ccache]
   tags: [bigmem]
+  # Retry transient runner/network failures (e.g. a stalled apt key download).
+  retry:
+    max: 2
+    when: [script_failure, runner_system_failure]
   rules:
     *run-only-main
   script:
