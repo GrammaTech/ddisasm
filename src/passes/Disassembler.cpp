@@ -27,6 +27,7 @@
 #include <regex>
 
 #include "../AuxDataSchema.h"
+#include "../IsaSupport.h"
 #include "../gtirb-decoder/Relations.h"
 
 using ImmOp = int64_t;
@@ -1245,7 +1246,10 @@ void buildCFG(gtirb::Context &Context, gtirb::Module &Module, souffle::SoufflePr
     // functions that typically return. Without an explicit return edge, the
     // NoReturnPass treats PLT blocks as noreturn and removes fallthrough edges
     // from callers, breaking inter-procedural control flow.
-    if(!needsPltReturnEdges(Module.getISA()))
+    // Only the experimental ISAs (e.g. PPC BSS-PLT stubs ending in bctr) need
+    // this; x86 and ARM PLT stubs already end in a branch to the external
+    // symbol, and a return edge there would not match their jump instructions.
+    if(!isExperimentalIsa(Module.getISA()))
     {
         return;
     }

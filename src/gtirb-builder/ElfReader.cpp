@@ -28,6 +28,8 @@
 #include <algorithm>
 #include <sstream>
 
+#include "../IsaSupport.h"
+
 // NOTE:
 // Elf32_Sym is defined here in duplicate of LIEF::ELF::details::Elf32_Sym,
 // which is an incomplete type in version 0.16.6 (not defined in a header).
@@ -1327,7 +1329,8 @@ void ElfReader::addAuxData()
     }
 
     // Store original TLS base address so the pprinter can reverse the rebasing.
-    if(OriginalTlsStart)
+    // Only the experimental ISAs use it; other ISAs keep their established output.
+    if(OriginalTlsStart && isExperimentalIsa(Module->getISA()))
     {
         Module->addAuxData<gtirb::provisional_schema::ElfTlsBaseAddress>(
             std::make_tuple(*OriginalTlsStart, tlsBaseAddress()));

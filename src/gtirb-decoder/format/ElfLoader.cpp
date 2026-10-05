@@ -25,6 +25,7 @@
 
 #include "../../AuxDataSchema.h"
 #include "../../Endian.h"
+#include "../../IsaSupport.h"
 #include "../Relations.h"
 
 void ElfDynamicEntryLoader(const gtirb::Module &Module, souffle::SouffleProgram &Program)
@@ -118,6 +119,31 @@ void ElfExceptionLoader(const gtirb::Module &Module, souffle::SouffleProgram &Pr
     Decoder.addExceptionInformation(Program);
 }
 
+/**
+ * ehFrameEndianness
+ * Select the byte order libehp uses to parse .eh_frame. The experimental ISAs
+ * (e.g. big-endian PPC) use the module's byte order; all other ISAs keep using
+ * the host byte order, which is the established behavior for them.
+ * Input:  module - the module whose exception information is parsed
+ * Output: the libehp endianness to parse with
+ */
+static EHP::EHPEndianness_t ehFrameEndianness(const gtirb::Module &module)
+{
+    if(!isExperimentalIsa(module.getISA()))
+    {
+        return EHP::EHPEndianness_t::HOST;
+    }
+    switch(module.getByteOrder())
+    {
+        case gtirb::ByteOrder::Big:
+            return EHP::EHPEndianness_t::BIG;
+        case gtirb::ByteOrder::Little:
+            return EHP::EHPEndianness_t::LITTLE;
+        default:
+            return EHP::EHPEndianness_t::HOST;
+    }
+}
+
 ElfExceptionDecoder::ElfExceptionDecoder(const gtirb::Module &module)
 {
     uint8_t ptrsize;
@@ -135,21 +161,6 @@ ElfExceptionDecoder::ElfExceptionDecoder(const gtirb::Module &module)
             ptrsize = 8;
             break;
         }
-    }
-
-    // Use the module's byte order for parsing .eh_frame, not the host's.
-    EHP::EHPEndianness_t endianness;
-    switch(module.getByteOrder())
-    {
-        case gtirb::ByteOrder::Big:
-            endianness = EHP::EHPEndianness_t::BIG;
-            break;
-        case gtirb::ByteOrder::Little:
-            endianness = EHP::EHPEndianness_t::LITTLE;
-            break;
-        default:
-            endianness = EHP::EHPEndianness_t::HOST;
-            break;
     }
 
     std::string ehFrame, ehFrameHeader, gccExcept;
@@ -207,9 +218,9 @@ ElfExceptionDecoder::ElfExceptionDecoder(const gtirb::Module &module)
             gccExcept.assign(bytes, end);
         }
     }
-    ehParser =
-        EHP::EHFrameParser_t::factory(ptrsize, endianness, ehFrame, addressEhFrame, ehFrameHeader,
-                                      addressEhFrameHeader, gccExcept, addressGccExcept);
+    ehParser = EHP::EHFrameParser_t::factory(ptrsize, ehFrameEndianness(module), ehFrame,
+                                             addressEhFrame, ehFrameHeader, addressEhFrameHeader,
+                                             gccExcept, addressGccExcept);
 }
 
 void ElfExceptionDecoder::addExceptionInformation(souffle::SouffleProgram &Program)

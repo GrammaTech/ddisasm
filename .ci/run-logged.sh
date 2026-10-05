@@ -26,6 +26,9 @@ status=$?
 
 if [[ $status -ne 0 ]]; then
   echo "===== '$log_name' failed with exit status $status ====="
+  # unittest prints one "FAIL:"/"ERROR:" header per failing (sub)test.
+  echo "----- failing tests -----"
+  grep -E '^([0-9]+: )?(FAIL|ERROR): ' "$log_file" | sort -u
   echo "----- error lines (first 100) -----"
   grep -n -E -i '(error|failed|fatal|undefined reference)' "$log_file" | head -n 100
   echo "----- last $tail_lines lines -----"
