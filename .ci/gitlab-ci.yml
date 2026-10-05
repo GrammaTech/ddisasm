@@ -204,7 +204,7 @@ check-format:
     - python3 -m pip install pip --upgrade
     - python3 -m pip install -r requirements-dev.txt --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run build script
-    - CONAN_CPU_COUNT=8 CMAKE_CXX_COMPILER_LAUNCHER=ccache PYTHONPATH="$(pwd):$PYTHONPATH" python3 .ci/run_conan.py build -s build_type=Release
+    - CONAN_CPU_COUNT=8 CMAKE_CXX_COMPILER_LAUNCHER=ccache PYTHONPATH="$(pwd):$PYTHONPATH" $CI_PROJECT_DIR/.ci/run-logged.sh conan-build python3 .ci/run_conan.py build -s build_type=Release
 
 build-conan-gcc9-release:
   image: $DOCKER_REGISTRY/rewriting/ddisasm/conan-ubuntu20:$IMAGE_TAG
@@ -552,6 +552,10 @@ build-static:
   cache:
     paths: [ccache]
   tags: [bigmem]
+  artifacts:
+    when: on_failure
+    paths: [ci-logs]
+    expire_in: 1 week
   script:
     # install capstone
     - !reference [.setup-apt]
@@ -566,7 +570,7 @@ build-static:
     - mkdir gtirb/build
     - cd gtirb/build
     - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_BUILD_SHARED_LIBS=OFF -DGTIRB_ENABLE_TESTS=OFF
-    - make
+    - $CI_PROJECT_DIR/.ci/run-logged.sh gtirb-make make
     - cd python; python3 -m pip install .; cd ..
     - cd ../..
     # build gtirb-pprinter
@@ -575,18 +579,18 @@ build-static:
     - mkdir gtirb-pprinter/build
     - cd gtirb-pprinter/build
     - cmake ../ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGTIRB_PPRINTER_BUILD_SHARED_LIBS=OFF
-    - make
+    - $CI_PROJECT_DIR/.ci/run-logged.sh gtirb-pprinter-make make
     - cd ../..
     # build ddisasm
     - mkdir build
     - cd build
     - cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DDDISASM_BUILD_SHARED_LIBS=OFF -DDDISASM_GENERATE_MANY=ON
-    - make -j8
+    - $CI_PROJECT_DIR/.ci/run-logged.sh ddisasm-make make -j8
     # Report ccache stats.
     - ccache --show-stats
     # Run the regression tests.
     - python3 -m pip install -r ../requirements-dev.txt --extra-index-url=$EXTRA_INDEX_URL --pre
-    - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH ctest -V
+    - PATH=$(pwd)/../gtirb-pprinter/build/bin:$(pwd)/bin:$PATH $CI_PROJECT_DIR/.ci/run-logged.sh ctest ctest -V
 
 
 # The jobs with name "pages" gets uploaded to gitlab pages.
