@@ -284,6 +284,16 @@ function(GENERATE_ARCH_STATIC_LIB)
                            PRIVATE -fno-var-tracking-assignments)
   endif()
 
+  # Limit Clang debug info for generated datalog code to line tables. Full -g at
+  # -O3 produces >4GB of .debug_loc across all arch libraries, which overflows
+  # 32-bit DWARF relocations when linking ddisasm.
+  if(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang)
+    target_compile_options(
+      ddisasm_datalog_${ARCH}
+      PRIVATE
+        $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:-gline-tables-only>)
+  endif()
+
   list(APPEND GENERATED_STATIC_LIB ddisasm_datalog_${ARCH})
   set(GENERATED_STATIC_LIB
       ${GENERATED_STATIC_LIB}

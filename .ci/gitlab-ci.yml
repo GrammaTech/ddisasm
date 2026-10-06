@@ -511,6 +511,7 @@ conan-windows-release-package:
     - python3 -m pip install pip --upgrade
     - python3 -m pip install -r requirements-dev.txt --extra-index-url=$EXTRA_INDEX_URL --pre
     # Run tests
+    - test -d build || { echo "build/ artifact missing - check the upstream build job"; exit 1; }
     - cd build && PATH=$(pwd)/bin:$PATH ctest -V
 
 build-ubuntu20-gcc:
