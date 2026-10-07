@@ -57,6 +57,10 @@ function_entry_initial(EA):-
         direct_call(EA_caller,EA), code(EA_caller), !pc_load_call(EA_caller,EA)
     ).
 
+.decl opt_function_entry_initial(EA:address, Bin:unsigned)
+opt_function_entry_initial(EA, EA / BIN_SIZE) :-
+    function_entry_initial(EA).
+
 function_entry_name(EA,SymbolName):-
     function_entry(EA),
     best_func_symbol(EA,SymbolName).
@@ -113,10 +117,14 @@ function_without_callframe(EA):-
 in_function_initial(Block,Block):-
     function_entry(Block).
 
+.decl opt_refined_block(Block:address, Bin:unsigned)
+opt_refined_block(Block, Block / BIN_SIZE) :-
+    refined_block(Block).
+
 in_function_initial(Block,Begin):-
     function_entry(Begin),
-    fde_addresses(Begin,End),
-    refined_block(Block),
+    opt_fde_addresses(Begin,End,Bin),
+    opt_refined_block(Block,Bin),
     Begin <= Block,
     Block < End.
 

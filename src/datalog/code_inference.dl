@@ -71,12 +71,16 @@ There is a code block starting at 'Block'.
 /**
 The instruction at address 'EA' is code.
 */
-.decl code(EA:address) inline
+.decl code(EA:address)
 
 /**
 The last instruction of 'Block' is at address 'EA'
 */
 .decl block_last_instruction(Block:address,EA:address)
+
+.decl opt_block_last_instruction(Block:address,EA:address,Bin:unsigned)
+opt_block_last_instruction(Block,EA,EA / BIN_SIZE) :-
+    block_last_instruction(Block,EA).
 
 /**
 The block defined by address 'Block' extends from 'BegAddr' to 'EndAddr'.
@@ -256,14 +260,20 @@ max_instruction_size(MaxSize):-
         instruction(_,Size,_,_,_,_,_,_,_,_)
     }.
 
-invalid(Inst,"overlaps object"):-
-    defined_symbol(Start,ObjSize,"OBJECT",_,_,_,_,_,_),
-    max_instruction_size(MaxInstSize),
-    arch.instruction_at(EA,Inst),
-    Start-MaxInstSize < EA,
-    EA < Start+ObjSize,
-    instruction(Inst,InstSize,_,_,_,_,_,_,_,_),
-    Start < EA+InstSize.
+.decl opt_defined_symbol(Start:address, End:address, Bin:unsigned)
+opt_defined_symbol(Start, Start+ObjSize, Start / BIN_SIZE) :-
+    defined_symbol(Start,ObjSize,"OBJECT",_,_,_,_,_,_).
+
+opt_defined_symbol(Start, End, Bin+1) :-
+    opt_defined_symbol(Start, End, Bin),
+    Bin < End / BIN_SIZE.
+
+invalid(Inst,"overlaps object") :-
+    opt_instruction(EA, InstEnd, Inst, Bin),
+    opt_defined_symbol(SymbolStart, SymbolEnd, Bin),
+    EA < SymbolEnd,
+    SymbolStart < InstEnd.
+
 
 // propagate the invalid instructions backwards until ret or jmp (encoded in must_fallthrough)
 // propagate through direct jumps and calls
@@ -460,6 +470,10 @@ aligned_address_in_data(EA,Value):-
     address_in_data(EA,Value),
     arch.pointer_size(Pt_size),
     EA % Pt_size = 0.
+
+.decl opt_aligned_address_in_data_dual_binned(EA:address,Value:address,EABin:unsigned,ValueBin:unsigned)
+opt_aligned_address_in_data_dual_binned(EA,Value,EA / BIN_SIZE,Value / BIN_SIZE) :-
+    aligned_address_in_data(EA,Value).
 
 // start a new block given a possible target
 code_in_block_candidate(EA,EA):-
@@ -712,28 +726,36 @@ EA:    adr r0, RefAddr
 ...
 RefAddr: .string "..."
 */
+
+// Auxiliary predicate. Don't mix the two rules in one. The second is recursive, needs different
+// clause order.
+.decl aux_interesting_ascii_string(EAString:address,Size:unsigned,Bin:unsigned)
+aux_interesting_ascii_string(RefAddr,Size,Bin) :-
+    opt_ascii_string(RefAddr,End,Bin),
+    Size = End - RefAddr,
+    Size > 8.
+
+aux_interesting_ascii_string(RefAddr,Size,Bin) :-
+    code_in_block_candidate(EA,_),
+    arch.pc_relative_addr(EA,_,RefAddr),
+    opt_ascii_string(RefAddr,End,Bin),
+    Size = End - RefAddr,
+    !composite_data_access_candidate(EA,_,_,_).
+
 block_heuristic(RefAddr,"data",Size,0,"possible string"),
 data_block_candidate(RefAddr,Size):-
+    opt_loaded_section(BegSect,EndSect,Name,Bin),
     code_section(Name),
-    loaded_section(BegSect,EndSect,Name),
     BegSect <= RefAddr, RefAddr < EndSect,
-    ascii_string(RefAddr,End),
-    Size = End - RefAddr,
-    (
-        arch.pc_relative_addr(EA,_,RefAddr),
-        code_in_block_candidate(EA,_),
-        !composite_data_access_candidate(EA,_,_,_)
-        ;
-        Size > 8
-    ).
+    aux_interesting_ascii_string(RefAddr,Size,Bin).
 
 // Pointer to a string
 data_block_candidate(Addr,Pt_size):-
+    opt_loaded_section(BegSect,EndSect,Name,EABin),
     code_section(Name),
-    loaded_section(BegSect,EndSect,Name),
     BegSect <= Addr, Addr < EndSect,
-    aligned_address_in_data(Addr,Dest),
-    ascii_string(StrBeg,StrEnd),
+    opt_aligned_address_in_data_dual_binned(Addr,Dest,EABin,DestBin),
+    opt_ascii_string(StrBeg,StrEnd,DestBin),
     StrBeg <= Dest, Dest < StrEnd,
     arch.pointer_size(Pt_size).
 /**
@@ -779,11 +801,27 @@ Two blocks overlap.
 */
 .decl block_overlap(Block1:address,Type1:block_type,Size1:unsigned,Block2:address,Type2:block_type,Size2:unsigned)
 
+// Optimization predicate that associates with every block_candidate_boundaries entry all bins that the block may cover
+.decl opt_block_candidate_boundaries_all_bins(Block:address,Type:block_type,BegAddr:address,EndAddr:address,Bin:unsigned)
+
+opt_block_candidate_boundaries_all_bins(Block,Type,BegAddr,EndAddr,BegAddr / BIN_SIZE) :-
+    block_candidate_boundaries(Block,Type,BegAddr,EndAddr).
+
+opt_block_candidate_boundaries_all_bins(Block,Type,BegAddr,EndAddr,Bin+1) :-
+    opt_block_candidate_boundaries_all_bins(Block,Type,BegAddr,EndAddr,Bin),
+    Bin < EndAddr / BIN_SIZE.
+
+// Optimization predicate that associates with every block_candidate_boundaries entry only the beginning and ending bin
+.decl opt_block_candidate_boundaries_start_bin(Block:address,Type:block_type,BegAddr:address,EndAddr:address,Bin:unsigned)
+
+opt_block_candidate_boundaries_start_bin(Block,Type,BegAddr,EndAddr,BegAddr / BIN_SIZE) :-
+    block_candidate_boundaries(Block,Type,BegAddr,EndAddr).
+
+// Note the performance trick: for one block, we consider only the beginning and
+// ending bin. For the other, we consider all bins.
 block_overlap(Block1,Type1,Size1,Block2,Type2,Size2):-
-    block_candidate_boundaries(Block1,Type1,BegAddr1,EndAddr1),
-    block_candidate_boundaries(Block2,Type2,BegAddr2,EndAddr2),
-    Size1 = EndAddr1-BegAddr1,
-    Size2 = EndAddr2-BegAddr2,
+    opt_block_candidate_boundaries_start_bin(Block2,Type2,BegAddr2,EndAddr2,Bin),
+    opt_block_candidate_boundaries_all_bins(Block1,Type1,BegAddr1,EndAddr1,Bin),
     (
         Block1 != Block2
         ;
@@ -792,7 +830,9 @@ block_overlap(Block1,Type1,Size1,Block2,Type2,Size2):-
         Size1 != Size2
     ),
     BegAddr1 <= BegAddr2,
-    BegAddr2 < EndAddr1.
+    BegAddr2 < EndAddr1,
+    Size1 = EndAddr1-BegAddr1,
+    Size2 = EndAddr2-BegAddr2.
 
 block_overlap(Block2,Type2,Size2,Block1,Type1,Size1):-
     block_overlap(Block1,Type1,Size1,Block2,Type2,Size2).
@@ -1102,10 +1142,38 @@ next_start(PrevStart,End,NextStart):-
         Start > PrevStart
     }.
 
-next_end(PrevEnd,NextEnd):-
-    unresolved_interval(_,PrevEnd,_,_),
+.decl opt_unresolved_interval(End:address, Bin:unsigned)
+opt_unresolved_interval(End, End / BIN_SIZE) :-
+    unresolved_interval(_,End,_,_).
+
+// Break up the n^2 sorting into bins, resulting in k^2 speedup
+.decl opt_next_end_in_bin(PrevEnd:address, NextEnd:address, Bin:unsigned)
+opt_next_end_in_bin(PrevEnd,NextEnd,Bin):-
+    opt_unresolved_interval(PrevEnd,Bin),
     NextEnd = min End : {
-        unresolved_interval(_,End,_,_),
+        opt_unresolved_interval(End,Bin),
+        End > PrevEnd
+    }.
+
+// Intervals first or last in a bin. One doesn't have a previous, the other a next.
+.decl opt_unresolved_interval_at_bin_start(End:address)
+opt_unresolved_interval_at_bin_start(End) :-
+    opt_unresolved_interval(End, Bin),
+    !opt_next_end_in_bin(_, End, Bin).
+
+.decl opt_unresolved_interval_at_bin_end(End:address)
+opt_unresolved_interval_at_bin_end(End) :-
+    opt_unresolved_interval(End, Bin),
+    !opt_next_end_in_bin(End, _, Bin).
+
+// Union of the ordering inside a bin and between bin edges.
+next_end(PrevEnd,NextEnd) :-
+    opt_next_end_in_bin(PrevEnd,NextEnd,_).
+    
+next_end(PrevEnd,NextEnd):-
+    opt_unresolved_interval_at_bin_end(PrevEnd), // doesn't have a next
+    NextEnd = min End : {   // that's its next
+        opt_unresolved_interval_at_bin_start(End),
         End > PrevEnd
     }.
 
@@ -1164,15 +1232,71 @@ Only calculated for intervals that have prior intervals.
 */
 .decl wis_has_prior(I:unsigned,Count:unsigned)
 
-wis_has_prior(I,Prior):-
-    unresolved_interval_order(Prior,_,PriorEnd,_,_),
-    // check the we have the last interval ending at PriorEnd
-    unresolved_interval_order(Prior+1,_,NextEnd,_,_),
-    NextEnd > PriorEnd,
-    // find intervals that start after PriorEnd but before NextEnd.
-    // for those intervals `Prior` is the prior.
-    unresolved_interval_order(I,Start,_,_,_),
-    NextEnd > Start, Start >= PriorEnd.
+///// Original form of the rule.
+// wis_has_prior(I,Prior):-
+//     unresolved_interval_order(Prior,_,PriorEnd,_,_),
+//     // check the we have the last interval ending at PriorEnd
+//     unresolved_interval_order(Prior+1,_,NextEnd,_,_),
+//     NextEnd > PriorEnd,
+//     // find intervals that start after PriorEnd but before NextEnd.
+//     // for those intervals `Prior` is the prior.
+//     unresolved_interval_order(I,Start,_,_,_),
+//     NextEnd > Start, Start >= PriorEnd.
+//
+
+.decl opt1_unresolved_interval_order(ID:unsigned, Start:address, StartBin:unsigned)
+opt1_unresolved_interval_order(ID, Start, Start / BIN_SIZE) :-
+    unresolved_interval_order(ID,Start,_,_,_).
+
+.decl opt2_unresolved_interval_order(ID:unsigned, End:address, EndBin:unsigned)
+opt2_unresolved_interval_order(ID, End, End / BIN_SIZE) :-
+    unresolved_interval_order(ID,_,End,_,_).
+
+.decl wis_has_prior_in_bin(ID:unsigned, MaxPrior:unsigned, Bin:unsigned)
+wis_has_prior_in_bin(ID, MaxPrior, Bin) :-
+    opt1_unresolved_interval_order(ID, Start, Bin),
+    MaxPrior = max Prior : {
+        opt2_unresolved_interval_order(Prior,PriorEnd,Bin),
+        PriorEnd <= Start
+    }.
+// We could also add the conditions from the original code about Prior+1 existing, etc. But it's
+// unnecessary: there is certainly *some* interval satisfying them, since the current I does.
+
+.decl is_bin(Bin: unsigned)
+is_bin(Bin) :-
+    opt2_unresolved_interval_order(_, _, Bin).
+
+.decl max_end_in_bin(MaxEnd:unsigned, Bin:unsigned)
+max_end_in_bin(MaxEnd, Bin) :-
+    is_bin(Bin),
+    MaxEnd = max End : {
+        opt2_unresolved_interval_order(_, End, Bin)
+    }.
+
+.decl max_id_interval_with_max_end_in_bin(MaxID: unsigned, MaxEnd:unsigned)
+max_id_interval_with_max_end_in_bin(MaxID, MaxEnd) :-
+    max_end_in_bin(MaxEnd, Bin),
+    MaxID = max ID : {
+        opt2_unresolved_interval_order(ID, MaxEnd, Bin)
+    }.
+
+.decl wis_has_no_prior_in_bin(ID:unsigned, Start:unsigned)
+wis_has_no_prior_in_bin(ID, Start) :-
+    opt1_unresolved_interval_order(ID, Start, Bin),
+    !wis_has_prior_in_bin(ID, _, Bin).
+
+
+wis_has_prior(ID, MaxPrior) :-
+    wis_has_prior_in_bin(ID, MaxPrior, _).
+
+
+wis_has_prior(ID, MaxPrior) :-
+   wis_has_no_prior_in_bin(ID, Start),
+   MaxPrior = max Prior : {
+        max_id_interval_with_max_end_in_bin(Prior, MaxEnd),
+        MaxEnd <= Start
+   }.
+
 
 /**
 wis_prior extends wis_has_prior, including intervals that have no prior
@@ -1439,25 +1563,55 @@ block_heuristic(Block,"data",Size,0,"relative-jump-table-start"):-
 //////////////////////////////////////////////////////////////////////
 // code block candidate points
 
+// REVIEW: I don't understand the / 8, but I'm keeping semantic equivalence with the original
+// code.
+.decl opt_relocation_first_bin(Target:address,Size:unsigned,Bin:unsigned)
+.decl opt_relocation_all_bins(Target:address,Size:unsigned,Bin:unsigned)
+opt_relocation_first_bin(Target, Size, Target / BIN_SIZE),
+opt_relocation_all_bins(Target, Size, Target / BIN_SIZE) :-
+    relocation_size(Type,Size),
+    relocation(Target,Type,_,_,_,_,_).
+opt_relocation_all_bins(Target,Size,Bin+1) :-
+    opt_relocation_all_bins(Target,Size,Bin),
+    Bin < (Target+(Size/8)) / BIN_SIZE.
+
+.decl opt_code_in_block_candidate_refined_first_bin(EA:address,Block:address,Bin:unsigned)
+.decl opt_code_in_block_candidate_refined_all_bins(EA:address,Block:address,Bin:unsigned)
+opt_code_in_block_candidate_refined_first_bin(EA,Block,EA / BIN_SIZE),
+opt_code_in_block_candidate_refined_all_bins(EA,Block,EA / BIN_SIZE) :-
+    code_in_block_candidate_refined(EA,Block).
+
+opt_code_in_block_candidate_refined_all_bins(EA,Block,Bin+1) :-
+    opt_code_in_block_candidate_refined_all_bins(EA,Block,Bin),
+    instruction(EA,Size,_,_,_,_,_,_,_,_),
+    Bin < (EA + (Size/8)) / BIN_SIZE.
+
+// Two versions of the final rule, different binning optimization because of the
+// logical conditions.
 block_heuristic(Block,"code",BlockSize,0,"overlaps with relocation"):-
     (
         binary_isa("X86");
         binary_isa("X64")
     ),
-    code_in_block_candidate_refined(EA,Block),
+    opt_code_in_block_candidate_refined_first_bin(EA,Block,Bin),
+    // Block beginning intersects relocation bytes:
+    opt_relocation_all_bins(Target,Size,Bin),
+    EA >= Target, EA < Target + (Size/8),
+    block_candidate_boundaries(Block,"code",Start,End),
+    BlockSize = End - Start.
+
+block_heuristic(Block,"code",BlockSize,0,"overlaps with relocation"):-
     (
-        // Block beginning intersects relocation bytes:
-        relocation_size(Type,Size),
-        relocation(Target,Type,_,_,_,_,_),
-        EA >= Target, EA < Target + (Size/8)
-        ;
-        // Relocation target is in block but not aligned with operand offsets.
-        instruction(EA,Size,_,_,_,_,_,_,_,_),
-        relocation(Target,_,_,_,_,_,_),
-        Target > EA, Target < EA + (Size/8),
-        !instruction_immediate_offset(EA,_,Target-EA,_),
-        !instruction_displacement_offset(EA,_,Target-EA,_)
+        binary_isa("X86");
+        binary_isa("X64")
     ),
+    // Relocation target is in block but not aligned with operand offsets.
+    opt_relocation_first_bin(Target,_,Bin),
+    opt_code_in_block_candidate_refined_all_bins(EA,Block,Bin),
+    instruction(EA,Size,_,_,_,_,_,_,_,_),
+    Target > EA, Target < EA + (Size/8),
+    !instruction_immediate_offset(EA,_,Target-EA,_),
+    !instruction_displacement_offset(EA,_,Target-EA,_),
     block_candidate_boundaries(Block,"code",Start,End),
     BlockSize = End - Start.
 
@@ -1696,8 +1850,8 @@ negative_block_heuristic(Block,"code",Size,0,"conditional jump/return: fallthrou
 
 
 negative_block_heuristic(Block,"code",Size,0,"jump to string"):-
-    ascii_string(Beg,End),
-    direct_jump(EA,Dest),
+    opt_direct_jump(EA,Dest,Bin),
+    opt_ascii_string(Beg,End,Bin),
     Dest >= Beg,
     Dest < End,
     (
