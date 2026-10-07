@@ -1,8 +1,5 @@
 variables:
   GTIRB_VERSION: ""
-  # GTIRB branch built from source on non-release branches.
-  # reaffirm/provisional_tls_schema provides the ElfTlsBaseAddress schema.
-  GTIRB_DEV_BRANCH: "reaffirm/provisional_tls_schema"
   # gtirb-pprinter branch built from source on non-release branches.
   GTIRB_PPRINTER_DEV_BRANCH: "reaffirm/experimental-isas"
   GTIRB_PPRINTER_VERSION: ""
@@ -70,8 +67,9 @@ default:
   - mv /var/cache/apt/archives/*.deb .
 
 .install-deps:
-  # Release branches install GTIRB from APT. Other branches build GTIRB from
-  # $GTIRB_DEV_BRANCH, since the APT packages are built from GTIRB master.
+  # Release branches install GTIRB and gtirb-pprinter from APT. Other branches
+  # install GTIRB from APT and build gtirb-pprinter from
+  # $GTIRB_PPRINTER_DEV_BRANCH, which defines AuxData schemas ddisasm needs.
   - |
     if [[ $CI_COMMIT_REF_NAME =~ ^release-.* ]]; then
       # Use aptitude to make sure gtirb-pprinter is installed even if that means installing an old gtirb
@@ -81,8 +79,10 @@ default:
         libgtirb-pprinter-dev${GTIRB_PPRINTER_VERSION:+=$GTIRB_PPRINTER_VERSION-$(lsb_release -sc)} \
         gtirb-pprinter${GTIRB_PPRINTER_VERSION:+=$GTIRB_PPRINTER_VERSION-$(lsb_release -sc)}
     else
-      apt-get install -y libcapstone-dev${CAPSTONE_VERSION:+=1:$CAPSTONE_VERSION}
-      .ci/install-gtirb-dev.sh
+      apt-get install -y \
+        libcapstone-dev${CAPSTONE_VERSION:+=1:$CAPSTONE_VERSION} \
+        libgtirb-dev${GTIRB_VERSION:+=$GTIRB_VERSION-$(lsb_release -sc)}
+      .ci/install-gtirb-pprinter-dev.sh
     fi
 
 .install-capstone:
@@ -485,8 +485,9 @@ conan-windows-release-package:
     name: "$CI_COMMIT_REF_NAME-$CI_JOB_NAME"
     paths:
       - build
-      # GTIRB built from $GTIRB_DEV_BRANCH, reused by downstream jobs.
-      - gtirb-dev-staging
+      # gtirb-pprinter built from $GTIRB_PPRINTER_DEV_BRANCH, reused by
+      # downstream jobs.
+      - gtirb-pprinter-dev-staging
   cache:
     paths: [ccache]
   tags: [bigmem]
@@ -583,7 +584,7 @@ build-static:
     # upgrade pip
     - python3 -m pip install pip --upgrade
     # build GTIRB
-    - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_VERSION" || echo "$GTIRB_DEV_BRANCH")
+    - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
     - git clone https://git.grammatech.com/rewriting/gtirb.git -b $GTIRB_BRANCH
     - mkdir gtirb/build
     - cd gtirb/build
@@ -673,7 +674,7 @@ static-drivers:
     # upgrade pip
     - python3 -m pip install pip --upgrade
     # build GTIRB
-    - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_VERSION" || echo "$GTIRB_DEV_BRANCH")
+    - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
     - git clone https://git.grammatech.com/rewriting/gtirb.git -b $GTIRB_BRANCH
     - cd gtirb
     - mkdir build && cd build
@@ -868,7 +869,7 @@ docker-image:
   rules:
     *run-only-main
   script:
-    - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_VERSION" || echo "$GTIRB_DEV_BRANCH")
+    - GTIRB_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_VERSION" || echo "master")
     - GTIRB_PPRINTER_BRANCH=$([[ $CI_COMMIT_REF_NAME =~ ^release-.* ]] && echo "release-$GTIRB_PPRINTER_VERSION" || echo "$GTIRB_PPRINTER_DEV_BRANCH")
     - VERSION=$(awk '{s=(NR==1?s:s".")$2}END{print s}' version.txt)
     - GTIRB_COMMIT=$(git ls-remote https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/rewriting/gtirb | grep "refs/heads/$GTIRB_BRANCH\$" | awk '{print $1}')
