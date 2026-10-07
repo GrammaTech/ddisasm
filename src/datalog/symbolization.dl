@@ -579,20 +579,43 @@ string_candidate(EA,End,"ascii"):-
 /**
 String at EA is followed by another string at Next.
 */
+
+/// Original form of rule, took 90mins on wrt
+// subsequent_string_candidate(EA,Next):-
+//     string_candidate(EA,End,_),
+//     Next = min Begin : {
+//         string_candidate(Begin,_,_),
+//         Begin >= End
+//     },
+//     (
+//         End = Next
+//         ;
+//         Next - End < 8,
+//         padding_block_limit(Next)
+//     ).
+
+
 .decl subsequent_string_candidate(EA:address,Next:address)
+
+subsequent_string_candidate(EA,Next):-
+    string_candidate(EA,Next,_),
+    string_candidate(Next,_,_).
+
+// Hopefully this is a small enough subset that we don't need more optimization for this
+// case, the n^2 computation is efficient enough.
+.decl potential_subsequent_string_candidate(Begin:address)
+potential_subsequent_string_candidate(Begin) :-
+    string_candidate(Begin,_,_),
+    padding_block_limit(Begin).
 
 subsequent_string_candidate(EA,Next):-
     string_candidate(EA,End,_),
     Next = min Begin : {
-        string_candidate(Begin,_,_),
+        potential_subsequent_string_candidate(Begin),
         Begin >= End
     },
-    (
-        End = Next
-        ;
-        Next - End < 8,
-        padding_block_limit(Next)
-    ).
+    Next - End < 8.
+
 
 /**
 String candidate refinement projects candidate string references onto a compound

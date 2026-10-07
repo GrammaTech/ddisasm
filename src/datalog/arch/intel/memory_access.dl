@@ -26,9 +26,9 @@ relations for x86.
 */
 
 memory_access("LOAD",EA,1,2,DstReg,BaseReg,IndexReg,Mult,Offset):-
+    op_indirect_mapped(SrcOp,"NONE",BaseReg,IndexReg,Mult,Offset,_),
     instruction(EA,_,_,Operation,SrcOp,DestOp,0,0,_,_),
     move_operation(Operation),
-    op_indirect_mapped(SrcOp,"NONE",BaseReg,IndexReg,Mult,Offset,_),
     op_regdirect_contains_reg(DestOp,DstReg).
 
 // We consider the offset w.r.t the stack pointer BEFORE it has been updated.

@@ -44,11 +44,16 @@ other access.
 // auxiliary predicate to  compute the amount of read memory
 .decl instruction_memory_access_size(EA:address,Op_index:operand_index,Size:unsigned)
 
-instruction_memory_access_size(EA,Index,SizeAccess):-
-    !invalid(EA,_),
-    instruction_get_operation(EA,Operation),
+// Materialize intermediate join result
+.decl aux_instruction_get_op_indirect(EA:address,Index:operand_index,NBytes:unsigned)
+aux_instruction_get_op_indirect(EA,Index,NBytes) :-
     instruction_get_op(EA,Index,Op),
-    op_indirect(Op,_,_,_,_,_,NBytes),
+    op_indirect(Op,_,_,_,_,_,NBytes).
+
+instruction_memory_access_size(EA,Index,SizeAccess):-
+    aux_instruction_get_op_indirect(EA,Index,NBytes),
+    instruction_get_operation(EA,Operation),
+    !invalid(EA,_),
     (
         // If the dest op is a register, see if there is a corresponding
         // data_access_size available.

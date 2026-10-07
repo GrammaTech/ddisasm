@@ -295,8 +295,12 @@ operation_alignment_required("VMOVNTPD").
 operation_alignment_required("VMOVNTDQ").
 operation_alignment_required("VMOVNTDQA").
 
+.decl opt_operation(Operation:symbol)
+opt_operation(Operation) :-
+    instruction_get_operation(_, Operation).
+
 operation_alignment_required(Operation):-
-    instruction_get_operation(_, Operation),
+    opt_operation(Operation),
     (
         // Floating-Point/Integer Packed Arithmetic
         substr(Operation,0,4) = "ADDP";
