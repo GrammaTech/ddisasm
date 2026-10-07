@@ -1,7 +1,7 @@
 # 1.9.6 (Unreleased)
 
 * Generate the provisional `elfTlsBaseAddress` AuxData table for ELF binaries
-  with TLS sections (requires GTIRB `reaffirm/provisional_tls_schema`).
+  with TLS sections (schema defined in gtirb-pprinter).
 * Fix bug that could add invalid alignment based on overlapping instructions,
   causing incorrect alignment requirements and data corruption.
 

@@ -551,4 +551,5 @@ of fields and [The Load Configuration Structure][LOADCONFIG] for additional info
 |  Type | `std::tuple<uint64_t, uint64_t>`                                                                                |
 | Value | The original start address of the PT_TLS segment, and the address ddisasm rebased TLS sections to.              |
 
-Used to reverse the TLS rebasing when printing.
+Used to reverse the TLS rebasing when printing. The schema is defined in
+gtirb-pprinter's `AuxDataSchema.hpp`.
