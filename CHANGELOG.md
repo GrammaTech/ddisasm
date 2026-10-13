@@ -4,6 +4,10 @@
   with TLS sections (schema defined in gtirb-pprinter).
 * Fix bug that could add invalid alignment based on overlapping instructions,
   causing incorrect alignment requirements and data corruption.
+* Fix bug that duplicated the CIE's initial CFI instructions each time a
+  binary was re-disassembled and reassembled. `.cfi_startproc` entries in the
+  `cfiDirectives` AuxData table now have the argument `1`, which tells the
+  pretty-printer to print `.cfi_startproc simple`.
 
 # 1.9.5
 

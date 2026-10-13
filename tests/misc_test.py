@@ -573,6 +573,31 @@ class AuxDataTests(unittest.TestCase):
 
             self.assertTrue(all(b in alignments for b in func_blocks))
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_cfi_startproc_simple(self):
+        """
+        Test that every `.cfi_startproc` is marked `simple` (operand 1),
+        since the CIE's initial instructions are emitted explicitly.
+        """
+        binary = Path("ex")
+        with cd(ex_asm_dir / "ex_cfi_directives"):
+            self.assertTrue(compile("gcc", "g++", "-O0", []))
+            ir_library = disassemble(binary).ir()
+            m = ir_library.modules[0]
+            cfi = m.aux_data["cfiDirectives"].data
+
+            startprocs = [
+                directive
+                for directives in cfi.values()
+                for directive in directives
+                if directive[0] == ".cfi_startproc"
+            ]
+            self.assertTrue(startprocs)
+            for directive in startprocs:
+                self.assertEqual(list(directive[1]), [1])
+
 
 class RawGtirbTests(unittest.TestCase):
     @unittest.skipUnless(

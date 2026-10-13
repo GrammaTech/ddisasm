@@ -233,7 +233,7 @@ add_definitions(-DGTIRB_WRAP_UTILS_IN_NAMESPACE)
 # ---------------------------------------------------------------------------
 # pretty-printer
 # ---------------------------------------------------------------------------
-find_package(gtirb_pprinter 2.0.0 REQUIRED)
+find_package(gtirb_pprinter 2.2.6 REQUIRED)
 
 # ---------------------------------------------------------------------------
 # libehp
