@@ -391,7 +391,11 @@ symbol_minus_symbol(InstructionAddr+1,Size-1,Addr+(AdvanceUnsigned*CodeAlignment
 
 // only generate startproc and endproc together or none
 
-cfi_directive(StartFunction,0,0,".cfi_startproc","",0,0,0),
+// `.cfi_startproc` has a single operand 1, which the pretty-printer prints as
+// `.cfi_startproc simple`. The directives below already include the CIE's
+// initial instructions, so the assembler must not add its default ones;
+// otherwise they would be duplicated in every disassemble/reassemble round.
+cfi_directive(StartFunction,0,0,".cfi_startproc","",1,1,0),
 cfi_directive(Block,BlockSize,LastLocalIndex,".cfi_endproc","",0,0,0):-
     !option("no-cfi-directives"),
     fde_block_addresses(FdeAddr,StartFunction, EndAddr),
