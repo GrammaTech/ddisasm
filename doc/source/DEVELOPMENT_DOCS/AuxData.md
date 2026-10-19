@@ -451,6 +451,12 @@ A cfi directive contains: a string describing the directive, a vector of numeric
 arguments, and an optional symbolic argument (represented with the UUID of the
 symbol).
 
+A `.cfi_startproc` directive may have a single numeric argument: `1` means
+`.cfi_startproc simple` (the assembler does not emit the target's default
+initial CFI instructions, because the directive list already contains them),
+while no argument or `0` means a plain `.cfi_startproc`. ddisasm always emits
+`1`, since it recovers the CIE's initial instructions as explicit directives.
+
 ## PE
 
 ### peImportEntries

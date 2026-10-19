@@ -2,6 +2,10 @@
 
 * Fix bug that could add invalid alignment based on overlapping instructions,
   causing incorrect alignment requirements and data corruption.
+* Fix bug that duplicated the CIE's initial CFI instructions each time a
+  binary was re-disassembled and reassembled. `.cfi_startproc` entries in the
+  `cfiDirectives` AuxData table now have the argument `1`, which tells the
+  pretty-printer to print `.cfi_startproc simple`.
 * Fix `_DYNAMIC` being placed at the end of the section before `.dynamic`
   instead of at the start of `.dynamic` in disassembled ELF binaries.
   This could cause the rewritten binary to contain a stray `_DYNAMIC` symbols
