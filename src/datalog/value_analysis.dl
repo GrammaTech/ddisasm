@@ -149,11 +149,11 @@ value_reg(EA,Reg,EA,"NONE",0,Immediate,1):-
 
 // load immediate from stack
 value_reg(EALoad,Reg2,EALoad,"NONE",0,Immediate,1):-
-    arch.store_immediate(EAStore,_,_,Immediate,RegBaseStore,"NONE",_,StackPosStore),
     stack_def_use.def_used(EAStore,[RegBaseStore,StackPosStore],EALoad,[RegBaseLoad,StackPosLoad],_),
+    arch.store_immediate(EAStore,_,_,Immediate,RegBaseStore,"NONE",_,StackPosStore),
     arch.load(EALoad,_,_,Reg2,RegBaseLoad,"NONE",_,StackPosLoad),
     def_used_for_address(EALoad,Reg2,_).
-   .plan 1:(4,3,2,1)
+   .plan 1:(4,3,1,2)
 
 //reset a register
 value_reg(EA,Reg,EA,"NONE",0,0,1):-
@@ -199,8 +199,10 @@ value_reg(EA,Reg,EA,"NONE",0,Val,1):-
 // Load QWORD or DWORD from memory where memory is accessed using a register
 // but the register has a constant value.
 
-// This rule has to be split in two because the two parts have a different number
-// of positive clauses and hence cannot admit the same plan.
+// These two rules could be unified into one (with a disjunction) in
+// terms of logic understanding, since they have significant commonality. However,
+// They have different plans because of a different number of positive clauses, so
+// unifying would destroy optimization.
 value_reg(EA,Reg,EA,"NONE",0,Val,1):-
     const_value_reg_used(EA,_,_,BaseReg,RegVal),
     arch.load(EA,SrcOp,_,Reg,BaseReg,"NONE",_,Offset),
@@ -250,7 +252,7 @@ value_reg(EA,DstReg,EA,"NONE",0,Val,Steps3):-
         Op = "XOR", Val = SrcVal1 bxor  SrcVal2
     ),
     Steps3 = max(Steps1,Steps2)+2.
-  .plan 1:(5,4,3,2,1,6)
+  .plan 1:(2,1,3,4,5,6), 2:(4,3,2,1,5,6), 3:(5,4,3,2,1,6)
    
 /**
 Constant folding for bitwise operations (reg op imm)
@@ -269,6 +271,7 @@ value_reg(EA,DstReg,EA,"NONE",0,Val,Steps+1):-
         Op = "OR",  Val = SrcVal bor   Imm;
         Op = "XOR", Val = SrcVal bxor  Imm
     ).
+   .plan 1:(2,1,3,4)
 
 // GOT-relative LEA. (Note that we drop the GOT Register.)
 value_reg(EA,Reg,EA,"NONE",0,Address,1):-

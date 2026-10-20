@@ -44,7 +44,9 @@ other access.
 // auxiliary predicate to  compute the amount of read memory
 .decl instruction_memory_access_size(EA:address,Op_index:operand_index,Size:unsigned)
 
-// Materialize intermediate join result
+// Materialize intermediate join result. This is not a semantically meaningful
+// predicate, it's an implementation detail. Inline it in its use to see the
+// intended form of the rule.
 .decl aux_instruction_get_op_indirect(EA:address,Index:operand_index,NBytes:unsigned)
 aux_instruction_get_op_indirect(EA,Index,NBytes) :-
     instruction_get_op(EA,Index,Op),

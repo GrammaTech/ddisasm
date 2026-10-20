@@ -957,8 +957,29 @@ impossible_block(BlockA,TypeA,SizeA,"implies self-overlapping block"):-
 
 
 //// START HAIRY OPTIMIZATION
-// The next impossible_block computation is outrageously wasteful, involving an enormous self-join.
-// We try to limit it by defining many subsets of the joined predicates.
+
+//// The original form of the rule is below, commented out. This form is best for
+//// understanding the intent, but involved an enormous self-join.
+//
+// impossible_block(BlockA,TypeA,SizeA,"implies overlapping blocks"):-
+//     block_implies_block(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
+//     block_implies_block(BlockA,TypeA,SizeA,BlockC,TypeC,SizeC),
+//     (
+//         BlockB != BlockC,
+//         // Implying overlapping data blocks is permissible; code might access
+//         // data both as a series of bytes and as a word, resulting in
+//         // different overlapping data blocks.
+//         TypeB != "data",
+//         TypeC != "data"
+//         ;
+//         TypeB != TypeC
+//     ),
+//     block_overlap(BlockB,TypeB,SizeB,BlockC,TypeC,SizeC),
+//     !known_block(BlockA,TypeA,SizeA,_).
+
+//// The new form, below, is semantically equivalent, after application of
+//// several semantics-preserving transformations. It defines, heuristically,
+//// many subsets of the joined predicates.
 
 .decl block_can_overlap_with_non_data_block(Block:address,Type:block_type,Size:unsigned)
 block_can_overlap_with_non_data_block(Block,Type,Size) :-

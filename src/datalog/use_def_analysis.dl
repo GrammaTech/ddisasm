@@ -303,7 +303,9 @@ analysis for both registers and stack variables.
     */
     .decl live_var_at_prior_used(EA_used:address,BlockUsed:address,Var:T)
 
-    // Materialize intermediate join and apply filters early, main rule was costly.
+    // This predicate is not semantically meaningful, it is just an implementation detail
+    // for optimization purposes. Materializes intermediate join and applies filters early.
+    // Inline it in its position of use to see the cleaner, original form of the rule.
     .decl aux_used_in_block(Block:address,EA_used:address,Var:T)
     aux_used_in_block(Block,EA_used,Var) :-
         used_in_block(Block,EA_used,Var,_),
@@ -412,6 +414,14 @@ analysis for both registers and stack variables.
         def_used(EA_def,Var,EA_used,_),
         live_var_used(NextUsedBlock,Var,Var,Next_EA_used,NextIndex,_).
     .plan 1:(2,1,3), 2:(3,1,2)
+    // More complex plan since all three clauses in the body of the rule
+    // are over predicates that are mutually-recursive with the head predicate.
+    // The rule executes in 3 versions:
+    //  - Version 0 (default) executes with live_var_at_prior_used being a delta,
+    //    i.e., with the fresh tuples of the latest recursion step being joined
+    //    with the rest of the predicates.
+    //  - Version 1 has def_used as a delta, which is in position 2.
+    //  - Version 2 has live_var_used as a delta, which is in position 3.
 
     // Inter-procedural def-use
     def_used(EA_def,Reg,EA_used,Index):-
@@ -558,22 +568,25 @@ stack_base_reg_move(Block,EA,Src,Dst):-
     live_var_used_in_block(Block,EA_used,[BaseReg,StackPos],[BaseReg,StackPos],EA_used,Index,0):-
         used_in_block(Block,EA_used,[BaseReg,StackPos],Index).
 
-    // The next derivation of live_var_used_in_block ends up taking most of the time in otherwise-optimized executions.
-    // Great index optimization is essential, hence the complex plan and unfolding of records for good join indexing.
-    // Also manual materialization of intermediate results.
+    ///// OPTIMIZATION SCOPE BEGIN
+    // The implementation below has several predicates that are not semantically meaningful,
+    // only used for optimization purposes. All can be inlined into a single rule (the final one
+    // in this optimization scope) to recover the "clean" original form of the logic.
+    // The optimization is based on good indexing (also via unfolding of records) and 
+    // manual materialization of intermediate results.
 
-    // Unfold every record ever arising, keep only the BaseReg.
+    // Unfold every record ever needed here, keep only the BaseReg.
     .decl decode_live_var(LiveVar:stack_var, BaseReg:register)
     decode_live_var(LiveVar, BaseReg) :-
-        live_var_used_not_at_moves_limit(_,LiveVar,_,_,_,_),
-        LiveVar = [BaseReg,StackPos], StackPos = StackPos.
+        live_var_used_within_moves_limit(_,LiveVar,_,_,_,_),
+        LiveVar = [BaseReg,StackPos], UNUSED(StackPos).
 
-    .decl live_var_used_not_at_moves_limit(Block:address,LiveVar:stack_var,UsedVar:stack_var,EA_used:address,Index:operand_index,Moves:unsigned)
-    live_var_used_not_at_moves_limit(Block,LiveVar,UsedVar,EA_used,Index,Moves) :-
+    .decl live_var_used_within_moves_limit(Block:address,LiveVar:stack_var,UsedVar:stack_var,EA_used:address,Index:operand_index,Moves:unsigned)
+    live_var_used_within_moves_limit(Block,LiveVar,UsedVar,EA_used,Index,Moves) :-
         live_var_used(Block,LiveVar,UsedVar,EA_used,Index,Moves),
         moves_limit(MovesLimit),
         Moves <= MovesLimit.
-        
+
     .decl opt_adjusts_stack_or_base_reg_move(Block:address, BaseReg:register)
     opt_adjusts_stack_or_base_reg_move(Block, BaseReg) :-
         adjusts_stack_in_block(Block,_,BaseReg,_);
@@ -585,14 +598,28 @@ stack_base_reg_move(Block,EA,Src,Dst):-
         live_var_at_block_end(Block,BlockUsed,LiveVar),
         decode_live_var(LiveVar, BaseReg),
         opt_adjusts_stack_or_base_reg_move(Block, BaseReg),
-        live_var_used_not_at_moves_limit(BlockUsed,LiveVar,VarUsed,EA_used,Index,Moves),
+        live_var_used_within_moves_limit(BlockUsed,LiveVar,VarUsed,EA_used,Index,Moves),
         block_last_instruction(Block,LastEA),
         next(LastEA,NextEA).
       .plan 1:(2,1,3,4,5,6), 2:(4,1,2,3,5,6)
-    /// The above is a very expensive rule, can be optimized further, but only by investing
-    /// memory, e.g., materializing a copy of live_var_at_block_end (which can be huge)
-    /// with decoded LiveVar. All of the partial joins seem to require significant memory,
-    /// even the seemingly simple join of decode_live_var with opt_adjusts_stack_... .
+    // Plan based on mutual recursion between live_var_used_in_block (head),
+    // live_var_at_block_end (position 1, default plan applies),
+    // decode_live_var (iteration should start at position 2),
+    // live_var_used_within_moves_limit (position 4).
+    
+    /// The above is a very expensive rule, can be optimized further so that it does not
+    /// do the decoding of the LiveVar record (to retrieve its BaseReg) in the middle of the
+    /// critical path, i.e., the loop performing the join of predicates. However, this would
+    /// require investing significant memory, which would be a tradeoff.
+    /// Alternatives tried include:
+    ///  - A copy of live_var_at_block_end with BaseReg as a separate column; live_var_at_block_end
+    ///    can be very large.
+    ///  - Precomputing the join of decode_live_var with
+    //     opt_adjusts_stack_or_base_reg_move: it pairs every stack variable
+    //     with every block that changes its base register, which is large
+    //     because the stack pointer is adjusted in many blocks.
+
+    ///// OPTIMIZATION SCOPE END
 
     // Propagate
     live_var_used_in_block(Block,EA,[BaseReg,StackPos],[FinalBaseReg,FinalStackPos],EA_used,Index,Moves):-

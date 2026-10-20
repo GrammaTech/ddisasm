@@ -367,17 +367,50 @@ To: the address at which the limit is active
 last_value_reg_limit(From,To,Reg,Value,LimitType,0):-
     value_reg_limit(From,To,Reg,Value,LimitType).
 
+
+// Simple propagation
+
+//// The original form of the logic below is as follows, commented-out. This form
+//// may be best for understanding.
+//// The original rule had three disjunctions. Needed to break up for optimization because there
+//// are different numbers of positive clauses, hence cannot admit a single plan.
+
+// last_value_reg_limit(BlockEnd,BlockNext,PropagatedReg,PropagatedVal,PropagatedType,Steps+1):-
+//     step_limit_small(StepLimit),
+//     last_value_reg_limit(_,EA,PropagatedReg,PropagatedVal,PropagatedType,Steps),
+//     Steps <= StepLimit,
+//     code_in_block(EA,Block),
+//     block_next(Block,BlockEnd,BlockNext),
+//     !reg_def_use.defined_in_block(Block,PropagatedReg),
+//     (
+//         // If there is no conditional jump at this CFG edge, then there is no new value_reg_limit.
+//         !conditional_jump(BlockEnd);
+//         // The conditional branch does not support generating value_reg_limit.
+//         no_value_reg_limit(BlockEnd);
+//         // comparison defines a different register
+//         cmp_defines(BlockEnd,BlockNext,Reg), Reg != PropagatedReg;
+//         // comparison defines this register, but not for this path.
+//         cmp_defines(BlockEnd,DefinedNext,PropagatedReg), BlockNext != DefinedNext;
+//         // A compatible value_reg_limit exists
+//         value_reg_limit(BlockEnd,BlockNext,Reg,Val,Type),
+//         (
+//             // Different registers.
+//             Reg != PropagatedReg, UNUSED(Val), UNUSED(Type);
+
+//             // The new limit is a less restrictive min or max.
+//             Reg = PropagatedReg, PropagatedType = "MAX", Type = "MAX", PropagatedVal < Val;
+//             Reg = PropagatedReg, PropagatedType = "MIN", Type = "MIN", PropagatedVal > Val
+//         )
+//     ).
+
+// Not a meaningful predicate, just an implementation (i.e., optimization) detail.
+// When trying to understand the code, inline it where it's used.
 .decl opt_last_value_reg_limit(From:address,To:address,Block:address,Reg:register,Value:number,LimitType:limit_type,Steps:unsigned)
 opt_last_value_reg_limit(From,To,Block,Reg,Value,LimitType,Steps) :-
     last_value_reg_limit(From,To,Reg,Value,LimitType,Steps),
     step_limit_small(StepLimit),
     code_in_block(To,Block),
     Steps <= StepLimit.
-
-// Simple propagation
-
-// This used to be a single rule with disjunctions, needs to break up because there
-// are different numbers of positive clauses, hence cannot admit a single plan.
 
 last_value_reg_limit(BlockEnd,BlockNext,PropagatedReg,PropagatedVal,PropagatedType,Steps+1):-
     opt_last_value_reg_limit(_,_,Block,PropagatedReg,PropagatedVal,PropagatedType,Steps),
