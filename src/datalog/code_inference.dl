@@ -955,129 +955,22 @@ impossible_block(BlockA,TypeA,SizeA,"implies self-overlapping block"):-
     block_overlap(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
     !known_block(BlockA,TypeA,SizeA,_).
 
-
-//// START HAIRY OPTIMIZATION
-
-//// The original form of the rule is below, commented out. This form is best for
-//// understanding the intent, but involved an enormous self-join.
-//
-// impossible_block(BlockA,TypeA,SizeA,"implies overlapping blocks"):-
-//     block_implies_block(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
-//     block_implies_block(BlockA,TypeA,SizeA,BlockC,TypeC,SizeC),
-//     (
-//         BlockB != BlockC,
-//         // Implying overlapping data blocks is permissible; code might access
-//         // data both as a series of bytes and as a word, resulting in
-//         // different overlapping data blocks.
-//         TypeB != "data",
-//         TypeC != "data"
-//         ;
-//         TypeB != TypeC
-//     ),
-//     block_overlap(BlockB,TypeB,SizeB,BlockC,TypeC,SizeC),
-//     !known_block(BlockA,TypeA,SizeA,_).
-
-//// The new form, below, is semantically equivalent, after application of
-//// several semantics-preserving transformations. It defines, heuristically,
-//// many subsets of the joined predicates.
-
-.decl block_can_overlap_with_non_data_block(Block:address,Type:block_type,Size:unsigned)
-block_can_overlap_with_non_data_block(Block,Type,Size) :-
-    (block_overlap(Block,Type,Size,_,TypeB,_);
-     block_overlap(_,TypeB,_,Block,Type,Size)),
-    TypeB != "data".
-
-.decl block_implies_block_that_can_overlap_with_non_data_block(BlockA:address,TypeA:block_type,SizeA:unsigned,BlockB:address,TypeB:block_type,SizeB:unsigned)
-block_implies_block_that_can_overlap_with_non_data_block(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB) :-
-    block_implies_block(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
-    block_can_overlap_with_non_data_block(BlockB,TypeB,SizeB).
-
-.decl block_implies_some_block_that_can_overlap_with_non_data_block(BlockA:address,TypeA:block_type,SizeA:unsigned)
-block_implies_some_block_that_can_overlap_with_non_data_block(BlockA,TypeA,SizeA) :-
-    block_implies_block_that_can_overlap_with_non_data_block(BlockA,TypeA,SizeA,_,_,_).
-    
-.decl candidate_block1(Block:address,Type:block_type,Size:unsigned)
-candidate_block1(BlockA,TypeA,SizeA) :-
-    block_implies_some_block_that_can_overlap_with_non_data_block(BlockA,TypeA,SizeA),
-    !known_block(BlockA,TypeA,SizeA,_).
-     
-.decl block_implies_N_blocks(Block:address,Type:block_type,Size:unsigned,c:number)
-block_implies_N_blocks(Block,Type,Size, count:{ block_implies_block_that_can_overlap_with_non_data_block(Block,_,_,_,_,_) }) :-
-    candidate_block1(Block,Type,Size).
-
-.decl block_implies_many_blocks(Block:address,Type:block_type,Size:unsigned)
-block_implies_many_blocks(Block,Type,Size) :-
-    block_implies_N_blocks(Block,Type,Size,c),
-    c > 1.
-
-// First filtered subset. Hopefully much smaller than the full block_implies_block
-.decl block_implies_block_subset1(BlockA:address,TypeA:block_type,SizeA:unsigned,BlockB:address,TypeB:block_type,SizeB:unsigned)
-block_implies_block_subset1(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB) :-
-    block_implies_many_blocks(BlockA,TypeA,SizeA),
-    block_implies_block_that_can_overlap_with_non_data_block(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
-    TypeB != "data".
-
-
-// Now second optimization, even more challenging. Wasting a bit of memory, but there's little
-// hope of making this scale for large programs unless we push all filters as early as possible.
-
-// This is actually rare! That's the most useful concept for this shrinking.
-.decl block_can_overlap_with_block_of_different_type(Block:address,Type:block_type,Size:unsigned)
-block_can_overlap_with_block_of_different_type(Block,Type,Size) :-
-    (block_overlap(Block,Type,Size,_,TypeB,_);
-     block_overlap(_,TypeB,_,Block,Type,Size)),
-    Type != TypeB.
-
-.decl block_implies_block_that_can_overlap_with_block_of_different_type(BlockA:address,TypeA:block_type,SizeA:unsigned,BlockB:address,TypeB:block_type,SizeB:unsigned)
-block_implies_block_that_can_overlap_with_block_of_different_type(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB) :-
-    block_implies_block(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
-    block_can_overlap_with_block_of_different_type(BlockB,TypeB,SizeB).
-
-.decl block_implies_block_of_type(BlockA:address,TypeA:block_type,SizeA:unsigned,TypeB:block_type)
-block_implies_block_of_type(BlockA,TypeA,SizeA,TypeB) :-
-    block_implies_block_that_can_overlap_with_block_of_different_type(BlockA,TypeA,SizeA,_,TypeB,_), 
-    !known_block(BlockA,TypeA,SizeA,_).
-
-.decl candidate_block2(Block:address,Type:block_type,Size:unsigned)
-candidate_block2(Block,Type,Size) :-
-    block_implies_block_of_type(Block,Type,Size,_).
-
-.decl block_implies_blocks_of_N_types(Block:address,Type:block_type,Size:unsigned,c:number)
-block_implies_blocks_of_N_types(Block,Type,Size, count:{ block_implies_block_of_type(Block,Type,Size,_) }) :-
-    candidate_block2(Block,Type,Size).
-
-.decl block_implies_blocks_of_many_types(Block:address,Type:block_type,Size:unsigned)
-block_implies_blocks_of_many_types(Block,Type,Size) :-
-    block_implies_blocks_of_N_types(Block,Type,Size,c),
-    c > 1.
-
-// Second filtered subset. Hopefully much smaller than the full block_implies_block
-.decl block_implies_block_subset2(BlockA:address,TypeA:block_type,SizeA:unsigned,BlockB:address,TypeB:block_type,SizeB:unsigned)
-block_implies_block_subset2(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB) :-
-    block_implies_blocks_of_many_types(BlockA,TypeA,SizeA),
-    block_implies_block_that_can_overlap_with_block_of_different_type(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB).
-
-
-// Now the rule that we're optimizing, split into two cases
-
-// Case 1: none of B,C are data blocks
 impossible_block(BlockA,TypeA,SizeA,"implies overlapping blocks"):-
-    block_implies_block_subset1(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
     block_overlap(BlockB,TypeB,SizeB,BlockC,TypeC,SizeC),
-    block_implies_block_subset1(BlockA,TypeA,SizeA,BlockC,TypeC,SizeC),
-    BlockB != BlockC.
+    (
+        BlockB != BlockC,
+        // Implying overlapping data blocks is permissible; code might access
+        // data both as a series of bytes and as a word, resulting in
+        // different overlapping data blocks.
+        TypeB != "data",
+        TypeC != "data"
+        ;
+        TypeB != TypeC
+    ),
+    block_implies_block(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
+    block_implies_block(BlockA,TypeA,SizeA,BlockC,TypeC,SizeC),
+    !known_block(BlockA,TypeA,SizeA,_).
 
-// Case 2: B,C are of different types
-impossible_block(BlockA,TypeA,SizeA,"implies overlapping blocks"):-
-    block_implies_block_subset2(BlockA,TypeA,SizeA,BlockB,TypeB,SizeB),
-    block_implies_block_subset2(BlockA,TypeA,SizeA,BlockC,TypeC,SizeC),
-    TypeB != TypeC,
-    block_overlap(BlockB,TypeB,SizeB,BlockC,TypeC,SizeC).
-
-// The cases in the above are implying that overlapping data blocks is permissible; code might access
-// data both as a series of bytes and as a word, resulting in different overlapping data blocks.
-
-//// END HAIRY OPTIMIZATION
 
 /**
 Blocks that are still overlapping after known_block and impossible_block are determined.
