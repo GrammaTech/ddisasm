@@ -10,4 +10,3 @@ clean:
 check:
 	@ $(EXEC) ./ex >/tmp/res.txt
 	@ diff out.txt /tmp/res.txt && echo TEST OK
-
