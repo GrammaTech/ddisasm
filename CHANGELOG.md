@@ -6,6 +6,14 @@
   binary was re-disassembled and reassembled. `.cfi_startproc` entries in the
   `cfiDirectives` AuxData table now have the argument `1`, which tells the
   pretty-printer to print `.cfi_startproc simple`.
+* Fix symbolization of references to the linker-defined `__ehdr_start`
+  symbol in ELF binaries. References to the ELF header (including header
+  fields such as `__ehdr_start+54`) are now symbolized relative to
+  `__ehdr_start` on x86-64 (PIE and non-PIE) and x86-32 (GOT-relative and
+  absolute), in both stripped and unstripped binaries.
+* Do not use version-definition symbols (e.g. `VERS_1` from a linker version
+  script) in symbolic expressions.
+* ELF modules now record the image base in GTIRB `Module.preferredAddr`.
 
 # 1.9.5
 

@@ -198,6 +198,11 @@ elf_avoid_symbols("_fp_hw").
 elf_avoid_symbols("_IO_stdin_used").
 elf_avoid_symbols("__TMC_END__").
 
+// Version-definition symbols (e.g. VERS_1 from a --version-script) are
+// absolute, zero-valued markers emitted by the linker, not addresses.
+elf_avoid_symbols(Name):-
+    symbol(0,0,"OBJECT","GLOBAL",_,0xfff1,_,_,Name).  // 0xfff1 = SHN_ABS
+
 // Choose the function symbol with maximum score
 // or create a new function symbol if we have a function
 // and no pre-existing function symbols.

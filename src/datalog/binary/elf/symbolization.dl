@@ -145,6 +145,35 @@ got_relative_operand(EA,Index,as(Dest,address)):-
 symbolic_operand_candidate(EA,Index,Dest,"data"):-
     got_relative_operand(EA,Index,Dest).
 
+// Absolute references into the ELF header in non-PIE executables, e.g.
+//     mov $__ehdr_start, %eax
+//     movzwl __ehdr_start+42, %eax     (x86-32)
+// The header is not in any data section, so the generic EXEC candidate
+// rule in symbolization.dl does not produce these. Unlike pc- and
+// GOT-relative references, an absolute value in the header range may just
+// be a number (0x400000 is also 4 MiB), so these go through the normal
+// symbolic_operand scoring; accepted operands are then moved to
+// __ehdr_start by the "elf header" moved label.
+symbolic_operand_candidate(EA,Op_index,Dest,"data"):-
+    binary_type("EXEC"),
+    elf_header_region(Base,End),
+    code(EA),
+    instruction_get_op(EA,Op_index,Op),
+    (
+        op_immediate(Op,Imm,_),
+        Dest = as(Imm,address),
+        !split_load_operand(EA,Op_index,_),
+        !direct_call(EA,_),
+        !direct_jump(EA,_)
+        ;
+        op_indirect(Op,_,_,_,_,Disp,_),
+        Dest = as(Disp,address),
+        !pc_relative_operand(EA,Op_index,_),
+        !split_load_operand(EA,Op_index,_)
+    ),
+    Dest >= Base,
+    Dest < End.
+
 //////////////////////////////////////////////////////////////////////////
 // find the main function even if it does not have a symbol
 
@@ -492,6 +521,16 @@ inferred_special_symbol(End,"__rela_iplt_end","GLOBAL","DEFAULT","NONE","End"):-
 abi_intrinsic(Beg,"__rela_iplt_start"),
 abi_intrinsic(End,"__rela_iplt_end"):-
     loaded_section(Beg,End,".rela.plt").
+
+// __ehdr_start is defined by the linker at the ELF header, which is not
+// covered by any section. Infer it in stripped binaries, and make it an ABI
+// intrinsic so references stay undefined and are resolved by the linker.
+inferred_special_symbol(Base,"__ehdr_start","LOCAL","DEFAULT","NOTYPE","Beg"):-
+    elf_header_address(Base),
+    !symbol(_,_,_,_,_,_,_,_,"__ehdr_start").
+
+abi_intrinsic(Base,"__ehdr_start"):-
+    elf_header_address(Base).
 
 // Special loop pattern seen in `__run_exit_handlers`
 // of libc ubuntu20

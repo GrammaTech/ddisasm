@@ -123,6 +123,28 @@ tests:
   - name: ex_copy_relo
     <<: *default
 
+  - name: ex_ehdr_start
+    <<: *default
+    build:
+      <<: *default-build
+      flags: ["-fpie", "-pie"]
+
+  - name: ex_ehdr_start
+    <<: *default
+    build:
+      <<: *default-build
+      flags: ["-fpie", "-pie", "-Wl,--version-script=ex.map"]
+
+  - name: ex_ehdr_start
+    <<: *default
+    build:
+      <<: *default-build
+      flags: ["-fno-pie", "-no-pie"]
+    reassemble:
+      # Link the rewritten binary at a different image base, so a reference
+      # into the ELF header left as a literal address fails at runtime.
+      flags: ["-Wl,-Ttext-segment=0x600000"]
+
   - name: ex_emit_relocs
     <<: *default
       # Test configuration.
@@ -318,6 +340,31 @@ tests:
   - name: ex_copy_relo
     <<: *default
     <<: *test-strip-default
+
+  - name: ex_ehdr_start
+    <<: *default
+    <<: *test-strip-default
+    build:
+      <<: *default-build
+      flags: ["-fpie", "-pie"]
+
+  - name: ex_ehdr_start
+    <<: *default
+    <<: *test-strip-default
+    build:
+      <<: *default-build
+      flags: ["-fpie", "-pie", "-Wl,--version-script=ex.map"]
+
+  - name: ex_ehdr_start
+    <<: *default
+    <<: *test-strip-default
+    build:
+      <<: *default-build
+      flags: ["-fno-pie", "-no-pie"]
+    reassemble:
+      # Link the rewritten binary at a different image base, so a reference
+      # into the ELF header left as a literal address fails at runtime.
+      flags: ["-Wl,-Ttext-segment=0x600000"]
 
   - name: ex_exceptions1
     <<: *default-cpp
