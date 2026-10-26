@@ -927,6 +927,9 @@ SymbolPositionMap buildSymbolPositionMap(gtirb::Module &Module, souffle::Souffle
         assert(Symbol && "best_symexpr_symbol refers to a symbol not in the module");
         if(!Symbol)
         {
+            // Not dead code: the assert above is compiled out in release
+            // builds. Skipping keeps the symbol's default placement instead
+            // of dereferencing a null pointer below.
             continue;
         }
         auto [It, Inserted] = SymbolPositions.emplace(Symbol->getUUID(), Position);
