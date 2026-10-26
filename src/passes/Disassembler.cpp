@@ -467,6 +467,13 @@ gtirb::Symbol *findFirstSymbol(gtirb::Module &Module, std::string Name, bool fin
     return &*Found.begin();
 }
 
+/// Name given by buildSymbolForwarding to the symbol that stays at the
+/// address of a copy-relocated symbol or ABI-intrinsic symbol.
+std::string copySymbolName(const std::string &Name)
+{
+    return stripSymbolVersion(Name) + "_copy";
+}
+
 // Build a first version of the SymbolForwarding table with copy relocations and
 // other ABI-specific artifacts that may be duplicated or reintroduced during
 // reassembly.
@@ -491,8 +498,7 @@ void buildSymbolForwarding(gtirb::Context &Context, gtirb::Module &Module,
         {
             gtirb::Symbol *RealSymbol = Module.addSymbol(Context, Name);
             RealSymbol->setReferent(Module.addProxyBlock(Context));
-            Name = stripSymbolVersion(Name);
-            CopySymbol->setName(Name + "_copy");
+            CopySymbol->setName(copySymbolName(Name));
             SymbolForwarding[CopySymbol->getUUID()] = RealSymbol->getUUID();
 
             auto CopySymbolInfoIt = SymbolInfo->find(CopySymbol->getUUID());
@@ -523,8 +529,7 @@ void buildSymbolForwarding(gtirb::Context &Context, gtirb::Module &Module,
         {
             gtirb::Symbol *NewSymbol = Module.addSymbol(Context, Name);
             // Create orphaned symbol for OBJECT copy relocation aliases.
-            Name = stripSymbolVersion(Name);
-            Symbol->setName(Name + "_copy");
+            Symbol->setName(copySymbolName(Name));
             SymbolForwarding[Symbol->getUUID()] = NewSymbol->getUUID();
         }
     }
@@ -912,6 +917,13 @@ SymbolPositionMap buildSymbolPositionMap(gtirb::Module &Module, souffle::Souffle
         SymbolPosition Position;
         T >> Addr >> Name >> Position;
         gtirb::Symbol *Symbol = findSymbol(Module, Addr, Name);
+        if(!Symbol)
+        {
+            // buildSymbolForwarding renames copy-relocated symbols, including
+            // abi_intrinsic ones; the position applies to the copy that stays
+            // at this address.
+            Symbol = findSymbol(Module, Addr, copySymbolName(Name));
+        }
         assert(Symbol && "best_symexpr_symbol refers to a symbol not in the module");
         if(!Symbol)
         {
