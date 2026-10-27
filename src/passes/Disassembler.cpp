@@ -306,6 +306,18 @@ std::string stripSymbolVersion(const std::string Name)
     return Name;
 }
 
+// Auxiliary function to get a symbol with an address and name.
+gtirb::Symbol *findSymbol(gtirb::Module &module, gtirb::Addr Ea, std::string Name)
+{
+    auto Found = module.findSymbols(Ea);
+    for(gtirb::Symbol &Symbol : Found)
+    {
+        if(Symbol.getName() == Name)
+            return &Symbol;
+    }
+    return nullptr;
+}
+
 void removeEntryPoint(gtirb::Module &Module)
 {
     // Remove initial entry point.
@@ -383,7 +395,7 @@ void buildInferredSymbols(gtirb::Context &Context, gtirb::Module &Module,
         std::string Name;
         std::string Scope, Visibility, Type;
         T >> Addr >> Name >> Scope >> Visibility >> Type;
-        if(!Module.findSymbols(Name))
+        if(!findSymbol(Module, Addr, Name))
         {
             gtirb::Symbol *Symbol = Module.addSymbol(Context, Addr, Name);
             if(SymbolInfo)
@@ -420,18 +432,6 @@ void buildInferredSymbols(gtirb::Context &Context, gtirb::Module &Module,
             SymbolTabIdxInfo->erase(Symbol->getUUID());
         }
     }
-}
-
-// Auxiliary function to get a symbol with an address and name.
-gtirb::Symbol *findSymbol(gtirb::Module &module, gtirb::Addr Ea, std::string Name)
-{
-    auto Found = module.findSymbols(Ea);
-    for(gtirb::Symbol &Symbol : Found)
-    {
-        if(Symbol.getName() == Name)
-            return &Symbol;
-    }
-    return nullptr;
 }
 
 // Auxiliary function to get the first symbol with a given name.
