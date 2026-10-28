@@ -40,6 +40,23 @@ souffle::tuple &operator>>(souffle::tuple &t, gtirb::Addr &ea)
     return t;
 }
 
+/// Where an inferred symbol located on a section boundary should be
+/// attached. Mirrors the last column of the `inferred_symbol` relation.
+enum class SymbolPosition
+{
+    Beg, ///< Attach to the block starting at the symbol's address.
+    End  ///< Attach AtEnd of the last block of the section ending there.
+};
+
+souffle::tuple &operator>>(souffle::tuple &T, SymbolPosition &Position)
+{
+    std::string S;
+    T >> S;
+    assert((S == "Beg" || S == "End") && "Unknown inferred_symbol position");
+    Position = (S == "Beg") ? SymbolPosition::Beg : SymbolPosition::End;
+    return T;
+}
+
 souffle::tuple &operator>>(souffle::tuple &t, uint8_t &byte)
 {
     int64_t x;
@@ -289,6 +306,18 @@ std::string stripSymbolVersion(const std::string Name)
     return Name;
 }
 
+// Auxiliary function to get a symbol with an address and name.
+gtirb::Symbol *findSymbol(gtirb::Module &module, gtirb::Addr Ea, std::string Name)
+{
+    auto Found = module.findSymbols(Ea);
+    for(gtirb::Symbol &Symbol : Found)
+    {
+        if(Symbol.getName() == Name)
+            return &Symbol;
+    }
+    return nullptr;
+}
+
 void removeEntryPoint(gtirb::Module &Module)
 {
     // Remove initial entry point.
@@ -366,7 +395,7 @@ void buildInferredSymbols(gtirb::Context &Context, gtirb::Module &Module,
         std::string Name;
         std::string Scope, Visibility, Type;
         T >> Addr >> Name >> Scope >> Visibility >> Type;
-        if(!Module.findSymbols(Name))
+        if(!findSymbol(Module, Addr, Name))
         {
             gtirb::Symbol *Symbol = Module.addSymbol(Context, Addr, Name);
             if(SymbolInfo)
@@ -405,18 +434,6 @@ void buildInferredSymbols(gtirb::Context &Context, gtirb::Module &Module,
     }
 }
 
-// Auxiliary function to get a symbol with an address and name.
-gtirb::Symbol *findSymbol(gtirb::Module &module, gtirb::Addr Ea, std::string Name)
-{
-    auto Found = module.findSymbols(Ea);
-    for(gtirb::Symbol &Symbol : Found)
-    {
-        if(Symbol.getName() == Name)
-            return &Symbol;
-    }
-    return nullptr;
-}
-
 // Auxiliary function to get the first symbol with a given name.
 // The function will exit with an error if no such symbol exists.
 gtirb::Symbol *findFirstSymbol(gtirb::Module &Module, std::string Name, bool findGlobal = false)
@@ -450,6 +467,13 @@ gtirb::Symbol *findFirstSymbol(gtirb::Module &Module, std::string Name, bool fin
     return &*Found.begin();
 }
 
+/// Name given by buildSymbolForwarding to the symbol that stays at the
+/// address of a copy-relocated symbol or ABI-intrinsic symbol.
+std::string copySymbolName(const std::string &Name)
+{
+    return stripSymbolVersion(Name) + "_copy";
+}
+
 // Build a first version of the SymbolForwarding table with copy relocations and
 // other ABI-specific artifacts that may be duplicated or reintroduced during
 // reassembly.
@@ -474,8 +498,7 @@ void buildSymbolForwarding(gtirb::Context &Context, gtirb::Module &Module,
         {
             gtirb::Symbol *RealSymbol = Module.addSymbol(Context, Name);
             RealSymbol->setReferent(Module.addProxyBlock(Context));
-            Name = stripSymbolVersion(Name);
-            CopySymbol->setName(Name + "_copy");
+            CopySymbol->setName(copySymbolName(Name));
             SymbolForwarding[CopySymbol->getUUID()] = RealSymbol->getUUID();
 
             auto CopySymbolInfoIt = SymbolInfo->find(CopySymbol->getUUID());
@@ -506,8 +529,7 @@ void buildSymbolForwarding(gtirb::Context &Context, gtirb::Module &Module,
         {
             gtirb::Symbol *NewSymbol = Module.addSymbol(Context, Name);
             // Create orphaned symbol for OBJECT copy relocation aliases.
-            Name = stripSymbolVersion(Name);
-            Symbol->setName(Name + "_copy");
+            Symbol->setName(copySymbolName(Name));
             SymbolForwarding[Symbol->getUUID()] = NewSymbol->getUUID();
         }
     }
@@ -875,11 +897,55 @@ void buildAlignments(gtirb::Module &Module, souffle::SouffleProgram &Program)
     }
 }
 
+using SymbolPositionMap = std::map<gtirb::UUID, SymbolPosition>;
+
+/// True if `Symbol` was inferred with position "Beg". Symbols inferred with
+/// "End" and symbols that were not inferred at all are treated the same.
+bool isSymbolPositionBeg(const SymbolPositionMap &SymbolPositions, const gtirb::Symbol &Symbol)
+{
+    auto It = SymbolPositions.find(Symbol.getUUID());
+    return It != SymbolPositions.end() && It->second == SymbolPosition::Beg;
+}
+
+SymbolPositionMap buildSymbolPositionMap(gtirb::Module &Module, souffle::SouffleProgram &Program)
+{
+    SymbolPositionMap SymbolPositions;
+    for(auto &T : *Program.getRelation("best_symexpr_symbol"))
+    {
+        gtirb::Addr Addr;
+        std::string Name;
+        SymbolPosition Position;
+        T >> Addr >> Name >> Position;
+        gtirb::Symbol *Symbol = findSymbol(Module, Addr, Name);
+        if(!Symbol)
+        {
+            // buildSymbolForwarding renames copy-relocated symbols, including
+            // abi_intrinsic ones; the position applies to the copy that stays
+            // at this address.
+            Symbol = findSymbol(Module, Addr, copySymbolName(Name));
+        }
+        assert(Symbol && "best_symexpr_symbol refers to a symbol not in the module");
+        if(!Symbol)
+        {
+            // Not dead code: the assert above is compiled out in release
+            // builds. Skipping keeps the symbol's default placement instead
+            // of dereferencing a null pointer below.
+            continue;
+        }
+        auto [It, Inserted] = SymbolPositions.emplace(Symbol->getUUID(), Position);
+        assert((Inserted || It->second == Position)
+               && "Conflicting positions in best_symexpr_symbol");
+    }
+    return SymbolPositions;
+}
+
 void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
                             souffle::SouffleProgram &Program)
 {
     auto *Alignment = Module.getAuxData<gtirb::schema::Alignment>();
     auto *SymbolInfo = Module.getAuxData<gtirb::schema::ElfSymbolInfo>();
+
+    const SymbolPositionMap SymbolPositions = buildSymbolPositionMap(Module, Program);
 
     // Assign communal symbols (.comm) to ProxyBlocks; communal variables are
     // allocated by the linker and are not initialized.
@@ -984,18 +1050,25 @@ void connectSymbolsToBlocks(gtirb::Context &Context, gtirb::Module &Module,
                     continue;
                 }
             }
+
             if(auto It = Module.findSectionsOn(Addr - 1); !It.empty())
             {
-                if(gtirb::Section &Section = It.front(); Section.getAddress() && Section.getSize())
+                if(!isSymbolPositionBeg(SymbolPositions, Symbol)
+                   || Module.findSectionsOn(Addr).empty())
+
                 {
-                    // Symbol points to byte immediately following section.
-                    if(Addr == (*Section.getAddress() + *Section.getSize()))
+                    if(gtirb::Section &Section = It.front();
+                       Section.getAddress() && Section.getSize())
                     {
-                        if(auto BlockIt = Section.findBlocksOn(Addr - 1); !BlockIt.empty())
+                        // Symbol points to byte immediately following section.
+                        if(Addr == (*Section.getAddress() + *Section.getSize()))
                         {
-                            gtirb::Node &Block = BlockIt.front();
-                            ConnectToBlock[&Symbol] = {&Block, true};
-                            continue;
+                            if(auto BlockIt = Section.findBlocksOn(Addr - 1); !BlockIt.empty())
+                            {
+                                gtirb::Node &Block = BlockIt.front();
+                                ConnectToBlock[&Symbol] = {&Block, true};
+                                continue;
+                            }
                         }
                     }
                 }
@@ -1685,11 +1758,13 @@ void disassembleModule(gtirb::Context &Context, gtirb::Module &Module,
     buildSymbolForwarding(Context, Module, Program);
     buildCodeBlocks(Context, Module, Program);
     buildDataBlocks(Context, Module, Program);
+
     buildAlignments(Module, Program);
     buildCodeSymbolicInformation(Module, Program);
     buildCfiDirectives(Module, Program);
     buildSehTable(Module, Program);
     expandSymbolForwarding(Module, Program);
+
     buildFunctions(Module, Program);
     // This should be done after creating all the symbols.
     connectSymbolsToBlocks(Context, Module, Program);
