@@ -47,9 +47,8 @@ int main(void)
     /* Printed rather than asserted, so the same source works for PIE and
        non-PIE builds; out.txt records the original's type and the
        rewritten binary must match it. */
-    const char *type = __ehdr_start.e_type == ET_DYN    ? "DYN"
-                       : __ehdr_start.e_type == ET_EXEC ? "EXEC"
-                                                        : "other";
+    const char *type =
+        __ehdr_start.e_type == ET_DYN ? "DYN" : __ehdr_start.e_type == ET_EXEC ? "EXEC" : "other";
 
     printf("address %s, fields %s, data %s, type %s\n", base_ok ? "ok" : "BAD",
            fields_ok ? "ok" : "BAD", data_ok ? "ok" : "BAD", type);
