@@ -532,6 +532,19 @@ inferred_special_symbol(Base,"__ehdr_start","LOCAL","DEFAULT","NOTYPE","Beg"):-
 abi_intrinsic(Base,"__ehdr_start"):-
     elf_header_address(Base).
 
+// PIE data pointers into the ELF header, e.g. `.quad __ehdr_start+16`.
+// Their values lie below the first section, so they never reach
+// address_in_data; the RELATIVE relocation marks them as addresses.
+address_in_data_refined(EA,Dest):-
+    binary_type("DYN"),
+    elf_header_region(Beg,End),
+    relocation(EA,"RELATIVE",_,_,_,_,_),
+    arch.pointer_size(Pt_size),
+    data_uword(EA,Pt_size,Val),
+    Dest = as(Val,address),
+    Dest >= Beg,
+    Dest < End.
+
 // Special loop pattern seen in `__run_exit_handlers`
 // of libc ubuntu20
 // The alignment for symbols introduced by the pprinter is causing crashes
