@@ -139,20 +139,34 @@ jmpq *%rdi
 
 In the data access, the base register is PC and there is no index register.
 */
-jump_table_element_access(EA,Size,TableStartAddr,"NONE"):-
-    pc_relative_operand(EA,1,TableStartAddr),
-    data_access(EA,_,_,_,_,_,_,Size),
-    def_used_for_address(EA,_,Type),
+jump_table_element_access(EA_load,Size,TableStartAddr,"NONE"):-
+    def_used_for_address(EA_load,_,Type),
+    pc_relative_operand(EA_load,1,TableStartAddr),
+    reg_def_use.def_used(EA_load,Reg1,EA_add,_),
+    arch.reg_reg_arithmetic_operation(EA_add,_,Reg2,Reg1,1,0),
+    take_address(EA_lea,TableStartAddr),
+    reg_def_use.def_used(EA_lea,Reg2,EA_add,_),
+    data_access(EA_load,_,_,_,_,_,_,Size),
     (
         Type = "Jump"; Type = "Call"
     ),
-    reg_def_use.def_used(EA,Reg1,EA_add,_),
-    reg_def_use.def_used(EA2,Reg2,EA_add,_),
-    take_address(EA2,TableStartAddr),
-    arch.reg_reg_arithmetic_operation(EA_add,_,Reg2,Reg1,1,0),
     data_segment(Beg,End),
     TableStartAddr >= Beg,
     TableStartAddr <= End.
+   .plan 1:(3,2,1,4,5,6,7,8), 2:(6,5,4,3,2,1,7,8)
+// Plans are not part of the intent, only an implementation detail. Still,
+// this one is complex, so it's worth reviewing the basics and current state:
+// There are 3 clauses here for relations in a mutually recursive cycle:
+// jump_table_element_access, def_used_for_address, reg_def_use.def_used *twice*.
+//  - The default plan (Version 0) is for when def_used_for_address is a delta,
+//    i.e., we are joining the new additions in the previous recursive step with
+//    the full versions of other predicates.
+//  - Version 1 is for when the first reg_def_use.def_used (in position 3 in the rule)
+//    is a delta.
+//  - Version 2 is for when the second reg_def_use.def_used (in position 6) is a delta. 
+// For position numbering, only (non-negative) predicate clauses count--not constraint
+// clauses such as 'Type = "Jump"' or 'TableStartAddr >= Beg'.
+
 
 // sometimes the regBase contains the index (already multiplied)
 // and the regIndex contains the base address
