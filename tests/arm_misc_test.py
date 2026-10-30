@@ -270,6 +270,109 @@ class ArmMiscTest(unittest.TestCase):
             self.assertIn("thumb_to_arm", referred_symbol_names)
             self.assertIn("thumb_to_thumb", referred_symbol_names)
 
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_exidx_start_end_symbols(self):
+        """
+        GOT entries holding the boundaries of .ARM.exidx must be symbolized
+        with __exidx_start/__exidx_end.
+        """
+        binary = Path("ex")
+        with cd(ex_arm_asm_dir / "ex_exidx_start_end"):
+            self.assertTrue(
+                compile(
+                    "arm-linux-gnueabihf-gcc",
+                    "arm-linux-gnueabihf-g++",
+                    "",
+                    ["-no-pie"],
+                    "qemu-arm -L /usr/arm-linux-gnueabihf",
+                )
+            )
+            ir_library = disassemble(
+                binary,
+                strip_exe="arm-linux-gnueabihf-strip",
+                strip=True,
+            ).ir()
+            m = ir_library.modules[0]
+
+            forwarding = m.aux_data["symbolForwarding"].data
+            got = next(s for s in m.sections if s.name == ".got")
+            names = {
+                forwarding.get(sym, sym).name
+                for _, _, expr in got.symbolic_expressions_at(
+                    range(got.address, got.address + got.size)
+                )
+                for sym in expr.symbols
+            }
+            self.assertIn("__exidx_start", names)
+            self.assertIn("__exidx_end", names)
+
+    @unittest.skipUnless(
+        platform.system() == "Linux", "This test is linux only."
+    )
+    def test_exidx_start_end_symbols_pie(self):
+        """
+        Test that PIE GOT entries for .ARM.exidx boundaries are symbolized.
+        """
+        binary = Path("ex")
+        with cd(ex_arm_asm_dir / "ex_exidx_start_end"):
+            self.assertTrue(
+                compile(
+                    "arm-linux-gnueabihf-gcc",
+                    "arm-linux-gnueabihf-g++",
+                    "",
+                    ["-pie"],
+                    "qemu-arm -L /usr/arm-linux-gnueabihf",
+                )
+            )
+            ir_library = disassemble(
+                binary,
+                strip_exe="arm-linux-gnueabihf-strip",
+                strip=True,
+                extra_args=["--with-souffle-relations"],
+            ).ir()
+            m = ir_library.modules[0]
+
+            exidx = next(s for s in m.sections if s.name == ".ARM.exidx")
+            got = next(s for s in m.sections if s.name == ".got")
+            expected = {
+                exidx.address: "__exidx_start",
+                exidx.address + exidx.size: "__exidx_end",
+            }
+
+            # Find the GOT entries that hold the .ARM.exidx boundaries.
+            entries = {}
+            for bi in got.byte_intervals:
+                for offset in range(0, bi.size - 3, 4):
+                    value = int.from_bytes(
+                        bi.contents[offset : offset + 4], "little"
+                    )
+                    if value in expected:
+                        entries[bi.address + offset] = expected[value]
+            self.assertEqual(
+                sorted(entries.values()),
+                ["__exidx_end", "__exidx_start"],
+                "expected one GOT entry for each .ARM.exidx boundary",
+            )
+
+            # Ddisasm must produce exactly one symbolic expression per entry;
+            # with more than one, the choice in the IR would be arbitrary.
+            symexprs = list(parse_souffle_output(m, "symbolic_expr"))
+            forwarding = m.aux_data["symbolForwarding"].data
+            for ea, name in entries.items():
+                with self.subTest(got_entry=hex(ea), expected=name):
+                    candidates = [t for t in symexprs if t[0] == ea]
+                    self.assertEqual(
+                        len(candidates),
+                        1,
+                        f"symbolic_expr candidates: {candidates}",
+                    )
+                    _, _, expr = next(got.symbolic_expressions_at(ea))
+                    self.assertEqual(expr.offset, 0)
+                    sym = forwarding.get(expr.symbol, expr.symbol)
+                    self.assertEqual(sym.name, name)
+
 
 if __name__ == "__main__":
     unittest.main()
