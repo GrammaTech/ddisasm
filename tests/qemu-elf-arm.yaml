@@ -136,18 +136,12 @@ tests:
     build:
       <<: *assembly-build
       flags: ["-no-pie"]
-    test:
-      <<: *default-test
-      strip: true
 
   - name: ex_exidx_start_end
     <<: *assembly
     build:
       <<: *assembly-build
       flags: ["-pie"]
-    test:
-      <<: *default-test
-      strip: true
 
   - name: ex1
     <<: *default

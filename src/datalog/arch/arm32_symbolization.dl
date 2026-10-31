@@ -512,19 +512,23 @@ relative_jump_table_entry_candidate(DataEA,TableStart,Size,Reference,TargetAddr,
 // labels that may be undefined (e.g., when `.ARM.exidx` is not printed).
 //
 inferred_special_symbol(Beg,"__exidx_start","LOCAL","DEFAULT","NONE","Beg"):-
+    !binary_type("REL"),
     loaded_section(Beg,_,".ARM.exidx"),
     !symbol(_,_,_,_,_,_,_,_,"__exidx_start").
 
 inferred_special_symbol(End,"__exidx_end","LOCAL","DEFAULT","NONE","End"):-
+    !binary_type("REL"),
     loaded_section(_,End,".ARM.exidx"),
     !symbol(_,_,_,_,_,_,_,_,"__exidx_end").
 
 abi_intrinsic(Beg,"__exidx_start"),
 abi_intrinsic(End,"__exidx_end"):-
+    !binary_type("REL"),
     loaded_section(Beg,End,".ARM.exidx").
 
 // A data word (e.g., a GOT entry) holding the end of `.ARM.exidx` refers to
 // `__exidx_end`, not to the beginning of the following section.
 boundary_sym_expr(EA,End,"end of .ARM.exidx"):-
+    !binary_type("REL"),
     loaded_section(_,End,".ARM.exidx"),
     aligned_address_in_data(EA,End).
