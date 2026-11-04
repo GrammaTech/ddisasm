@@ -66,6 +66,18 @@ symbol_score(EA,SymbolName,Type,Pos,1):-
     inferred_special_symbol(EA,SymbolName,Scope,Visibility,Type,Pos).
 
 /**
+Symbols that may legitimately appear in a symbolic expression.
+FILE and SECTION symbols are metadata, not references to the address.
+*/
+.decl symexpr_eligible_symbol(EA:address,Scope:symbol,Name:symbol)
+
+symexpr_eligible_symbol(EA,Scope,Name):-
+    symbol(EA,_,Type,Scope,_,_,_,_,Name),
+    Name != "",
+    Type != "FILE",
+    Type != "SECTION".
+
+/**
 Best symbol at address 'EA' to be used for symbolic expressions. There
 can be two variants: If 'Pos' is "Beg", the symbol points to the beginning
 of a block. If 'Pos' is "End", the symbol points at the end of a block.

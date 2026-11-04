@@ -877,34 +877,32 @@ best_symexpr_symbol(EA,SymName,Pos):-
     Score = max S: {symbol_score(EA,_,_,Pos,S)},
     (
         // If the original symbol is either GLOBAL or WEAK, choose it.
-        symbol(EA,_,_,"GLOBAL",_,_,_,_,SymbolName),
-        SymbolName != "",
+        symexpr_eligible_symbol(EA,"GLOBAL",SymbolName),
         SymName = SymbolName
         ;
-        symbol(EA,_,_,"WEAK",_,_,_,_,SymbolName),
-        SymbolName != "",
+        symexpr_eligible_symbol(EA,"WEAK",SymbolName),
         SymName = SymbolName
         ;
         // If the original symbol is _gp, choose it.
-        symbol(EA,_,_,_,_,_,_,_,SymbolName),
+        symexpr_eligible_symbol(EA,_,SymbolName),
         SymbolName = "_gp",
         SymName = SymbolName
         ;
         // If the original symbol is LOCAL and there is an inferred symbol,
-        // choose it.
+        // choose the inferred one.
+        symexpr_eligible_symbol(EA,"LOCAL",SymbolName),
         symbol(EA,_,_,"LOCAL",_,_,_,_,SymbolName),
-        inferred_symbol_mips(EA,SymbolName2,_,_,_,Pos),
-        SymName = SymbolName2
+        inferred_symbol_mips(EA,SymName,_,_,_,Pos)
         ;
-        // If there was not symbol at the address, choose the inferred symbol.
-        !symbol(EA,_,_,_,_,_,_,_,_),
-        inferred_symbol_mips(EA,SymbolName2,_,_,_,Pos),
-        SymName = SymbolName2
+        // If there is no (eligible) symbol at the address,
+        // choose the inferred symbol.
+        !symexpr_eligible_symbol(EA,_,_),
+        inferred_symbol_mips(EA,SymName,_,_,_,Pos)
         ;
-        // If there is not inferred symbol, choose the original symbol.
-        symbol(EA,_,_,"LOCAL",_,_,_,_,SymName),
-        SymName != "",
-        !inferred_symbol_mips(EA,_,_,_,_,Pos)
+        // If there is no inferred symbol, choose the original symbol.
+        symexpr_eligible_symbol(EA,"LOCAL",SymbolName),
+        !inferred_symbol_mips(EA,_,_,_,_,Pos),
+        SymName = SymbolName
     ).
 
 // If there is no symbol produced by the symbol-score system,
