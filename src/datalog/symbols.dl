@@ -71,6 +71,7 @@ can be two variants: If 'Pos' is "Beg", the symbol points to the beginning
 of a block. If 'Pos' is "End", the symbol points at the end of a block.
 */
 .decl best_symexpr_symbol(EA:address,SymbolName:symbol,Pos:symbol_position)
+.output best_symexpr_symbol
 
 /**
 Best function symbol at address 'EA'.
