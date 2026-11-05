@@ -94,6 +94,31 @@ function_pointer_section(SectionName):-
 function_pointer_section(".got.plt"):-
     binary_format("ELF").
 
+/**
+The mapped ELF header and program headers: from the image base (the
+address of `__ehdr_start`) up to the first loaded section.
+*/
+.decl elf_header_region(Beg:address,End:address)
+
+elf_header_region(Base,End):-
+    binary_format("ELF"),
+    binary_type(Type), Type != "REL",
+    base_address(Base),
+    End = min Beg: { loaded_section(Beg,_,_), Beg > Base },
+    // The ELF header and program headers fit well within a page. A larger
+    // gap means the header is not mapped: base_address then holds the
+    // default 0 because no PT_LOAD segment maps file offset 0, and
+    // __ehdr_start does not exist.
+    End - Base <= 0x1000.
+
+/**
+The address of the linker-defined `__ehdr_start` symbol.
+*/
+.decl elf_header_address(EA:address)
+
+elf_header_address(Base):-
+    elf_header_region(Base,_).
+
 ////////////////////////////////////////////////////////////////////////////
 // detect references  to libraries (calls to plt)
 .decl plt_section(name:symbol)

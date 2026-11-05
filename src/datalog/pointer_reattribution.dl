@@ -113,6 +113,16 @@ moved_data_label(EA,SizePointer,Dest,Address):-
     symbolic_data(EA,SizePointer,Dest),
     overlapping_instruction(Dest,Address).
 
+// Data pointers into the ELF header are always relative to __ehdr_start, as
+// for the "elf header" moved label on operands. Without this, a pointer to a
+// header field would get a label at an address outside any block.
+moved_label_class(EA,0,"elf header"),
+moved_data_label(EA,Size,Dest,Base):-
+    symbolic_data(EA,Size,Dest),
+    elf_header_region(Base,End),
+    Dest >= Base,
+    Dest < End.
+
 ////////////////////////////////////////////////////////////////////////////////////
 // Auxiliary predicates for `moved_label`
 
@@ -507,12 +517,41 @@ This is decided based on the 'Priority'. Lower numbers indicate higher priority.
 */
 .decl moved_label_candidate(EA:address,Op_index:operand_index,Dest:address,NewDest:address,Priority:unsigned)
 
-
-
 moved_label(EA,Op_index,Dest,NewDest):-
     moved_label_candidate(EA,Op_index,Dest,NewDest,Priority),
+    !elf_header_operand(EA,Op_index,_),
     Priority = min P: moved_label_candidate(EA,Op_index,_,_,P).
 
+/**
+Operands whose target is inside the mapped ELF header (see elf_header_region).
+*/
+.decl elf_header_operand(EA:address,Op_index:operand_index,Dest:address)
+
+elf_header_operand(EA,Op_index,Dest):-
+    code(EA),
+    (
+        pc_relative_operand(EA,Op_index,Dest)
+        ;
+        got_relative_operand(EA,Op_index,Dest)
+        ;
+        symbolic_operand(EA,Op_index,Dest,_)
+        ;
+        moved_label_candidate(EA,Op_index,Dest,_,_)
+    ),
+    elf_header_region(Beg,End),
+    Dest >= Beg,
+    Dest < End.
+
+/**
+References into the ELF header are always relative to __ehdr_start.
+
+Membership in the header is structural, not heuristic, so this bypasses the
+priority/distance selection above.
+*/
+moved_label_class(EA,Op_index,"elf header"),
+moved_label(EA,Op_index,Dest,Base):-
+    elf_header_operand(EA,Op_index,Dest),
+    elf_header_address(Base).
 
 // These four should be mutually exclusive
 

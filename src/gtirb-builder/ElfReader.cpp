@@ -645,6 +645,23 @@ std::optional<std::pair<uint64_t, uint64_t>> ElfReader::getTls()
     return Ans;
 }
 
+void ElfReader::initModule()
+{
+    // Record the image base: the address of the ELF header, i.e. the vaddr
+    // of the PT_LOAD segment that maps file offset 0. This is the address of
+    // the linker-defined __ehdr_start symbol. If no segment maps the header
+    // (e.g. relocatable objects), the preferred address is left unset.
+    for(const auto &Segment : Elf->segments())
+    {
+        if(Segment.type() == LIEF::ELF::Segment::TYPE::LOAD && Segment.file_offset() == 0)
+        {
+            Module->setPreferredAddr(gtirb::Addr(Segment.virtual_address()));
+            break;
+        }
+    }
+    GtirbBuilder::initModule();
+}
+
 void ElfReader::buildSections()
 {
     std::map<gtirb::UUID, uint64_t> Alignment;
