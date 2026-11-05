@@ -295,8 +295,15 @@ operation_alignment_required("VMOVNTPD").
 operation_alignment_required("VMOVNTDQ").
 operation_alignment_required("VMOVNTDQA").
 
+// Not a meaningful predicate, just optimization detail: avoid carrying around data
+// that will be dropped anyway. Inline it (virtually) where it's used, when
+// understanding the logic.
+.decl opt_operation(Operation:symbol)
+opt_operation(Operation) :-
+    instruction_get_operation(_, Operation).
+
 operation_alignment_required(Operation):-
-    instruction_get_operation(_, Operation),
+    opt_operation(Operation),
     (
         // Floating-Point/Integer Packed Arithmetic
         substr(Operation,0,4) = "ADDP";

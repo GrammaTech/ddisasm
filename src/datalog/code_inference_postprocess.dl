@@ -127,10 +127,10 @@ code_in_refined_block(EA,Block):-
     code_in_split_block(EA,Block).
 
 code_in_refined_block(EA,Block):-
-    block_needs_merging(OldBlock),
-    code_in_split_block(EA,OldBlock),
+    code_in_refined_block(Prev,Block),
     must_fallthrough(Prev,OldBlock),
-    code_in_refined_block(Prev,Block).
+    block_needs_merging(OldBlock),
+    code_in_split_block(EA,OldBlock).
 
 ////////////////////////////////////////////////////////
 // Finally, we compute additional information about the new blocks.
