@@ -176,7 +176,7 @@ symbol_minus_symbol_from_relocation(EA,4,SymbolName2,"_GLOBAL_OFFSET_TABLE_",1,O
 data_object_candidate(LitPoolAddr,Size,"symbol-symbol"):-
     symbol_minus_symbol_litpool_access_pattern(LitPoolAddr,Size,_,_,_,_,_,_,_).
 
-data_object_point(EA,Size,"symbol",5,"arm literal pool"),
+data_object_point(LitPoolAddr,Size,"symbol",5,"arm literal pool"),
 data_object_candidate(LitPoolAddr,Size,"symbol"):-
     litpool_ref(EA,_,RefAddr,LitPoolOffset,Size,_),
     LitPoolAddr = RefAddr+as(LitPoolOffset,address),
