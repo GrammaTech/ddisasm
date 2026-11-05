@@ -95,6 +95,21 @@ tests:
   - name: ex_copy_relo
     <<: *default
 
+  - name: ex_ehdr_start
+    <<: *default
+    reassemble:
+      # Link the rewritten binary at a different image base, so a reference
+      # into the ELF header left as a literal address fails at runtime.
+      flags: ["-Wl,-Ttext-segment=0x9000000"]
+
+  - name: ex_ehdr_start
+    <<: *default
+    <<: *strip
+    reassemble:
+      # Link the rewritten binary at a different image base, so a reference
+      # into the ELF header left as a literal address fails at runtime.
+      flags: ["-Wl,-Ttext-segment=0x9000000"]
+
   - name: ex_exceptions1
     <<: *default-cpp
 
@@ -177,6 +192,15 @@ tests:
 
   - name: ex_confusing_data
     <<: *position-independent
+
+  - name: ex_ehdr_start
+    <<: *position-independent
+
+  - name: ex_ehdr_start
+    <<: *position-independent
+    build:
+      <<: *default-build
+      flags: ["-m32", "-fpie", "-Wl,--version-script=ex.map"]
 
   - name: ex_exceptions1
     <<: *position-independent-cpp
@@ -324,6 +348,17 @@ tests:
     <<: *position-independent
     <<: *strip
     binary: fun.so
+
+  - name: ex_ehdr_start
+    <<: *position-independent
+    <<: *strip
+
+  - name: ex_ehdr_start
+    <<: *position-independent
+    <<: *strip
+    build:
+      <<: *default-build
+      flags: ["-m32", "-fpie", "-Wl,--version-script=ex.map"]
 
   - name: ex_symbol_selection
     <<: *position-independent

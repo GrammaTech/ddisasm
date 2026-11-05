@@ -49,6 +49,7 @@ public:
 protected:
     std::shared_ptr<LIEF::ELF::Binary> Elf;
 
+    void initModule() override;
     void buildSections() override;
     void buildSymbols() override;
     void addEntryBlock() override;
