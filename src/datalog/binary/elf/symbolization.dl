@@ -315,6 +315,10 @@ inferred_special_symbol(EA,"_DYNAMIC","LOCAL","DEFAULT","NONE","Beg"):-
     !symbol(EA,_,_,_,_,_,_,_,"_DYNAMIC"),
     loaded_section(EA,_,".dynamic").
 
+abi_intrinsic(Base,"_DYNAMIC"):-
+    binary_format("ELF"),
+    loaded_section(Base,_,".dynamic").
+
 inferred_special_symbol(EA,"_GLOBAL_OFFSET_TABLE_","LOCAL","DEFAULT","NONE","Beg"):-
     !symbol(_,_,_,_,_,_,_,_,"_GLOBAL_OFFSET_TABLE_"),
     got_reference_pointer(EA).

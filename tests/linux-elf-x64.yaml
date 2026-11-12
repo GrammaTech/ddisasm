@@ -145,6 +145,22 @@ tests:
       # into the ELF header left as a literal address fails at runtime.
       flags: ["-Wl,-Ttext-segment=0x600000"]
 
+  - name: ex_dynamic_ref
+    <<: *default
+    build:
+      <<: *default-build
+      flags: ["-fpie", "-pie"]
+
+  - name: ex_dynamic_ref
+    <<: *default
+    build:
+      <<: *default-build
+      flags: ["-fno-pie", "-no-pie"]
+    reassemble:
+      # Link the rewritten binary at a different image base, so a reference
+      # to _DYNAMIC left as a literal address fails at runtime.
+      flags: ["-Wl,-Ttext-segment=0x600000"]
+
   - name: ex_emit_relocs
     <<: *default
       # Test configuration.
@@ -364,6 +380,24 @@ tests:
     reassemble:
       # Link the rewritten binary at a different image base, so a reference
       # into the ELF header left as a literal address fails at runtime.
+      flags: ["-Wl,-Ttext-segment=0x600000"]
+
+  - name: ex_dynamic_ref
+    <<: *default
+    <<: *test-strip-default
+    build:
+      <<: *default-build
+      flags: ["-fpie", "-pie"]
+
+  - name: ex_dynamic_ref
+    <<: *default
+    <<: *test-strip-default
+    build:
+      <<: *default-build
+      flags: ["-fno-pie", "-no-pie"]
+    reassemble:
+      # Link the rewritten binary at a different image base, so a reference
+      # to _DYNAMIC left as a literal address fails at runtime.
       flags: ["-Wl,-Ttext-segment=0x600000"]
 
   - name: ex_exceptions1
