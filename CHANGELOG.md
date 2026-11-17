@@ -18,6 +18,8 @@
 * Do not use version-definition symbols (e.g. `VERS_1` from a linker version
   script) in symbolic expressions.
 * ELF modules now record the image base in GTIRB `Module.preferredAddr`.
+* Fix ARM32 references to the boundaries of `.ARM.exidx` not being symbolized
+  as `__exidx_start`/`__exidx_end`.
 
 # 1.9.5
 

@@ -131,6 +131,18 @@ tests:
   - name: ex_func_after_litpool
     <<: *assembly
 
+  - name: ex_exidx_start_end
+    <<: *assembly
+    build:
+      <<: *assembly-build
+      flags: ["-no-pie"]
+
+  - name: ex_exidx_start_end
+    <<: *assembly
+    build:
+      <<: *assembly-build
+      flags: ["-pie"]
+
   - name: ex1
     <<: *default
 
