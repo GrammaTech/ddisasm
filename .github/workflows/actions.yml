@@ -80,7 +80,11 @@ jobs:
           name: ddisasm-build-${{ matrix.os }}-${{ matrix.compiler }}
           path: build
   test:
-    runs-on: ubuntu-latest
+    # Pinned to 24.04: the Docker on ubuntu-26.04 runners uses a seccomp
+    # profile that blocks socketcall(2), which 32-bit glibc needs for
+    # sockets, so the i386 wineserver fails with ENOSYS.
+    # See https://github.com/actions/runner-images/issues/14790
+    runs-on: ubuntu-24.04
     permissions:
       packages: read
     strategy:
